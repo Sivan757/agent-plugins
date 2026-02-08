@@ -1,5 +1,7 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "apex-plugins",
+  "description": "Coding standards, patterns, and best practices enforcement for multi-language projects",
   "owner": {
     "name": "Robotees"
   },
