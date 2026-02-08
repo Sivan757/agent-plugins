@@ -1,0 +1,18 @@
+{
+  "name": "apex-plugins",
+  "owner": {
+    "name": "Robotees"
+  },
+  "metadata": {
+    "description": "Coding standards, patterns, and best practices enforcement for multi-language projects",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "jetbrains-mcp",
+      "version": "0.1.0",
+      "source": "./jetbrains",
+      "description": "Configures JetBrains MCP server integration for Claude Code, enabling IDE-level file operations, refactoring, terminal execution, and code navigation."
+    }
+  ]
+}
