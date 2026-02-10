@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "augment-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@augmentcode/auggie@latest", "--mcp", "--mcp-auto-workspace"]
+    }
+  }
+}

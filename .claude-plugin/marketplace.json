@@ -15,6 +15,18 @@
       "version": "0.1.0",
       "source": "./jetbrains",
       "description": "Configures JetBrains MCP server integration for Claude Code, enabling IDE-level file operations, refactoring, terminal execution, and code navigation."
+    },
+    {
+      "name": "augment-mcp",
+      "version": "0.1.0",
+      "source": "./augment",
+      "description": "Integrates Augment Context Engine MCP server for semantic codebase search and retrieval across repositories."
+    },
+    {
+      "name": "mysql",
+      "version": "0.1.0",
+      "source": "./mysql",
+      "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     }
   ]
 }
