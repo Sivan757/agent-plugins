@@ -1,4 +1,4 @@
-# mysql-connections.json Configuration Schema
+# .mysql-connections.json Configuration Schema
 
 ## Full Schema
 
@@ -85,7 +85,7 @@ Use descriptive names that indicate environment and purpose:
 
 ## Security Notes
 
-- Add `mysql-connections.json` to `.gitignore` to avoid committing credentials
+- Add `.claude/.mysql-connections.json` to `.gitignore` to avoid committing credentials
 - Use read-only credentials for production connections when possible
 - Consider using SSH tunnels for remote database access
-- The config file must be in the project's working directory
+- The config file is located at `.claude/.mysql-connections.json` relative to the project root

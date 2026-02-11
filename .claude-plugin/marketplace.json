@@ -27,6 +27,12 @@
       "version": "0.1.0",
       "source": "./mysql",
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
+    },
+    {
+      "name": "security",
+      "version": "0.1.0",
+      "source": "./security",
+      "description": "Enforces sensitive file access policy. Blocks reads of hidden files, dotfiles, credentials, and environment variables without explicit user approval."
     }
   ]
 }

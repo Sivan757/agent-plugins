@@ -18,25 +18,25 @@ Execute SQL queries against MySQL databases using a bundled Node.js helper scrip
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `mysql-connections.json` directly.** This file contains database passwords. All interaction with connection configuration MUST go through the bundled script:
+**NEVER read, open, cat, or view `.claude/.mysql-connections.json` directly.** This file contains database passwords. All interaction with connection configuration MUST go through the bundled script:
 
 - To see available connections: `--list` (shows names and databases only, no credentials)
 - To verify connections work: `--test` (attempts real connections, reports OK/FAILED)
 - To create the config file: `--init` (generates a template for the user to edit)
 
-If the user needs to modify connection details, instruct them to edit `mysql-connections.json` manually. Never read its contents into the conversation.
+If the user needs to modify connection details, instruct them to edit `.claude/.mysql-connections.json` manually. Never read its contents into the conversation.
 
 ## Prerequisites
 
 - **Node.js** installed and available in PATH
 - **mysql2** npm package installed in the plugin directory. Run once: `npm install --prefix ${CLAUDE_PLUGIN_ROOT}`. This installs mysql2 inside the plugin's own `node_modules/` and never touches the user's project.
-- **mysql-connections.json** in the project root (current working directory) with connection configurations. The config file must exist in the directory where Claude Code is running.
+- **`.claude/.mysql-connections.json`** in the project's `.claude/` directory with connection configurations. The script auto-creates this file on first use via `--init`.
 
 ## Quick Start
 
 ### 1. Initialize Configuration
 
-If no `mysql-connections.json` exists in the project root, create one:
+If no `.claude/.mysql-connections.json` exists, create one:
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --init
@@ -189,15 +189,15 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SELECT id, status, total FR
 Common errors and resolutions:
 
 - **`mysql2 package not found`** - Run `npm install --prefix ${CLAUDE_PLUGIN_ROOT}` to install in the plugin directory
-- **`mysql-connections.json not found`** - Run with `--init` flag to create template
+- **`config not found`** - Run with `--init` flag to create template in `.claude/`
 - **`Connection refused`** - Verify host, port, and that MySQL server is running
 - **`Access denied`** - Check username and password in config
 - **`Unknown database`** - Verify the database name exists
 
 ## Security Guidelines
 
-- **Never hardcode credentials** in SQL or scripts; always use `mysql-connections.json`
-- **Add `mysql-connections.json` to `.gitignore`** to prevent credential leaks
+- **Never hardcode credentials** in SQL or scripts; always use `.claude/.mysql-connections.json`
+- **Add `.claude/.mysql-connections.json` to `.gitignore`** to prevent credential leaks
 - **Use parameterized queries** (`--params`) for any dynamic values
 - **Use read-only credentials** for production databases when only querying data
 - **Prefer SSL** connections for remote databases (see `references/config-schema.md`)

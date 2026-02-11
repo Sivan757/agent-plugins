@@ -6,13 +6,14 @@
  * Usage:
  *   node query.js <connection-name> <sql> [--format=table|json|csv] [--params='["val1","val2"]']
  *
- * Reads connection config from mysql-connections.json in the current working directory.
+ * Reads connection config from .claude/.mysql-connections.json in the current working directory.
  */
 
 const fs = require("fs");
 const path = require("path");
 
-const CONFIG_FILE = "mysql-connections.json";
+const CONFIG_DIR = ".claude";
+const CONFIG_FILE = ".mysql-connections.json";
 const DEFAULT_ROW_LIMIT = 10;
 const DEFAULT_COL_WIDTH = 80;
 
@@ -28,12 +29,24 @@ const TEMPLATE = {
   },
 };
 
+function getConfigPath() {
+  return path.resolve(process.cwd(), CONFIG_DIR, CONFIG_FILE);
+}
+
+function ensureConfigDir() {
+  const dir = path.resolve(process.cwd(), CONFIG_DIR);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
 function loadConfig() {
-  const configPath = path.resolve(process.cwd(), CONFIG_FILE);
+  const configPath = getConfigPath();
   if (!fs.existsSync(configPath)) {
     // Auto-create template on first use
+    ensureConfigDir();
     fs.writeFileSync(configPath, JSON.stringify(TEMPLATE, null, 2) + "\n");
-    console.error(`[mysql] Created ${CONFIG_FILE} at ${configPath}`);
+    console.error(`[mysql] Created ${CONFIG_DIR}/${CONFIG_FILE} at ${configPath}`);
     console.error("[mysql] Edit it with your database connection details, then re-run the query.");
     process.exit(1);
   }
@@ -41,13 +54,14 @@ function loadConfig() {
 }
 
 function printTemplate() {
-  const configPath = path.resolve(process.cwd(), CONFIG_FILE);
+  const configPath = getConfigPath();
   if (fs.existsSync(configPath)) {
-    console.error(`Error: ${CONFIG_FILE} already exists at ${configPath}`);
+    console.error(`Error: ${CONFIG_DIR}/${CONFIG_FILE} already exists at ${configPath}`);
     process.exit(1);
   }
+  ensureConfigDir();
   fs.writeFileSync(configPath, JSON.stringify(TEMPLATE, null, 2) + "\n");
-  console.log(`Created ${CONFIG_FILE} at ${configPath}`);
+  console.log(`Created ${CONFIG_DIR}/${CONFIG_FILE} at ${configPath}`);
   console.log("Edit the file to add your database connection details.");
 }
 
