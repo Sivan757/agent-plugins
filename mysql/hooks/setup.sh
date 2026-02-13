@@ -3,6 +3,9 @@
 # Auto-install mysql2 dependency on first use.
 # Runs as a SessionStart hook - exits 0 to never block the session.
 
+# Suppress noise from user shell profiles (e.g., _load_nvm, conda, etc.)
+unset -f _load_nvm 2>/dev/null
+
 PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 if [ ! -d "$PLUGIN_DIR/node_modules/mysql2" ]; then

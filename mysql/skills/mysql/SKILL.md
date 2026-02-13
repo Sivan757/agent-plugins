@@ -53,7 +53,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js <connection-name> "<sql>" [options]
 ```
 
 Options:
-- `--format=table|json|csv` - Output format (default: table)
+- `--format=csv|table|json` - Output format (default: csv)
 - `--params='["val1"]'` - Parameterized query values
 - `--limit=N` - Max rows to return (default: 10, use 0 for unlimited)
 - `--col-width=N` - Max column character width (default: 80, truncates with `...`)
@@ -152,9 +152,9 @@ When performing cross-database comparison:
 
 | Format | Flag | Best For |
 |--------|------|----------|
-| table | `--format=table` (default) | Human-readable display |
+| csv | `--format=csv` (default) | Token-efficient, AI-friendly |
+| table | `--format=table` | Human-readable display |
 | json | `--format=json` | Programmatic processing, complex data |
-| csv | `--format=csv` | Data export, spreadsheet compatibility |
 
 ## Token Optimization
 
@@ -182,7 +182,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SELECT id, status, total FR
 3. **Keep default row limit** - The script caps at 10 rows. Only increase with `--limit=N` when the user explicitly needs more
 4. **Filter with WHERE** - Narrow results server-side, not by scanning returned rows
 5. **Use `--col-width`** - For tables with text columns, reduce with `--col-width=40`
-6. **Prefer CSV for large results** - CSV is more compact than table or JSON format
+6. **Use `--format=table` only when presenting to the user** - Default CSV is most token-efficient
 
 ## Error Handling
 
@@ -193,6 +193,7 @@ Common errors and resolutions:
 - **`Connection refused`** - Verify host, port, and that MySQL server is running
 - **`Access denied`** - Check username and password in config
 - **`Unknown database`** - Verify the database name exists
+- **`_load_nvm: command not found`** - Harmless shell profile noise; does not affect query execution. Can be ignored.
 
 ## Security Guidelines
 

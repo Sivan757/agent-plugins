@@ -43,7 +43,6 @@ function ensureConfigDir() {
 function loadConfig() {
   const configPath = getConfigPath();
   if (!fs.existsSync(configPath)) {
-    // Auto-create template on first use
     ensureConfigDir();
     fs.writeFileSync(configPath, JSON.stringify(TEMPLATE, null, 2) + "\n");
     console.error(`[mysql] Created ${CONFIG_DIR}/${CONFIG_FILE} at ${configPath}`);
@@ -123,6 +122,9 @@ async function testConnections(targetName) {
         password: connConfig.password,
         database: connConfig.database,
         connectTimeout: 10000,
+        supportBigNumbers: true,
+        bigNumberStrings: true,
+        dateStrings: true,
         ...(connConfig.ssl ? { ssl: connConfig.ssl } : {}),
       });
       const [rows] = await connection.execute("SELECT 1");
@@ -205,7 +207,7 @@ async function main() {
   const connName = args[0];
   const sql = args[1];
 
-  let format = "table";
+  let format = "csv";
   let params = [];
   let rowLimit = DEFAULT_ROW_LIMIT;
   let colWidth = DEFAULT_COL_WIDTH;
@@ -241,6 +243,9 @@ async function main() {
       password: connConfig.password,
       database: connConfig.database,
       connectTimeout: 10000,
+      supportBigNumbers: true,
+      bigNumberStrings: true,
+      dateStrings: true,
       ...(connConfig.ssl ? { ssl: connConfig.ssl } : {}),
     });
 
@@ -250,7 +255,7 @@ async function main() {
     if (!Array.isArray(rows)) {
       console.log(JSON.stringify({
         affectedRows: rows.affectedRows,
-        insertId: rows.insertId != null ? Number(rows.insertId) : undefined,
+        insertId: rows.insertId != null ? String(rows.insertId) : undefined,
         changedRows: rows.changedRows,
         info: rows.info,
       }, null, 2));
