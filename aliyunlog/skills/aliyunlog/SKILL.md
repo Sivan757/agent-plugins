@@ -17,208 +17,90 @@ allowed-tools: Bash(node:*), Read
 
 # SLS Log Query
 
-Query Alibaba Cloud SLS logs using the `@alicloud/log` Node.js SDK. Supports quick lookup by environment and service name via configurable aliases.
+Query Alibaba Cloud SLS logs via `@alicloud/log` Node.js SDK with environment/service alias resolution.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `.claude/.aliyun.json` directly.** This file contains SLS access keys. Use `--test` to verify connectivity without exposing credentials.
+**NEVER read, open, cat, or view `.claude/.aliyun.json` directly.** Use `--test` to verify connectivity.
 
-## Prerequisites
-
-- **Node.js** installed and available in PATH
-- **`.claude/.aliyun.json`** in the project directory with credentials and environment/logstore mappings. Run `--init` to create a template. See `references/config-schema.md` for the full schema.
-
-## Quick Start
-
-### 1. Initialize Configuration
-
-If no `.claude/.aliyun.json` exists:
-
-```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --init
-```
-
-Edit the generated file to add your SLS credentials and project/logstore mapping.
-
-### 2. Query Logs
+## Command Reference
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js <env> <service> [options]
 ```
 
-Options:
-- `--query=<sls_query>` - SLS query string (default: `*`)
-- `--from=<time>` - Start time (default: 15 min ago)
-- `--to=<time>` - End time (default: now)
-- `--limit=<n>` - Max entries (default: **1**)
-- `--format=compact|csv|json` - Output format (default: compact)
-- `--fields=<f1,f2,...>` - Extract specific fields as CSV
-- `--count` - Shorthand for COUNT(*) query
-- `--oldest` - Show oldest entries first (default: newest first)
+| Option | Description |
+|--------|-------------|
+| `--query=<sls_query>` | SLS query string (default: `*`) |
+| `--from=<time>` | Start time (default: 15 min ago) |
+| `--to=<time>` | End time (default: now) |
+| `--limit=<n>` | Max entries (default: **1**) |
+| `--format=compact\|csv\|json` | Output format (default: compact) |
+| `--fields=<f1,f2,...>` | Extract specific fields as CSV |
+| `--count` | Shorthand for COUNT(*) query |
+| `--oldest` | Show oldest first (default: newest) |
 
-## Core Operations
+Subcommands: `--init`, `--list-logstores <project|env>`, `--list-aliases`, `--test`, `--help`
 
-### Listing Resources
+## MANDATORY: Query Strategy
 
-```bash
-# List logstores in a project (by name or env shortname)
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --list-logstores robot-k8s-dev
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --list-logstores prod
-
-# Show configured aliases
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --list-aliases
-
-# Test SDK connectivity
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --test
-```
-
-### Basic Queries
+### Step 1: COUNT first — verify data exists
 
 ```bash
-# Recent logs from dev saas service (1 entry by default)
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js dev saas
-
-# Search for errors in production
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="content:ERROR" --limit=5
-
-# Search for specific exception
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js dev saas --query="content:NullPointerException" --limit=3
-
-# Query with time range
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="content:ERROR" --from="2026-02-13 10:00:00+08:00" --to="2026-02-13 11:00:00+08:00" --limit=10
+node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js <env> <service> --query="<keyword>" --count
 ```
 
-### Field Extraction
+If count is 0, **widen the time range** or **simplify the query** before proceeding.
+
+### Step 2: Sample with targeted fields
 
 ```bash
-# Extract specific fields as CSV (token-efficient)
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js dev saas --query="content:ERROR" --fields="_time_,_container_name_,content" --limit=5
-
-# Extract pod info
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --fields="_pod_name_,_container_name_,_namespace_" --limit=10
+node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js <env> <service> --query="<keyword>" --fields="_time_,_container_name_,content" --limit=3
 ```
 
-### Count Queries
+### Step 3: Full content only if necessary
 
 ```bash
-# Quick count of errors (single-line output)
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="content:ERROR" --count
-
-# Count with time range
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="content:ERROR" --count --from="2026-02-13 00:00:00+08:00"
+node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js <env> <service> --query="<keyword>" --limit=5
 ```
 
-### Analysis Queries (SQL)
+## IMPORTANT: Chinese Keyword Search
 
-SLS supports SQL-like analysis after the pipe `|`:
+SLS tokenization (分词) causes **Chinese phrase search to often return 0 results**.
 
-```bash
-# Count errors by container
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="content:ERROR | SELECT _container_name_, COUNT(*) as cnt GROUP BY _container_name_ ORDER BY cnt DESC LIMIT 10"
+1. **Prefer structured fields** — order numbers, traceId, error codes over Chinese text
+2. **Use exact phrase quotes** — `content: "绑定产品通知触发拉取订单"`
+3. **Use single keywords** — `content: 异常` instead of `content: 异常信息处理`
+4. **Fall back to wildcard** — `content: 绑定产品*`
+5. **Remove field prefix** — try `"绑定产品"` instead of `content: "绑定产品"`
 
-# Error trend over time
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="content:ERROR | SELECT time_series(__time__, '5m', '%H:%i', '0') as t, COUNT(*) as cnt GROUP BY t ORDER BY t"
-```
+## Token Optimization Rules
 
-### Direct Project/Logstore Access
-
-Skip alias resolution when needed:
-
-```bash
-# Use explicit project and logstore
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --project=robot-k8s-prod --logstore=nginx-ingress --query="status:500" --limit=5
-```
-
-## Output Formats
-
-| Format | Flag | Token Cost | Best For |
-|--------|------|-----------|----------|
-| csv | `--format=csv` | Lowest | Structured data, field extraction |
-| compact | `--format=compact` (default) | Low | Readable log view |
-| json | `--format=json` | Highest | Programmatic processing |
-
-## Token Optimization
-
-**IMPORTANT: Follow this progressive query strategy to minimize token usage.**
-
-### Step 1: Count First
-
-Always start with `--count` to understand the data volume:
-
-```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js dev saas --query="content:ERROR" --count
-```
-
-### Step 2: Targeted Fields
-
-If you need details, extract only the fields you need:
-
-```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js dev saas --query="content:ERROR" --fields="_time_,content" --limit=3
-```
-
-### Step 3: Full Content (only if necessary)
-
-Only fetch full log entries when the above steps are insufficient:
-
-```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js dev saas --query="content:ERROR" --limit=5
-```
-
-### Additional Rules
-
-1. **Default limit is 1** — always specify `--limit=N` when you need more entries
-2. **Auto temp file** — output > 2000 chars is written to `/tmp/claude-sls/sls-*.txt` with a summary. Use Read tool with offset/limit to inspect.
-3. **Use `--count`** instead of fetching raw logs when counting
+1. **Default limit is 1** — specify `--limit=N` when you need more
+2. **Auto temp file** — output > 2000 chars → `/tmp/claude-sls/sls-*.txt`
+3. **Use `--count`** instead of fetching raw logs
 4. **Use `--fields`** to extract only needed fields as CSV
-5. **Use analysis queries** (`| SELECT ...`) for aggregations instead of fetching raw data
-6. **Filter server-side** with SLS query syntax, not by scanning returned results
+5. **Use analysis queries** (`| SELECT ...`) for aggregations
+6. **Filter server-side** with SLS query syntax
 
-## SLS Query Syntax Quick Reference
-
-Search and analysis are separated by pipe `|`:
+## Quick Syntax Reference
 
 ```
 search_statement | analysis_statement
 ```
 
-### Search Operators
-
 | Operator | Example |
 |----------|---------|
 | Field match | `status:200` |
-| AND | `content:ERROR and _container_name_:my-svc` |
-| OR | `content:ERROR or content:WARN` |
-| NOT | `not content:HealthCheck` |
+| AND / OR / NOT | `content:ERROR and _container_name_:svc` |
 | Exact phrase | `"Connection refused"` |
 | Wildcard | `content:Null*Exception` |
-| Numeric range | `response_time>3000` |
-| Range query | `status in [400 499]` |
 
-### Common K8s Log Fields
+Common fields: `content`, `_container_name_`, `_pod_name_`, `_time_`, `__source__`
 
-| Field | Description |
-|-------|-------------|
-| `content` | Log message body |
-| `_container_name_` | Container/service name |
-| `_namespace_` | K8s namespace |
-| `_pod_name_` | Pod name |
-| `_time_` | Log timestamp |
-| `__source__` | Node IP |
+## Reference Files
 
-For full syntax details, see `references/query-syntax.md`.
-
-## Error Handling
-
-- **`@alicloud/log not found`** - Run the SessionStart hook or `npm install --prefix <plugin-dir>`
-- **`Invalid accessKeyId`** - Edit `.claude/.aliyun.json` with real credentials
-- **`No config found`** - Run `--init` to create `.claude/.aliyun.json`
-- **`(no results)`** - Widen time range, simplify query, or try full-text search instead of field search (`ERROR` instead of `content:ERROR`). Field search requires the field to be indexed with the correct analyzer.
-- **Permission errors** - Verify SLS access key has read permission on target project
-
-## Additional Resources
-
-### Reference Files
-
-- **`references/query-syntax.md`** - Full SLS query syntax with operators, functions, and examples
-- **`references/config-schema.md`** - Configuration file schema and alias resolution rules
+- [query-templates.md](references/query-templates.md) — Common query patterns: by order, traceId, errors, aggregation
+- [query-syntax.md](references/query-syntax.md) — Full SLS query syntax reference
+- [config-schema.md](references/config-schema.md) — Config file schema and alias resolution
+- [troubleshooting.md](references/troubleshooting.md) — Error resolution and time range tips

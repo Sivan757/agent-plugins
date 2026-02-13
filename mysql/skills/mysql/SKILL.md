@@ -16,197 +16,90 @@ allowed-tools: Bash(node:*), Read
 
 # MySQL Query Execution
 
-Execute SQL queries against MySQL databases using a bundled Node.js helper script with the `mysql2` package. Supports multiple named database connections for cross-database analysis and comparison.
+Execute SQL queries via the bundled `mysql2` Node.js script with multi-connection support.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `.claude/.mysql-connections.json` directly.** This file contains database passwords. All interaction with connection configuration MUST go through the bundled script:
+**NEVER read, open, cat, or view `.claude/.mysql-connections.json` directly.** Use `--list`, `--test`, `--init` instead.
 
-- To see available connections: `--list` (shows names and databases only, no credentials)
-- To verify connections work: `--test` (attempts real connections, reports OK/FAILED)
-- To create the config file: `--init` (generates a template for the user to edit)
+## CRITICAL: Write Operations FORBIDDEN
 
-If the user needs to modify connection details, instruct them to edit `.claude/.mysql-connections.json` manually. Never read its contents into the conversation.
+**NEVER execute INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, RENAME, or any data-modifying SQL without explicit user confirmation.** This rule has NO exceptions — even if the user's request implies a write operation, you MUST:
 
-## Prerequisites
+1. Show the user the exact SQL you intend to execute
+2. Explicitly ask the user to confirm
+3. Only after the user confirms, re-run with `--user-confirmed` flag
 
-- **Node.js** installed and available in PATH
-- **mysql2** npm package installed in the plugin directory. Run once: `npm install --prefix ${CLAUDE_PLUGIN_ROOT}`. This installs mysql2 inside the plugin's own `node_modules/` and never touches the user's project.
-- **`.claude/.mysql-connections.json`** in the project's `.claude/` directory with connection configurations. The script auto-creates this file on first use via `--init`.
-
-## Quick Start
-
-### 1. Initialize Configuration
-
-If no `.claude/.mysql-connections.json` exists, create one:
+A PreToolUse hook enforces this — write SQL will be **blocked** unless `--user-confirmed` is present.
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --init
+# ❌ BLOCKED — will be intercepted by hook
+node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js prod "UPDATE users SET status = 'active' WHERE id = 1"
+
+# ✅ ALLOWED — only after user explicitly confirms
+node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js prod "UPDATE users SET status = 'active' WHERE id = 1" --user-confirmed
 ```
 
-This creates a template file. Edit it to add actual database credentials. Refer to `references/config-schema.md` for the full schema and multi-environment examples.
+## MANDATORY: First-Time Setup
 
-### 2. Execute Queries
-
-Use the bundled script via Bash tool:
+**Before ANY query, run `--list` first.** NEVER guess connection names.
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js <connection-name> "<sql>" [options]
+node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js --list
 ```
 
-Options:
-- `--format=csv|table|json` - Output format (default: csv)
-- `--params='["val1"]'` - Parameterized query values
-- `--limit=N` - Max rows to return (default: 10, use 0 for unlimited)
-- `--col-width=N` - Max column character width (default: 80, truncates with `...`)
+## MANDATORY: Schema-First Workflow
 
-## Core Operations
-
-### Listing Connections
-
-To see available connection names (no credentials exposed):
+**NEVER guess column names.** This is the #1 source of query failures.
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --list
+# Step 1: Check cached schema (no DB round-trip)
+node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js --cached-schema <connection> <table>
+
+# Step 2: If not cached, DESCRIBE and auto-cache
+node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js --describe <connection> <table>
+
+# Step 3: Only THEN write SELECT using actual column names
+node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js <conn> "SELECT col1, col2 FROM table WHERE ..."
+
+# List all cached schemas
+node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js --schemas [connection]
 ```
 
-### Testing Connections
+### Common Mistakes to Avoid
 
-To verify connections are reachable without exposing credentials:
+| Wrong Guess | Why | Rule |
+|-------------|-----|------|
+| `total_price`, `order_amount` | Business-specific names | DESCRIBE first |
+| `id` as primary key | Tables use `t_xxx_id` pattern | DESCRIBE first |
+| `sub_order_code` | May be `origin_code` | DESCRIBE first |
+| `PO-211-xxx` as `order_code` | Actually `origin_code` | DESCRIBE first |
+
+## Command Reference
 
 ```bash
-# Test all connections
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --test
-
-# Test a specific connection
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js --test production
+node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js <connection> "<sql>" [options]
 ```
 
-Output shows only name, database, and OK/FAILED status.
+| Option | Description |
+|--------|-------------|
+| `--format=csv\|table\|json` | Output format (default: csv) |
+| `--params='["val"]'` | Parameterized query values |
+| `--limit=N` | Max rows (default: 10, 0=unlimited) |
+| `--col-width=N` | Max column width (default: 80) |
 
-### SELECT Queries
+Subcommands: `--init`, `--list`, `--test [name]`, `--describe <conn> <table>`, `--schemas [conn]`, `--cached-schema <conn> <table>`
 
-**NEVER use `SELECT *`.** Always specify only the columns relevant to the user's question. First inspect the schema with `DESCRIBE`, then select the minimal set of columns needed.
+## Token Optimization Rules
 
-```bash
-# Specify columns explicitly
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SELECT id, name, email FROM users"
+1. **NEVER `SELECT *`** — pick minimal columns after DESCRIBE
+2. **Aggregate first** — `COUNT(*)`, `GROUP BY`, `SUM()` over raw rows
+3. **Keep default `--limit=10`** — only increase when explicitly needed
+4. **Filter with WHERE** — narrow server-side, not by scanning results
+5. **Default CSV** — most token-efficient format
 
-# JSON format for programmatic processing
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SELECT id, status FROM orders ORDER BY id DESC" --format=json
+## Reference Files
 
-# CSV format for export
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SELECT COUNT(*) as total FROM orders" --format=csv
-```
-
-### Parameterized Queries
-
-Always use parameterized queries when incorporating user-provided values to prevent SQL injection:
-
-```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SELECT id, name, email FROM users WHERE id = ?" --params='[42]'
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SELECT id, total FROM orders WHERE status = ? AND created_at > ?" --params='["pending","2024-01-01"]'
-```
-
-### Schema Inspection
-
-```bash
-# List all tables
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SHOW TABLES"
-
-# Describe table structure
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "DESCRIBE users"
-
-# Show CREATE TABLE statement
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SHOW CREATE TABLE users" --format=json
-
-# List all columns with details
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'"
-```
-
-### Data Modification (DML)
-
-INSERT, UPDATE, DELETE statements return affected row counts:
-
-```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "INSERT INTO logs (message, level) VALUES (?, ?)" --params='["test entry","info"]'
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "UPDATE users SET status = ? WHERE id = ?" --params='["active",5]'
-```
-
-## Cross-Database Analysis
-
-A key feature of this setup is multi-connection support. To compare data across databases:
-
-```bash
-# Query staging
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js staging "SELECT COUNT(*) as count FROM users" --format=json
-
-# Query production
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js production "SELECT COUNT(*) as count FROM users" --format=json
-```
-
-When performing cross-database comparison:
-1. Run the same query against each connection
-2. Use `--format=json` for consistent output parsing
-3. Compare results programmatically or present side-by-side
-
-## Output Formats
-
-| Format | Flag | Best For |
-|--------|------|----------|
-| csv | `--format=csv` (default) | Token-efficient, AI-friendly |
-| table | `--format=table` | Human-readable display |
-| json | `--format=json` | Programmatic processing, complex data |
-
-## Token Optimization
-
-Result sets consume context tokens. Follow this mandatory workflow:
-
-### Required: Schema-First Approach
-
-Before querying any table, ALWAYS inspect its schema first to identify the relevant columns:
-
-```bash
-# Step 1: Get table list
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SHOW TABLES"
-
-# Step 2: Inspect the target table schema
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "DESCRIBE orders"
-
-# Step 3: Select ONLY the columns relevant to the user's question
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js default "SELECT id, status, total FROM orders WHERE status = 'pending'"
-```
-
-### Rules
-
-1. **NEVER use `SELECT *`** - Always pick the minimal set of columns after inspecting the schema
-2. **Aggregate first** - Prefer `COUNT(*)`, `GROUP BY`, `SUM()` over fetching raw rows
-3. **Keep default row limit** - The script caps at 10 rows. Only increase with `--limit=N` when the user explicitly needs more
-4. **Filter with WHERE** - Narrow results server-side, not by scanning returned rows
-5. **Use `--col-width`** - For tables with text columns, reduce with `--col-width=40`
-6. **Use `--format=table` only when presenting to the user** - Default CSV is most token-efficient
-
-## Error Handling
-
-Common errors and resolutions:
-
-- **`mysql2 package not found`** - Run `npm install --prefix ${CLAUDE_PLUGIN_ROOT}` to install in the plugin directory
-- **`config not found`** - Run with `--init` flag to create template in `.claude/`
-- **`Connection refused`** - Verify host, port, and that MySQL server is running
-- **`Access denied`** - Check username and password in config
-- **`Unknown database`** - Verify the database name exists
-- **`_load_nvm: command not found`** - Harmless shell profile noise; does not affect query execution. Can be ignored.
-
-## Security Guidelines
-
-- **Never hardcode credentials** in SQL or scripts; always use `.claude/.mysql-connections.json`
-- **Add `.claude/.mysql-connections.json` to `.gitignore`** to prevent credential leaks
-- **Use parameterized queries** (`--params`) for any dynamic values
-- **Use read-only credentials** for production databases when only querying data
-- **Prefer SSL** connections for remote databases (see `references/config-schema.md`)
-
-## Additional Resources
-
-### Reference Files
-
-- **`references/config-schema.md`** - Full configuration schema, multi-environment examples, SSL setup, and security notes
+- [query-examples.md](references/query-examples.md) — SELECT, parameterized, cross-DB, DML examples
+- [config-schema.md](references/config-schema.md) — Connection config schema, SSL, multi-environment
+- [troubleshooting.md](references/troubleshooting.md) — Error resolution and security guidelines
