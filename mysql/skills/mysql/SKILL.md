@@ -1,5 +1,5 @@
 ---
-name: MySQL Query
+name: mysql
 description: >-
   This skill should be used when the user asks to "query the database",
   "run SQL", "run a query", "execute SQL", "check the database",
