@@ -10,6 +10,8 @@ description: >-
   Provides the ability to execute SQL queries against MySQL databases via a bundled
   Node.js script with multi-connection support, including schema inspection,
   parameterized queries, and multiple output formats.
+model: sonnet
+allowed-tools: Bash(node:*), Read
 ---
 
 # MySQL Query Execution
