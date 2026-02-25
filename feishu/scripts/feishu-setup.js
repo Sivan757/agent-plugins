@@ -5,18 +5,29 @@
 /**
  * SessionStart hook for the Feishu plugin.
  *
- * 1. Validates .claude/.feishu.json exists with required fields.
- * 2. If oauth is enabled, checks if user has logged in.
- *    - If not, spawns the login process (opens browser) as a detached child.
- * 3. Always exits 0 — never blocks the session.
+ * 1. Searches for .claude/.feishu.json config file.
+ * 2. If not found, creates a template in the project root (or cwd).
+ * 3. Validates required fields (app_id, app_secret).
+ * Always exits 0 — never blocks the session.
  */
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-const { execSync, spawn } = require('child_process');
+const { execSync } = require('child_process');
 
 const CONFIG_NAME = '.claude/.feishu.json';
+
+const CONFIG_TEMPLATE = {
+  app_id: '',
+  app_secret: '',
+  auth_type: 'user',
+  port: 3333,
+  base_url: 'https://open.feishu.cn/open-apis',
+  scope_validation: true,
+  log_level: 'info',
+  cache_enabled: true,
+  cache_ttl: 300,
+};
 
 // ── Config file discovery ────────────────────────────────────────────────────
 
@@ -52,58 +63,40 @@ function findConfigFile() {
   return null;
 }
 
-// ── OAuth token detection ────────────────────────────────────────────────────
-// @larksuiteoapi/lark-mcp uses env-paths('lark-mcp').data/storage.json
-
-function getLarkMcpStoragePath() {
-  const platform = os.platform();
-  const home = process.env.HOME || process.env.USERPROFILE || '';
-
-  if (platform === 'darwin') {
-    return path.join(home, 'Library', 'Application Support', 'lark-mcp', 'storage.json');
-  } else if (platform === 'win32') {
-    const appData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
-    return path.join(appData, 'lark-mcp', 'Data', 'storage.json');
-  } else {
-    // Linux / other
-    const xdgData = process.env.XDG_DATA_HOME || path.join(home, '.local', 'share');
-    return path.join(xdgData, 'lark-mcp', 'storage.json');
+function getInitDir() {
+  try {
+    return execSync('git rev-parse --show-toplevel', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+  } catch {
+    return process.cwd();
   }
 }
 
-function hasOAuthToken() {
-  const storagePath = getLarkMcpStoragePath();
-  return fs.existsSync(storagePath);
-}
+function initConfigFile() {
+  const baseDir = getInitDir();
+  const cfgPath = path.join(baseDir, CONFIG_NAME);
+  const dir = path.dirname(cfgPath);
 
-// ── Login launcher ───────────────────────────────────────────────────────────
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 
-function launchLogin(appId, appSecret) {
-  console.log('[feishu] OAuth token not found. Launching login (opening browser)...');
-
-  const child = spawn('npx', [
-    '-y', '@larksuiteoapi/lark-mcp', 'login',
-    '-a', appId,
-    '-s', appSecret,
-  ], {
-    detached: true,
-    stdio: 'ignore',
-  });
-
-  child.unref();
-
-  console.log('[feishu] Browser should open for Feishu authorization.');
-  console.log('[feishu] After login, restart the Claude session to activate.');
+  fs.writeFileSync(cfgPath, JSON.stringify(CONFIG_TEMPLATE, null, 2) + '\n', 'utf8');
+  return cfgPath;
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 function main() {
-  const cfgPath = findConfigFile();
+  let cfgPath = findConfigFile();
 
   if (!cfgPath) {
-    console.log('[feishu] Config file not found.');
-    console.log(`  Create ${CONFIG_NAME} in your project root or ~/ with app_id and app_secret.`);
+    cfgPath = initConfigFile();
+    console.log(`[feishu] Config initialized: ${cfgPath}`);
+    console.log('  Fill in app_id and app_secret, then restart the session.');
+    console.log('  Get credentials: https://open.feishu.cn/app');
     process.exit(0);
   }
 
@@ -117,16 +110,12 @@ function main() {
 
   if (!cfg.app_id || !cfg.app_secret) {
     console.log(`[feishu] Missing app_id or app_secret in ${cfgPath}`);
+    console.log('  Fill in credentials and restart the session.');
     process.exit(0);
   }
 
-  // Check OAuth login status
-  if (cfg.oauth && !hasOAuthToken()) {
-    launchLogin(cfg.app_id, cfg.app_secret);
-    process.exit(0);
-  }
-
-  console.log(`[feishu] Config OK. (${cfgPath})`);
+  const authType = cfg.auth_type || (cfg.oauth ? 'user' : 'tenant');
+  console.log(`[feishu] Config OK. (${cfgPath}, auth: ${authType})`);
 }
 
 main();

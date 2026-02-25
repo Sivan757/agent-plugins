@@ -1,8 +1,11 @@
-# Configuration Reference (配置参考)
+# Configuration Reference
 
-## Config File Location (配置文件位置)
+## Config File Location
 
-插件从 `.claude/.feishu.json` 读取配置，优先查找项目根目录（git repo root），其次查找 `~/.claude/.feishu.json`。
+The plugin reads config from `.claude/.feishu.json`, searching in order:
+1. Git repository root
+2. Current working directory (when not in a git repo)
+3. User home directory `~/`
 
 ## Schema
 
@@ -10,111 +13,104 @@
 {
   "app_id": "<your-feishu-app-id>",
   "app_secret": "<your-feishu-app-secret>",
-  "oauth": true,
-  "token_mode": "user_access_token",
-  "tools": "preset.doc.default",
-  "language": "zh",
-  "domain": "https://open.feishu.cn"
+  "auth_type": "user",
+  "base_url": "https://open.feishu.cn/open-apis",
+  "scope_validation": true,
+  "log_level": "info",
+  "cache_enabled": true,
+  "cache_ttl": 300
 }
 ```
 
+Each field maps directly to a feishu-mcp environment variable and is passed through when spawning the MCP server.
+
 ## Fields
 
-### `app_id`
+### `app_id` → `FEISHU_APP_ID`
 
 | Type | Required | Description |
 |------|----------|-------------|
-| string | Yes | 飞书开放平台应用的 App ID |
+| string | Yes | Feishu app ID from the Open Platform |
 
-### `app_secret`
+### `app_secret` → `FEISHU_APP_SECRET`
 
 | Type | Required | Description |
 |------|----------|-------------|
-| string | Yes | 飞书开放平台应用的 App Secret |
+| string | Yes | Feishu app secret from the Open Platform |
 
-### `oauth`
-
-| Type | Required | Default | Description |
-|------|----------|---------|-------------|
-| boolean | No | `false` | 启用 OAuth 用户级授权（访问个人文档需要） |
-
-启用后，插件会在首次启动时自动打开浏览器引导用户授权。
-
-### `token_mode`
+### `auth_type` → `FEISHU_AUTH_TYPE`
 
 | Type | Required | Default | Description |
 |------|----------|---------|-------------|
-| string | No | `auto` | API 调用身份 |
+| string | No | `tenant` | Authentication type |
 
-可选值：
-- `auto` -- 自动选择
-- `tenant_access_token` -- 应用级别（访问应用可见的文档）
-- `user_access_token` -- 用户级别（访问个人文档，需配合 `oauth: true`）
+Values:
+- `tenant` — App-level token (default, limited functionality)
+- `user` — User-level token (recommended, requires OAuth, full functionality)
 
-### `tools`
+> **Strongly recommend `user` mode.** Tenant mode cannot search Wiki documents, and document edit history won't show user identity.
 
-| Type | Required | Default | Description |
-|------|----------|---------|-------------|
-| string | No | `preset.doc.default` | 启用的工具预设，多个用逗号分隔 |
-
-常用预设：
-
-| Preset | Description |
-|--------|-------------|
-| `preset.doc.default` | 文档操作（读取、搜索、导入、权限、Wiki） |
-| `preset.default` | 完整功能（IM + 多维表格 + 文档） |
-| `preset.light` | 最小功能集 |
-| `preset.im.default` | 即时通讯相关 |
-| `preset.base.default` | 多维表格相关 |
-
-也可以指定具体工具名称，逗号分隔。
-
-### `language`
+### `base_url` → `FEISHU_BASE_URL`
 
 | Type | Required | Default | Description |
 |------|----------|---------|-------------|
-| string | No | `zh` | 工具描述语言（`zh` 或 `en`） |
+| string | No | `https://open.feishu.cn/open-apis` | Feishu API base URL |
 
-### `domain`
+Values:
+- `https://open.feishu.cn/open-apis` — Feishu (China)
+- `https://open.larksuite.com/open-apis` — Lark (International)
+
+### `scope_validation` → `FEISHU_SCOPE_VALIDATION`
 
 | Type | Required | Default | Description |
 |------|----------|---------|-------------|
-| string | No | `https://open.feishu.cn` | API 域名 |
+| boolean | No | `true` | Enable permission scope validation on startup |
 
-可选值：
-- `https://open.feishu.cn` -- 飞书（中国区）
-- `https://open.larksuite.com` -- Lark（国际版）
+Set to `false` to skip permission checking (useful when only using a subset of features).
 
-## How to Create a Feishu App (创建飞书应用)
+### `log_level` → `LOG_LEVEL`
 
-1. 登录 [飞书开放平台](https://open.feishu.cn/app)
-2. 点击「创建企业自建应用」
-3. 填写应用名称和描述，创建应用
-4. 在「凭证与基础信息」页面获取 App ID 和 App Secret
-5. 在「安全设置」中添加重定向 URL：`http://localhost:3000/callback`（OAuth 登录需要）
-6. 详细文档参考：https://open.feishu.cn/document/home/introduction-to-custom-app-development/self-built-application-development-process
+| Type | Required | Default | Description |
+|------|----------|---------|-------------|
+| string | No | `info` | Log level |
 
-## Required Permissions (所需权限)
+Values: `debug`, `info`, `log`, `warn`, `error`, `none`
 
-文档操作需要在飞书开放平台为应用开通以下权限：
+### `cache_enabled` → `CACHE_ENABLED`
 
-| Permission | Scope | Description |
-|------------|-------|-------------|
-| `docx:document:readonly` | 应用 | 读取文档内容 |
-| `docs:doc` | 应用 | 文档基础操作 |
-| `drive:drive` | 应用 | 云空间文件操作 |
-| `wiki:wiki:readonly` | 应用 | 读取 Wiki 知识库 |
-| `search:docs` | 应用 | 搜索文档 |
-| `drive:permission` | 应用 | 管理文档权限 |
+| Type | Required | Default | Description |
+|------|----------|---------|-------------|
+| boolean | No | `true` | Enable response caching |
 
-开通权限后需要发布应用版本，并由企业管理员审批。
+### `cache_ttl` → `CACHE_TTL`
 
-## OAuth Login (OAuth 登录)
+| Type | Required | Default | Description |
+|------|----------|---------|-------------|
+| number | No | `300` | Cache TTL in seconds |
 
-启用 OAuth 后，首次启动会自动打开浏览器进行授权。也可手动执行：
+## How to Create a Feishu App
 
-```bash
-npx -y @larksuiteoapi/lark-mcp login -a <app_id> -s <app_secret>
-```
+1. Log in to [Feishu Open Platform](https://open.feishu.cn/app)
+2. Click "Create Custom App"
+3. Fill in app name and description
+4. Get **App ID** and **App Secret** from "Credentials & Basic Info"
+5. For user mode: add redirect URL `http://localhost:3333/callback` in "Security Settings"
+6. Configure required permissions (see below)
+7. Detailed guide: [FEISHU_CONFIG.md](https://github.com/cso1z/Feishu-MCP/blob/main/FEISHU_CONFIG.md)
 
-授权完成后重启 Claude 会话即可。
+## Required Permissions
+
+Enable these scopes in the Feishu Open Platform app settings:
+
+| Permission | Description |
+|------------|-------------|
+| `docx:document` | Document read/write |
+| `docs:doc` | Document basic operations |
+| `drive:drive` | Cloud drive file operations |
+| `wiki:wiki` | Wiki knowledge base operations |
+| `search:docs` | Document search |
+| `drive:permission` | Document permission management |
+
+> User mode and tenant mode require different permission scopes. See the Feishu Open Platform for details.
+
+After enabling permissions, publish an app version and have an admin approve it.

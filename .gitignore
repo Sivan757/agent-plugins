@@ -2,3 +2,7 @@
 .claude/.*
 .DS_Store
 .idea
+scope_version_cache.json
+.gitignore
+user_token_cache.json
+tenant_token_cache.json

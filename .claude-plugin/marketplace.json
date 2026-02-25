@@ -42,9 +42,9 @@
     },
     {
       "name": "feishu",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "source": "./feishu",
-      "description": "Integrates official Feishu/Lark MCP server (@larksuiteoapi/lark-mcp) for document operations, Wiki access, and collaboration with auto-login support."
+      "description": "Integrates feishu-mcp server for document search, reading, creation, block-level editing, folder management, and Wiki browsing."
     }
   ]
 }
