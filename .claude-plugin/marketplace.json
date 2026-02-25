@@ -39,6 +39,12 @@
       "version": "0.5.0",
       "source": "./aliyunlog",
       "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
+    },
+    {
+      "name": "feishu",
+      "version": "0.3.1",
+      "source": "./feishu",
+      "description": "Integrates official Feishu/Lark MCP server (@larksuiteoapi/lark-mcp) for document operations, Wiki access, and collaboration with auto-login support."
     }
   ]
 }

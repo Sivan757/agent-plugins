@@ -1,0 +1,9 @@
+{
+  "name": "feishu",
+  "version": "0.3.1",
+  "description": "Integrates official Feishu/Lark MCP server (@larksuiteoapi/lark-mcp) for document operations, Wiki access, and collaboration with auto-login support.",
+  "author": {
+    "name": "Robotees"
+  },
+  "keywords": ["feishu", "lark", "mcp", "document", "wiki", "飞书", "文档"]
+}
