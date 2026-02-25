@@ -163,10 +163,31 @@ function resolveProjectName(config, nameOrEnv) {
 
 // ── Time helpers ─────────────────────────────────────────────────────────────
 
+const RELATIVE_UNITS = { s: 1000, m: 60000, min: 60000, h: 3600000, d: 86400000 };
+
+function parseRelativeTime(str) {
+  // Formats: "-30m", "-2h", "-3d", "-90s", "-30min"
+  const m1 = str.match(/^-(\d+)(s|min|m|h|d)$/);
+  if (m1) {
+    const [, n, unit] = m1;
+    return new Date(Date.now() - parseInt(n, 10) * RELATIVE_UNITS[unit]);
+  }
+  // Formats: "3 days ago", "2 hours ago", "30 minutes ago", "90 seconds ago"
+  const m2 = str.match(/^(\d+)\s+(second|minute|hour|day)s?\s+ago$/i);
+  if (m2) {
+    const unitMap = { second: "s", minute: "m", hour: "h", day: "d" };
+    const [, n, unit] = m2;
+    return new Date(Date.now() - parseInt(n, 10) * RELATIVE_UNITS[unitMap[unit.toLowerCase()]]);
+  }
+  return null;
+}
+
 function parseTime(str) {
   if (!str) return null;
+  const rel = parseRelativeTime(str);
+  if (rel) return rel;
   const d = new Date(str);
-  if (isNaN(d.getTime())) die(`Invalid time: ${str}`);
+  if (isNaN(d.getTime())) die(`Invalid time: ${str}\nSupported formats: ISO 8601, "-30m", "-2h", "-3d", "3 days ago", "2 hours ago"`);
   return d;
 }
 
@@ -410,8 +431,9 @@ function cmdHelp() {
 
 Options:
   --query=<sls_query>          SLS query (default: *)
-  --from=<time>                Start time (default: 15 min ago)
-  --to=<time>                  End time (default: now)
+  --from=<time>                Start time (default: 15 min ago). Supports:
+                               ISO 8601, "-30m", "-2h", "-3d", "3 days ago"
+  --to=<time>                  End time (default: now). Same formats as --from
   --limit=<n>                  Max entries (default: 1)
   --format=compact|csv|json    Output format (default: compact)
   --project=<name>             Override project

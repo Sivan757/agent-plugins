@@ -18,7 +18,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="traceId:abc123def
 
 ```bash
 # Count errors in the last hour
-node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="content:ERROR" --count --from="2026-02-13 17:00:00+08:00"
+node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="content:ERROR" --count --from=-1h
 
 # View error details
 node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js prod saas --query="content:ERROR or content:Exception" --fields="_time_,_container_name_,content" --limit=5

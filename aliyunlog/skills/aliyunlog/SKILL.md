@@ -32,8 +32,8 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/query.js <env> <service> [options]
 | Option | Description |
 |--------|-------------|
 | `--query=<sls_query>` | SLS query string (default: `*`) |
-| `--from=<time>` | Start time (default: 15 min ago) |
-| `--to=<time>` | End time (default: now) |
+| `--from=<time>` | Start time: `-30m`, `-2h`, `-3d`, ISO 8601, or `"3 days ago"` (default: 15 min ago) |
+| `--to=<time>` | End time: same formats as --from (default: now) |
 | `--limit=<n>` | Max entries (default: **1**) |
 | `--format=compact\|csv\|json` | Output format (default: compact) |
 | `--fields=<f1,f2,...>` | Extract specific fields as CSV |

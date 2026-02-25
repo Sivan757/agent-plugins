@@ -1,6 +1,7 @@
 .claude/*.local.md
 .claude/.aliyun.json
 .claude/.mysql-connections.json
+.claude/.apifox.json
 .claude/.mysql-schema-cache/
 .DS_Store
 .idea
