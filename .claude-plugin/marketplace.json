@@ -36,7 +36,7 @@
     },
     {
       "name": "aliyunlog",
-      "version": "0.5.0",
+      "version": "0.8.0",
       "source": "./aliyunlog",
       "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
     },
@@ -45,6 +45,18 @@
       "version": "0.4.0",
       "source": "./feishu",
       "description": "Integrates feishu-mcp server for document search, reading, creation, block-level editing, folder management, and Wiki browsing."
+    },
+    {
+      "name": "p3c",
+      "version": "0.1.0",
+      "source": "./p3c",
+      "description": "Alibaba P3C Java coding guidelines as Claude Code rules — auto-installs into .claude/rules/p3c/"
+    },
+    {
+      "name": "ticktick",
+      "version": "0.1.0",
+      "source": "./ticktick",
+      "description": "Manage TickTick (Dida365) tasks, projects, tags, habits, kanban columns, folders, focus sessions, and productivity statistics via the bundled CLI."
     }
   ]
 }

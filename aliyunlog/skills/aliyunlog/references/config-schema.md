@@ -2,7 +2,9 @@
 
 ## Config File Location
 
-The plugin looks for `.claude/.aliyun.json` in the current directory or any parent directory. This single file contains both SLS credentials and environment/logstore mappings.
+The plugin stores config at `~/.cache/apex-plugin/aliyunlog.json` (global). This single file contains both SLS credentials and environment/logstore mappings.
+
+Legacy config at `.claude/.aliyun.json` (project-local) is still supported as a fallback but deprecated.
 
 ## Schema
 

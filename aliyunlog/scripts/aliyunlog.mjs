@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 //
-// query.js - Alibaba Cloud SLS log query via @alicloud/log SDK
+// aliyunlog.mjs - Alibaba Cloud SLS log query via @alicloud/log SDK
 //
 // Simplifies SLS log querying by resolving environment/service aliases
 // to project/logstore via a configuration file.
 //
 // Usage:
-//   node query.js <env> <service> [options]
-//   node query.js --list-logstores <project|env>
-//   node query.js --list-aliases
-//   node query.js --test
-//   node query.js --init
-//   node query.js --help
+//   node aliyunlog.mjs <env> <service> [options]
+//   node aliyunlog.mjs --list-logstores <project|env>
+//   node aliyunlog.mjs --list-aliases
+//   node aliyunlog.mjs --test
+//   node aliyunlog.mjs --init
+//   node aliyunlog.mjs --help
 //
 // Options:
 //   --query=<sls_query>      SLS query string (default: "*")
-//   --from=<time>            Start time (default: 15 minutes ago)
-//   --to=<time>              End time (default: now)
+//   --from=<time>            Start time, ISO 8601 (default: now minus 15 min)
+//   --to=<time>              End time, ISO 8601 (default: now)
 //   --limit=<n>              Max log entries (default: 1)
 //   --format=<fmt>           Output format: compact|csv|json (default: compact)
 //   --project=<name>         Override project (skip alias resolution)
@@ -26,16 +26,22 @@
 //   --oldest                 Show oldest entries first (default: newest first)
 //
 
-"use strict";
+import fs from "fs";
+import path from "path";
+import os from "os";
+import { fileURLToPath } from "url";
+import { createRequire } from "module";
 
-const fs = require("fs");
-const path = require("path");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CONFIG_DIR = ".claude";
-const CONFIG_FILE = ".aliyun.json";
-const TEMP_DIR = "/tmp/claude-sls";
+const CONFIG_PATH = path.join(os.homedir(), ".cache", "apex-plugin", "aliyunlog.json");
+const LEGACY_CONFIG_DIR = ".claude";
+const LEGACY_CONFIG_FILE = ".aliyun.json";
+const TEMP_DIR = path.join(os.tmpdir(), "claude-sls");
 const AUTO_TEMP_THRESHOLD = 2000; // chars
 const COMPACT_MAX_LINE = 500; // max chars per content line in compact mode
 
@@ -84,8 +90,8 @@ function loadSDK() {
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
-function findConfig() {
-  const configName = path.join(CONFIG_DIR, CONFIG_FILE);
+function findLegacyConfig() {
+  const configName = path.join(LEGACY_CONFIG_DIR, LEGACY_CONFIG_FILE);
   let dir = process.cwd();
   while (dir !== path.dirname(dir)) {
     const candidate = path.join(dir, configName);
@@ -95,21 +101,38 @@ function findConfig() {
   return null;
 }
 
+function findConfig() {
+  // Primary: global config
+  if (fs.existsSync(CONFIG_PATH)) return { path: CONFIG_PATH, legacy: false };
+  // Fallback: legacy project-local config
+  const legacyPath = findLegacyConfig();
+  if (legacyPath) return { path: legacyPath, legacy: true };
+  return null;
+}
+
 function loadConfig() {
-  const configPath = findConfig();
-  if (!configPath) return null;
-  return JSON.parse(fs.readFileSync(configPath, "utf-8"));
+  const result = findConfig();
+  if (!result) return null;
+  if (result.legacy) {
+    info(`Using legacy config: ${result.path}`);
+    info(`Run --init to create global config at ${CONFIG_PATH}, then migrate your settings.`);
+  }
+  try {
+    return JSON.parse(fs.readFileSync(result.path, "utf-8"));
+  } catch (e) {
+    die(`Failed to parse ${result.path}: ${e.message}\nCheck for syntax errors in your config file.`);
+  }
 }
 
 function validateCredentials(config) {
   const c = config.credentials;
   if (!c) die("Missing 'credentials' section in config. Run --init for template.");
   if (!c.accessKeyId || c.accessKeyId.includes("<"))
-    die("Invalid accessKeyId in config. Edit .claude/.aliyun.json with real credentials.");
+    die(`Invalid accessKeyId in config. Edit ${CONFIG_PATH} with real credentials.`);
   if (!c.accessKeySecret || c.accessKeySecret.includes("<"))
-    die("Invalid accessKeySecret in config. Edit .claude/.aliyun.json with real credentials.");
+    die(`Invalid accessKeySecret in config. Edit ${CONFIG_PATH} with real credentials.`);
   if (!c.endpoint)
-    die("Missing endpoint in config. Edit .claude/.aliyun.json with your SLS endpoint.");
+    die(`Missing endpoint in config. Edit ${CONFIG_PATH} with your SLS endpoint.`);
 }
 
 function createClient(config) {
@@ -163,31 +186,10 @@ function resolveProjectName(config, nameOrEnv) {
 
 // ── Time helpers ─────────────────────────────────────────────────────────────
 
-const RELATIVE_UNITS = { s: 1000, m: 60000, min: 60000, h: 3600000, d: 86400000 };
-
-function parseRelativeTime(str) {
-  // Formats: "-30m", "-2h", "-3d", "-90s", "-30min"
-  const m1 = str.match(/^-(\d+)(s|min|m|h|d)$/);
-  if (m1) {
-    const [, n, unit] = m1;
-    return new Date(Date.now() - parseInt(n, 10) * RELATIVE_UNITS[unit]);
-  }
-  // Formats: "3 days ago", "2 hours ago", "30 minutes ago", "90 seconds ago"
-  const m2 = str.match(/^(\d+)\s+(second|minute|hour|day)s?\s+ago$/i);
-  if (m2) {
-    const unitMap = { second: "s", minute: "m", hour: "h", day: "d" };
-    const [, n, unit] = m2;
-    return new Date(Date.now() - parseInt(n, 10) * RELATIVE_UNITS[unitMap[unit.toLowerCase()]]);
-  }
-  return null;
-}
-
 function parseTime(str) {
   if (!str) return null;
-  const rel = parseRelativeTime(str);
-  if (rel) return rel;
   const d = new Date(str);
-  if (isNaN(d.getTime())) die(`Invalid time: ${str}\nSupported formats: ISO 8601, "-30m", "-2h", "-3d", "3 days ago", "2 hours ago"`);
+  if (isNaN(d.getTime())) die(`Invalid time: ${str}\nSupported formats: ISO 8601 (e.g., "2026-03-04T10:00:00+08:00", "2026-03-04 10:00:00")`);
   return d;
 }
 
@@ -266,7 +268,7 @@ function formatCompact(data) {
 
     for (const [k, v] of Object.entries(entry)) {
       if (shouldSkip(k) || HEADER_FIELDS.has(k)) continue;
-      if (!v) continue;
+      if (v === null || v === undefined || v === '') continue;
       const s = String(v);
       if (s.length > COMPACT_MAX_LINE) {
         lines.push(`  ${s.slice(0, COMPACT_MAX_LINE)}... (${s.length} chars, use --format=json for full)`);
@@ -304,11 +306,28 @@ function formatJson(data) {
 
 // ── Token optimization: auto temp file ───────────────────────────────────────
 
+function cleanupOldTempFiles() {
+  try {
+    if (!fs.existsSync(TEMP_DIR)) return;
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    for (const f of fs.readdirSync(TEMP_DIR)) {
+      const fp = path.join(TEMP_DIR, f);
+      try {
+        const stat = fs.statSync(fp);
+        if (stat.mtimeMs < cutoff) fs.unlinkSync(fp);
+      } catch { /* ignore individual file errors */ }
+    }
+  } catch { /* ignore cleanup errors */ }
+}
+
 function outputWithTokenOptimization(output) {
   if (output.length <= AUTO_TEMP_THRESHOLD) {
     console.log(output);
     return;
   }
+
+  // Clean up temp files older than 24 hours
+  cleanupOldTempFiles();
 
   // Write to temp file
   fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -325,10 +344,8 @@ function outputWithTokenOptimization(output) {
 // ── Subcommands ──────────────────────────────────────────────────────────────
 
 function cmdInit() {
-  const configDir = CONFIG_DIR;
-  const configFile = path.join(configDir, CONFIG_FILE);
-  if (fs.existsSync(configFile)) {
-    console.log(`Config already exists: ${configFile}`);
+  if (fs.existsSync(CONFIG_PATH)) {
+    console.log(`Config already exists: ${CONFIG_PATH}`);
     return;
   }
 
@@ -338,31 +355,23 @@ function cmdInit() {
       accessKeySecret: "<your-access-key-secret>",
       endpoint: "cn-hangzhou.log.aliyuncs.com",
     },
-    default_project: "robot-k8s-dev",
-    environments: {
-      dev: { project: "robot-k8s-dev", logstore_pattern: "dev1-{service}" },
-      sit: { project: "robot-k8s-dev", logstore_pattern: "sit-{service}" },
-      uat: { project: "robot-k8s-dev", logstore_pattern: "uat1-{service}" },
-      qa: { project: "robot-k8s-dev", logstore_pattern: "qa1-{service}" },
-      prod: { project: "robot-k8s-prod", logstore_pattern: "{service}" },
-    },
-    aliases: {
-      "dev/base": { logstore: "dev-base" },
-      "dev/imes": { logstore: "dev-imes" },
-      "dev/cps": { logstore: "dev-cps" },
-      "dev/feelinker": { logstore: "dev-feelinker" },
-      "dev/trendcenter": { logstore: "dev-trendcenter" },
-      "prod/saas": { logstore: "saas" },
-      "prod/base": { logstore: "robot-base" },
-      "prod/imes": { logstore: "imes" },
-      "prod/trend": { logstore: "trend" },
-    },
+    default_project: "",
+    environments: {},
+    aliases: {},
   };
 
+  const configDir = path.dirname(CONFIG_PATH);
   fs.mkdirSync(configDir, { recursive: true });
-  fs.writeFileSync(configFile, JSON.stringify(template, null, 2) + "\n");
-  console.log(`Created: ${configFile}`);
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(template, null, 2) + "\n");
+  console.log(`Created: ${CONFIG_PATH}`);
   console.log("Edit this file with your SLS credentials and project/logstore mapping.");
+
+  // Hint about legacy config if it exists
+  const legacyPath = findLegacyConfig();
+  if (legacyPath) {
+    console.log(`\nNote: Legacy config found at ${legacyPath}`);
+    console.log(`Copy your settings from the legacy file, then remove it.`);
+  }
 }
 
 async function cmdListLogstores(config, project) {
@@ -423,17 +432,19 @@ async function cmdTest(config) {
 
 function cmdHelp() {
   console.log(`Usage:
-  node query.js <env> <service> [options]     Query logs by environment and service
-  node query.js --init                         Create config template
-  node query.js --list-logstores <project|env> List logstores in a project
-  node query.js --list-aliases                 Show configured aliases
-  node query.js --test                         Test SDK connection
+  node aliyunlog.mjs <env> <service> [options]     Query logs by environment and service
+  node aliyunlog.mjs --init                         Create config template
+  node aliyunlog.mjs --list-logstores <project|env> List logstores in a project
+  node aliyunlog.mjs --list-aliases                 Show configured aliases
+  node aliyunlog.mjs --test                         Test SDK connection
+
+Config: ${CONFIG_PATH}
 
 Options:
   --query=<sls_query>          SLS query (default: *)
-  --from=<time>                Start time (default: 15 min ago). Supports:
-                               ISO 8601, "-30m", "-2h", "-3d", "3 days ago"
-  --to=<time>                  End time (default: now). Same formats as --from
+  --from=<time>                Start time, ISO 8601 (omit = auto last 15 min)
+                               e.g. "2026-03-04T10:00:00+08:00"
+  --to=<time>                  End time, ISO 8601 (omit = now)
   --limit=<n>                  Max entries (default: 1)
   --format=compact|csv|json    Output format (default: compact)
   --project=<name>             Override project
@@ -482,7 +493,7 @@ async function main() {
 
   // Load config once for all remaining operations
   const config = loadConfig();
-  if (!config) die("No .claude/.aliyun.json found. Run with --init.");
+  if (!config) die(`No config found. Run with --init to create ${CONFIG_PATH}`);
 
   // Subcommands that need config
   if (opts["list-aliases"]) return cmdListAliases(config);
@@ -492,7 +503,7 @@ async function main() {
   }
   if (opts.test) return cmdTest(config);
 
-  // ── Resolve project & logstore ───────────────────────────────────────────
+  // ── Resolve project & logstore ─────────────────────────────────���─────────
 
   let project = opts.project || "";
   let logstore = opts.logstore || "";
@@ -530,6 +541,7 @@ async function main() {
   const fromDate = parseTime(opts.from) || defaultFromDate();
   const toDate = parseTime(opts.to) || defaultToDate();
   const limit = parseInt(opts.limit || "1", 10);
+  if (isNaN(limit) || limit <= 0) die(`Invalid --limit value: "${opts.limit}". Must be a positive integer.`);
   const format = opts.format || "compact";
   const fields = opts.fields || "";
   const count = opts.count || false;
