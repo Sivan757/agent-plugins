@@ -41,4 +41,45 @@
 - PreToolUse hooks exit 2 to block, exit 0 to allow; support `permissionDecision: "ask"` for soft blocks
 - SKILL.md frontmatter: `model: sonnet`, `allowed-tools: Bash(node:*)` for CLI plugins
 - Token-saving mode: enforce limits (default limit=1-10), prefer CSV over JSON, aggregate before detail, server-side filtering
-- Credentials: store in `.claude/<plugin>.json` or `scripts/.env` (gitignored), never read directly in sessions
+- Credentials: store in `~/.cache/apex-plugin/<plugin>.json` (global) or `scripts/.env` (gitignored), never read directly in sessions
+- Version bumps: use `bump-plugin-version.sh` instead of editing 3 files manually — avoids version-check hook firing mid-edit
+- AI-facing help text (--help, SKILL.md): avoid fuzzy natural language for defaults — say "omit = auto" not "default: 15 min ago"
+- Commits: stage plugin files by name (`git add <plugin>/... marketplace.json`) — don't use `git add -A` since unrelated plugin work may be in-tree
+
+## SOP: Plugin Development & Optimization
+
+### Phase 1 — Audit (read-only)
+
+1. **Structure check**: verify all files exist per standard directory layout above
+2. **Naming check**: `<plugin>.mjs`, `<plugin>-setup.sh`, not `query.js`/`setup.sh`
+3. **Config check**: credentials at `~/.cache/apex-plugin/<plugin>.json`, not project-local
+4. **Version check**: `bash scripts/check-plugin-versions.sh` — all 3 files in sync
+5. **Hook check**: `set -euo pipefail`, silent when deps exist, only print on first install
+6. **SKILL.md check**: has frontmatter (`name`, `description`, `model`, `allowed-tools`), `AskUserQuestion` if interactive confirmation needed
+7. **Help text check**: no fuzzy language ("15 min ago"), use "omit = auto" style
+8. **Init template check**: no hardcoded internal names, empty or generic placeholders only
+9. **Doc check**: references/ has config-schema.md, troubleshooting.md at minimum
+
+### Phase 2 — Fix (in priority order)
+
+1. **Bugs first** — correctness issues (falsy skipping, NaN params, unhandled parse errors)
+2. **Security** — config location migration, credential exposure, gitignore gaps
+3. **Convention compliance** — file renames, hook hardening, noise removal
+4. **Documentation** — SKILL.md rewrite, help text, reference docs
+5. **Version bump last** — `bash scripts/bump-plugin-version.sh <plugin> <new-version>`
+
+### Phase 3 — Verify
+
+1. `node scripts/<plugin>.mjs --help` — runs without error
+2. `bash hooks/<plugin>-setup.sh` — silent when deps exist, installs on first run
+3. `bash scripts/check-plugin-versions.sh` — no mismatches
+4. Test invalid inputs (bad --limit, bad --from) — clear error messages
+5. Test edge cases specific to plugin (e.g., field value `0` not skipped)
+
+### Rules for AI-facing interfaces
+
+- **--help output is a prompt** — AI reads it literally; "default: 15 min ago" → AI passes `--from="15 min ago"`
+- **SKILL.md is a system prompt** — write instructions the AI must follow, not descriptions for humans
+- **Use `AskUserQuestion`** when user input has multiple valid interpretations (env→project mapping, ambiguous service names)
+- **Offer to persist** — after interactive confirmation, ask "save to CLAUDE.md?" so future sessions skip the question
+- **No default mappings** — `--init` creates empty config; user fills in via UI or interactive flow, never baked-in assumptions

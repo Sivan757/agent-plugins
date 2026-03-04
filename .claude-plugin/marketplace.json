@@ -24,7 +24,7 @@
     },
     {
       "name": "mysql",
-      "version": "0.4.0",
+      "version": "0.6.0",
       "source": "./mysql",
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     },

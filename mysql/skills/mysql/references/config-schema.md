@@ -1,4 +1,9 @@
-# .mysql-connections.json Configuration Schema
+# mysql.json Configuration Schema
+
+## Config Location
+
+Config is stored globally at `~/.cache/apex-plugin/mysql.json`.
+Legacy config at `.claude/.mysql-connections.json` (project-local) is still supported as a fallback but deprecated.
 
 ## Full Schema
 
@@ -25,23 +30,23 @@
     "local": {
       "host": "127.0.0.1",
       "port": 3306,
-      "user": "root",
-      "password": "<your-password>",
-      "database": "myapp_dev"
+      "user": "<username>",
+      "password": "<password>",
+      "database": "<database>"
     },
     "staging": {
-      "host": "staging-db.example.com",
+      "host": "<staging-host>",
       "port": 3306,
-      "user": "readonly",
-      "password": "<your-password>",
-      "database": "myapp_staging"
+      "user": "<username>",
+      "password": "<password>",
+      "database": "<database>"
     },
     "production": {
-      "host": "prod-db.example.com",
+      "host": "<prod-host>",
       "port": 3306,
-      "user": "analyst",
-      "password": "<your-password>",
-      "database": "myapp_prod",
+      "user": "<username>",
+      "password": "<password>",
+      "database": "<database>",
       "ssl": {
         "rejectUnauthorized": true
       }
@@ -81,11 +86,10 @@ Use descriptive names that indicate environment and purpose:
 | `staging` | Staging environment |
 | `production` | Production (use read-only credentials) |
 | `analytics` | Analytics/reporting database |
-| `legacy` | Legacy system database |
 
 ## Security Notes
 
-- Add `.claude/.mysql-connections.json` to `.gitignore` to avoid committing credentials
+- Config is stored globally at `~/.cache/apex-plugin/mysql.json` — outside project directories
 - Use read-only credentials for production connections when possible
 - Consider using SSH tunnels for remote database access
-- The config file is located at `.claude/.mysql-connections.json` relative to the project root
+- **Never read config directly** — use `--list` to view connections, `--test` to verify

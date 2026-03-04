@@ -8,7 +8,7 @@
 #
 # Exit codes:
 #   0 - All versions in sync (or no changes detected)
-#   2 - Version mismatch found (blocks Stop hook)
+#   2 - Version mismatch found (blocks PostToolUse hook)
 #
 
 set -euo pipefail
@@ -72,9 +72,9 @@ for plugin_dir in "$REPO_ROOT"/*/; do
 done
 
 if [ -n "$WARNINGS" ]; then
-  echo -e "[version-check] Version mismatches in modified plugins:${WARNINGS}"
-  echo ""
-  echo "Fix: update marketplace.json and/or package.json to match plugin.json versions."
+  echo -e "[version-check] Version mismatches in modified plugins:${WARNINGS}" >&2
+  echo "" >&2
+  echo "Fix: update marketplace.json and/or package.json to match plugin.json versions." >&2
   exit 2
 fi
 

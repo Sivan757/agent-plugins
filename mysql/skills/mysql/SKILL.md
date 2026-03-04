@@ -11,7 +11,7 @@ description: >-
   Node.js script with multi-connection support, including schema inspection,
   parameterized queries, and multiple output formats.
 model: sonnet
-allowed-tools: Bash(node:*), Read
+allowed-tools: Bash(node:*), Read, AskUserQuestion
 ---
 
 # MySQL Query Execution
@@ -20,7 +20,7 @@ Execute SQL queries via the bundled `mysql2` Node.js script with multi-connectio
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `.claude/.mysql-connections.json` directly.** Use `--list`, `--test`, `--init` instead.
+**NEVER read, open, cat, or view `~/.cache/apex-plugin/mysql.json` directly.** Use `--list`, `--test`, `--init` instead.
 
 ## CRITICAL: Write Operations FORBIDDEN
 
@@ -33,52 +33,54 @@ Execute SQL queries via the bundled `mysql2` Node.js script with multi-connectio
 A PreToolUse hook enforces this — write SQL will be **blocked** unless `--user-confirmed` is present.
 
 ```bash
-# ❌ BLOCKED — will be intercepted by hook
-node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js prod "UPDATE users SET status = 'active' WHERE id = 1"
+# BLOCKED — will be intercepted by hook
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs prod "UPDATE users SET status = 'active' WHERE id = 1"
 
-# ✅ ALLOWED — only after user explicitly confirms
-node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js prod "UPDATE users SET status = 'active' WHERE id = 1" --user-confirmed
+# ALLOWED — only after user explicitly confirms
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs prod "UPDATE users SET status = 'active' WHERE id = 1" --user-confirmed
 ```
 
-## MANDATORY: First-Time Setup
+## MANDATORY: Connection Confirmation
 
-**Before ANY query, run `--list` first.** NEVER guess connection names.
+**You MUST confirm the connection name with the user before querying.**
+
+1. Run `--list` to see available connections
+2. Use `AskUserQuestion` to confirm which connection the user wants
+3. After the user confirms, ask: "Save this as default connection in project CLAUDE.md?"
+
+If the user specifies a connection name explicitly, use it directly.
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js --list
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --list
 ```
 
-## MANDATORY: Schema-First Workflow
+## MANDATORY: Check Columns Before Writing SQL
 
 **NEVER guess column names.** This is the #1 source of query failures.
 
+Before writing ANY SELECT, always run `--columns` first to see actual column names:
+
 ```bash
-# Step 1: Check cached schema (no DB round-trip)
-node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js --cached-schema <connection> <table>
+# Step 1: List column names of the target table
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --columns <connection> <table>
 
-# Step 2: If not cached, DESCRIBE and auto-cache
-node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js --describe <connection> <table>
-
-# Step 3: Only THEN write SELECT using actual column names
-node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js <conn> "SELECT col1, col2 FROM table WHERE ..."
-
-# List all cached schemas
-node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js --schemas [connection]
+# Step 2: Only THEN write SELECT using actual column names
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs <conn> "SELECT col1, col2 FROM table WHERE ..."
 ```
 
 ### Common Mistakes to Avoid
 
 | Wrong Guess | Why | Rule |
 |-------------|-----|------|
-| `total_price`, `order_amount` | Business-specific names | DESCRIBE first |
-| `id` as primary key | Tables use `t_xxx_id` pattern | DESCRIBE first |
-| `sub_order_code` | May be `origin_code` | DESCRIBE first |
-| `PO-211-xxx` as `order_code` | Actually `origin_code` | DESCRIBE first |
+| `total_price`, `order_amount` | Business-specific names | `--columns` first |
+| `id` as primary key | Tables use `t_xxx_id` pattern | `--columns` first |
+| `sub_order_code` | May be `origin_code` | `--columns` first |
+| `PO-211-xxx` as `order_code` | Actually `origin_code` | `--columns` first |
 
 ## Command Reference
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js <connection> "<sql>" [options]
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs <connection> "<sql>" [options]
 ```
 
 | Option | Description |
@@ -88,11 +90,11 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/sql.js <connection> "<sql>" [options]
 | `--limit=N` | Max rows (default: 10, 0=unlimited) |
 | `--col-width=N` | Max column width (default: 80) |
 
-Subcommands: `--init`, `--list`, `--test [name]`, `--describe <conn> <table>`, `--schemas [conn]`, `--cached-schema <conn> <table>`
+Subcommands: `--init`, `--list`, `--test [name]`, `--columns <conn> <table>`, `--help`
 
 ## Token Optimization Rules
 
-1. **NEVER `SELECT *`** — pick minimal columns after DESCRIBE
+1. **NEVER `SELECT *`** — run `--columns` first, then pick minimal columns
 2. **Aggregate first** — `COUNT(*)`, `GROUP BY`, `SUM()` over raw rows
 3. **Keep default `--limit=10`** — only increase when explicitly needed
 4. **Filter with WHERE** — narrow server-side, not by scanning results

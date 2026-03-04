@@ -1,77 +1,106 @@
 #!/usr/bin/env node
 
 /**
- * MySQL query executor for Claude Code.
+ * mysql.mjs - MySQL query executor for Claude Code.
  *
  * Usage:
- *   node sql.js <connection-name> <sql> [--format=table|json|csv] [--params='["val1","val2"]']
- *   node sql.js --describe <connection> <table>   Describe table and cache schema
- *   node sql.js --schemas [connection]             List cached schemas
- *   node sql.js --list                             List connections
- *   node sql.js --test [name]                      Test connection(s)
- *   node sql.js --init                             Create template config
+ *   node mysql.mjs <connection-name> <sql> [--format=table|json|csv] [--params='["val1","val2"]']
+ *   node mysql.mjs --columns <connection> <table>   List column names of a table
+ *   node mysql.mjs --list                             List connections
+ *   node mysql.mjs --test [name]                      Test connection(s)
+ *   node mysql.mjs --init                             Create template config
  *
- * Reads connection config from .claude/.mysql-connections.json in the current working directory.
+ * Config: ~/.cache/apex-plugin/mysql.json
+ * Legacy fallback: .claude/.mysql-connections.json
  */
 
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
+import os from "os";
+import { fileURLToPath } from "url";
+import { createRequire } from "module";
 
-const CONFIG_DIR = ".claude";
-const CONFIG_FILE = ".mysql-connections.json";
-const SCHEMA_CACHE_DIR = path.join(CONFIG_DIR, ".mysql-schema-cache");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
+
+const CONFIG_PATH = path.join(os.homedir(), ".cache", "apex-plugin", "mysql.json");
+const LEGACY_CONFIG_DIR = ".claude";
+const LEGACY_CONFIG_FILE = ".mysql-connections.json";
 const DEFAULT_ROW_LIMIT = 10;
 const DEFAULT_COL_WIDTH = 80;
 
 const TEMPLATE = {
-  connections: {
-    default: {
-      host: "127.0.0.1",
-      port: 3306,
-      user: "root",
-      password: "",
-      database: "mydb",
-    },
-  },
+  connections: {},
 };
 
-function getConfigPath() {
-  return path.resolve(process.cwd(), CONFIG_DIR, CONFIG_FILE);
+function info(msg) {
+  process.stderr.write(`[mysql] ${msg}\n`);
 }
 
-function ensureConfigDir() {
-  const dir = path.resolve(process.cwd(), CONFIG_DIR);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+// ── Configuration ────────────────────────────────────────────────────────────
+
+function findLegacyConfig() {
+  const configName = path.join(LEGACY_CONFIG_DIR, LEGACY_CONFIG_FILE);
+  let dir = process.cwd();
+  while (dir !== path.dirname(dir)) {
+    const candidate = path.join(dir, configName);
+    if (fs.existsSync(candidate)) return candidate;
+    dir = path.dirname(dir);
   }
+  return null;
+}
+
+function findConfig() {
+  if (fs.existsSync(CONFIG_PATH)) return { path: CONFIG_PATH, legacy: false };
+  const legacyPath = findLegacyConfig();
+  if (legacyPath) return { path: legacyPath, legacy: true };
+  return null;
 }
 
 function loadConfig() {
-  const configPath = getConfigPath();
-  if (!fs.existsSync(configPath)) {
-    ensureConfigDir();
-    fs.writeFileSync(configPath, JSON.stringify(TEMPLATE, null, 2) + "\n");
-    console.error(`[mysql] Created ${CONFIG_DIR}/${CONFIG_FILE} at ${configPath}`);
-    console.error("[mysql] Edit it with your database connection details, then re-run the query.");
+  const result = findConfig();
+  if (!result) return null;
+  if (result.legacy) {
+    info(`Using legacy config: ${result.path}`);
+    info(`Run --init to create global config at ${CONFIG_PATH}, then migrate your settings.`);
+  }
+  try {
+    return JSON.parse(fs.readFileSync(result.path, "utf8"));
+  } catch (e) {
+    console.error(`Error: Failed to parse ${result.path}: ${e.message}`);
+    console.error("Check for syntax errors in your config file.");
     process.exit(1);
   }
-  return JSON.parse(fs.readFileSync(configPath, "utf8"));
 }
 
 function printTemplate() {
-  const configPath = getConfigPath();
-  if (fs.existsSync(configPath)) {
-    console.error(`Error: ${CONFIG_DIR}/${CONFIG_FILE} already exists at ${configPath}`);
+  if (fs.existsSync(CONFIG_PATH)) {
+    console.error(`Error: Config already exists at ${CONFIG_PATH}`);
     process.exit(1);
   }
-  ensureConfigDir();
-  fs.writeFileSync(configPath, JSON.stringify(TEMPLATE, null, 2) + "\n");
-  console.log(`Created ${CONFIG_DIR}/${CONFIG_FILE} at ${configPath}`);
-  console.log("Edit the file to add your database connection details.");
+  const configDir = path.dirname(CONFIG_PATH);
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(TEMPLATE, null, 2) + "\n");
+  console.log(`Created: ${CONFIG_PATH}`);
+  console.log("Edit this file to add your database connection details.");
+  console.log("");
+  console.log("Example connection format:");
+  console.log('  { "connections": { "mydb": { "host": "127.0.0.1", "port": 3306, "user": "root", "password": "", "database": "mydb" } } }');
+
+  const legacyPath = findLegacyConfig();
+  if (legacyPath) {
+    console.log(`\nNote: Legacy config found at ${legacyPath}`);
+    console.log("Copy your connections from the legacy file, then remove it.");
+  }
 }
 
 function listConnections() {
   const config = loadConfig();
+  if (!config) {
+    console.error(`No config found. Run --init to create ${CONFIG_PATH}`);
+    process.exit(1);
+  }
   const names = Object.keys(config.connections || {});
   if (names.length === 0) {
     console.log("No connections defined.");
@@ -80,7 +109,6 @@ function listConnections() {
   console.log("Available connections:");
   for (const name of names) {
     const c = config.connections[name];
-    // Only show connection name and database - never expose user/password
     console.log(`  ${name} → ${c.database} (${c.host}:${c.port || 3306})`);
   }
 }
@@ -116,6 +144,10 @@ function createConnection(mysql, connConfig) {
 
 async function testConnections(targetName) {
   const config = loadConfig();
+  if (!config) {
+    console.error(`No config found. Run --init to create ${CONFIG_PATH}`);
+    process.exit(1);
+  }
   const entries = Object.entries(config.connections || {});
   if (entries.length === 0) {
     console.log("No connections defined.");
@@ -147,32 +179,14 @@ async function testConnections(targetName) {
   }
 }
 
-// ── Schema Caching ───────────────────────────────────────────────────────────
+// ── Column Listing ───────────────────────────────────────────────────────────
 
-function getCachePath(connName, table) {
-  const safeTable = table.replace(/[`'"]/g, "").replace(/\//g, ".");
-  return path.resolve(process.cwd(), SCHEMA_CACHE_DIR, `${connName}.${safeTable}.txt`);
-}
-
-function cacheSchema(connName, table, rows) {
-  const cacheDir = path.resolve(process.cwd(), SCHEMA_CACHE_DIR);
-  fs.mkdirSync(cacheDir, { recursive: true });
-  const cachePath = getCachePath(connName, table);
-  const content = formatCSV(rows, DEFAULT_COL_WIDTH);
-  fs.writeFileSync(cachePath, content, "utf-8");
-  return cachePath;
-}
-
-function readCachedSchema(connName, table) {
-  const cachePath = getCachePath(connName, table);
-  if (fs.existsSync(cachePath)) {
-    return fs.readFileSync(cachePath, "utf-8");
-  }
-  return null;
-}
-
-async function describeTable(connName, tableName) {
+async function listColumns(connName, tableName) {
   const config = loadConfig();
+  if (!config) {
+    console.error(`No config found. Run --init to create ${CONFIG_PATH}`);
+    process.exit(1);
+  }
   const connConfig = (config.connections || {})[connName];
   if (!connConfig) {
     console.error(`Error: Connection "${connName}" not found.`);
@@ -191,12 +205,10 @@ async function describeTable(connName, tableName) {
       return;
     }
 
-    const output = formatCSV(rows, DEFAULT_COL_WIDTH);
-    console.log(output);
-    console.log(`(${rows.length} columns)`);
-
-    const cachePath = cacheSchema(connName, tableName, rows);
-    console.error(`[mysql] Schema cached: ${path.relative(process.cwd(), cachePath)}`);
+    for (const row of rows) {
+      console.log(row.Field);
+    }
+    info(`${rows.length} columns in ${tableName}`);
   } catch (err) {
     console.error(`Error: ${err.message}`);
     if (err.code) console.error(`Code: ${err.code}`);
@@ -204,47 +216,6 @@ async function describeTable(connName, tableName) {
   } finally {
     if (connection) await connection.end();
   }
-}
-
-function listCachedSchemas(connName) {
-  const cacheDir = path.resolve(process.cwd(), SCHEMA_CACHE_DIR);
-  if (!fs.existsSync(cacheDir)) {
-    console.log("No cached schemas. Run --describe <connection> <table> to cache.");
-    return;
-  }
-
-  const files = fs.readdirSync(cacheDir).filter((f) => f.endsWith(".txt"));
-  const prefix = connName ? `${connName}.` : "";
-  const matching = files.filter((f) => f.startsWith(prefix));
-
-  if (matching.length === 0) {
-    console.log(
-      connName
-        ? `No cached schemas for "${connName}".`
-        : "No cached schemas."
-    );
-    return;
-  }
-
-  console.log("Cached schemas:");
-  for (const f of matching.sort()) {
-    const name = f.replace(/\.txt$/, "");
-    const dotIdx = name.indexOf(".");
-    const conn = name.slice(0, dotIdx);
-    const table = name.slice(dotIdx + 1);
-    console.log(`  ${conn} → ${table}`);
-  }
-}
-
-function showCachedSchema(connName, tableName) {
-  const cached = readCachedSchema(connName, tableName);
-  if (!cached) {
-    console.error(`No cached schema for ${connName}.${tableName}.`);
-    console.error(`Run: --describe ${connName} ${tableName}`);
-    process.exit(1);
-  }
-  console.log(cached);
-  console.log(`(from cache: ${path.relative(process.cwd(), getCachePath(connName, tableName))})`);
 }
 
 // ── Formatters ───────────────────────────────────────────────────────────────
@@ -310,51 +281,41 @@ async function main() {
     return;
   }
 
-  // --describe <connection> <table>
-  if (args.includes("--describe")) {
-    const idx = args.indexOf("--describe");
+  // --columns <connection> <table>
+  if (args.includes("--columns")) {
+    const idx = args.indexOf("--columns");
     const connName = args[idx + 1];
     const tableName = args[idx + 2];
     if (!connName || !tableName || connName.startsWith("--") || tableName.startsWith("--")) {
-      console.error("Usage: --describe <connection> <table>");
+      console.error("Usage: --columns <connection> <table>");
       process.exit(1);
     }
-    await describeTable(connName, tableName);
+    await listColumns(connName, tableName);
     return;
   }
 
-  // --schemas [connection]
-  if (args.includes("--schemas")) {
-    const idx = args.indexOf("--schemas");
-    const connName =
-      args[idx + 1] && !args[idx + 1].startsWith("--")
-        ? args[idx + 1]
-        : null;
-    listCachedSchemas(connName);
-    return;
-  }
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(`Usage:
+  node mysql.mjs <connection-name> <sql> [options]
+  node mysql.mjs --init                             Create config template
+  node mysql.mjs --list                             List available connections
+  node mysql.mjs --test [name]                      Test connection(s)
+  node mysql.mjs --columns <conn> <table>           List column names of a table
 
-  // --cached-schema <connection> <table>
-  if (args.includes("--cached-schema")) {
-    const idx = args.indexOf("--cached-schema");
-    const connName = args[idx + 1];
-    const tableName = args[idx + 2];
-    if (!connName || !tableName) {
-      console.error("Usage: --cached-schema <connection> <table>");
-      process.exit(1);
-    }
-    showCachedSchema(connName, tableName);
+Config: ${CONFIG_PATH}
+
+Options:
+  --format=csv|table|json      Output format (default: csv)
+  --params='["val"]'           Parameterized query values
+  --limit=N                    Max rows (default: 10, 0=unlimited)
+  --col-width=N                Max column width (default: 80)
+  --user-confirmed             Bypass write-operation guard (after user approval)`);
     return;
   }
 
   if (args.length < 2) {
-    console.error("Usage: node sql.js <connection-name> <sql> [--format=table|json|csv] [--params='[...]']");
-    console.error("       node sql.js --init                        Create template config file");
-    console.error("       node sql.js --list                        List available connections");
-    console.error("       node sql.js --test [name]                 Test connection(s)");
-    console.error("       node sql.js --describe <conn> <table>     Describe table & cache schema");
-    console.error("       node sql.js --schemas [conn]              List cached schemas");
-    console.error("       node sql.js --cached-schema <conn> <tbl>  Show cached schema");
+    console.error("Usage: node mysql.mjs <connection-name> <sql> [--format=table|json|csv] [--params='[...]']");
+    console.error("       node mysql.mjs --help                         Show full help");
     process.exit(1);
   }
 
@@ -370,15 +331,28 @@ async function main() {
     if (args[i].startsWith("--format=")) {
       format = args[i].split("=")[1];
     } else if (args[i].startsWith("--params=")) {
-      params = JSON.parse(args[i].split("=").slice(1).join("="));
+      try {
+        params = JSON.parse(args[i].split("=").slice(1).join("="));
+      } catch (e) {
+        console.error(`Error: Invalid --params JSON: ${e.message}`);
+        process.exit(1);
+      }
     } else if (args[i].startsWith("--limit=")) {
       rowLimit = parseInt(args[i].split("=")[1], 10);
+      if (isNaN(rowLimit) || rowLimit < 0) {
+        console.error(`Error: Invalid --limit value. Must be a non-negative integer.`);
+        process.exit(1);
+      }
     } else if (args[i].startsWith("--col-width=")) {
       colWidth = parseInt(args[i].split("=")[1], 10);
     }
   }
 
   const config = loadConfig();
+  if (!config) {
+    console.error(`No config found. Run --init to create ${CONFIG_PATH}`);
+    process.exit(1);
+  }
   const connConfig = (config.connections || {})[connName];
   if (!connConfig) {
     console.error(`Error: Connection "${connName}" not found.`);
@@ -403,16 +377,6 @@ async function main() {
         info: rows.info,
       }, null, 2));
       return;
-    }
-
-    // Auto-cache DESCRIBE/DESC results
-    const sqlUpper = sql.trim().toUpperCase();
-    if (sqlUpper.startsWith("DESCRIBE ") || sqlUpper.startsWith("DESC ")) {
-      const tableName = sql.trim().split(/\s+/)[1].replace(/[`'"]/g, "");
-      if (rows.length > 0) {
-        const cachePath = cacheSchema(connName, tableName, rows);
-        console.error(`[mysql] Schema cached: ${path.relative(process.cwd(), cachePath)}`);
-      }
     }
 
     if (rows.length === 0) {
@@ -448,11 +412,9 @@ async function main() {
     if (err.code) console.error(`Code: ${err.code}`);
     if (err.sqlState) console.error(`SQL State: ${err.sqlState}`);
 
-    // Hint for common column errors
     if (err.message.includes("Unknown column")) {
-      console.error(`\nHint: Run DESCRIBE first to see available columns:`);
-      console.error(`  node sql.js --describe ${connName} <table_name>`);
-      console.error(`Or check cached schemas: node sql.js --schemas ${connName}`);
+      console.error(`\nHint: Run --columns to see available column names:`);
+      console.error(`  node mysql.mjs --columns ${connName} <table_name>`);
     }
 
     process.exit(1);

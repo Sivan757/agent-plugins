@@ -23,8 +23,8 @@ try {
 
 const cmd = (input.tool_input || {}).command || "";
 
-// Only check mysql plugin's sql.js (not aliyunlog or other plugins)
-if (!cmd.match(/mysql[\\/].*sql\.js/)) process.exit(0);
+// Only check mysql plugin's mysql.mjs
+if (!cmd.match(/mysql[\\/].*mysql\.mjs/)) process.exit(0);
 
 // Allow non-SQL subcommands
 if (/--(?:init|list|test|describe|schemas|cached-schema|help)\b/.test(cmd)) process.exit(0);
@@ -33,8 +33,8 @@ if (/--(?:init|list|test|describe|schemas|cached-schema|help)\b/.test(cmd)) proc
 if (cmd.includes("--user-confirmed")) process.exit(0);
 
 // Extract SQL: second positional arg after connection name, in quotes
-let sqlMatch = cmd.match(/query\.js\s+\S+\s+"([^"]*)"/);
-if (!sqlMatch) sqlMatch = cmd.match(/query\.js\s+\S+\s+'([^']*)'/);
+let sqlMatch = cmd.match(/mysql\.mjs\s+\S+\s+"([^"]*)"/);
+if (!sqlMatch) sqlMatch = cmd.match(/mysql\.mjs\s+\S+\s+'([^']*)'/);
 if (!sqlMatch) process.exit(0);
 
 const sql = sqlMatch[1].trim();
