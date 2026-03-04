@@ -36,7 +36,7 @@
     },
     {
       "name": "aliyunlog",
-      "version": "0.8.0",
+      "version": "0.8.1",
       "source": "./aliyunlog",
       "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
     },
@@ -57,6 +57,12 @@
       "version": "0.2.0",
       "source": "./ticktick",
       "description": "Manage TickTick (Dida365) tasks, projects, tags, habits, kanban columns, folders, focus sessions, and productivity statistics via the bundled CLI."
+    },
+    {
+      "name": "telegram",
+      "version": "0.1.0",
+      "source": "./telegram",
+      "description": "Add Telegram channel support to NanoClaw using skills engine for deterministic code changes."
     }
   ]
 }

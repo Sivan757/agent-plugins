@@ -6,6 +6,8 @@
 - **`Invalid accessKeyId`** - Edit `~/.cache/apex-plugin/aliyunlog.json` with real credentials
 - **`No config found`** - Run `--init` to create `~/.cache/apex-plugin/aliyunlog.json`
 - **`Failed to parse config`** - Check for trailing commas, missing quotes, or other JSON syntax errors
+- **`logstore does not exist`** - Run `--list-logstores <project>` to see available logstores, or use `--list-aliases` to see configured aliases
+- **`The Project does not exist`** - Check project name spelling. Run `--list-aliases` to see configured projects
 - **`(no results)`** - Widen time range, simplify query, or try full-text search instead of field search (`ERROR` instead of `content:ERROR`). Field search requires the field to be indexed.
 - **Chinese search returns 0** - Use exact phrase quotes, try shorter keywords, or search by structured field (order number, traceId) instead
 - **Permission errors** - Verify SLS access key has read permission on target project

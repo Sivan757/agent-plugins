@@ -589,7 +589,13 @@ async function main() {
 
     outputWithTokenOptimization(output);
   } catch (err) {
-    die(`Query failed: ${err.message}`);
+    const msg = err.message || String(err);
+    if (msg.includes("does not exist")) {
+      process.stderr.write(`ERROR: ${msg}\n`);
+      process.stderr.write(`\nTry: node ${__filename} --list-logstores ${project}\n`);
+      process.exit(1);
+    }
+    die(`Query failed: ${msg}`);
   }
 }
 

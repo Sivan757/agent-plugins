@@ -1,6 +1,6 @@
 {
   "name": "aliyunlog-plugin",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "dependencies": {
     "@alicloud/log": "^1.2.5"

@@ -44,20 +44,55 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --project=<project> --logstore=
 
 Subcommands: `--init`, `--list-logstores <project>`, `--list-aliases`, `--test`, `--help`
 
-## MANDATORY: Project/Logstore Confirmation
+## MANDATORY: Target Discovery & Confirmation
 
-**You MUST confirm project and logstore with the user before every query.**
+**You MUST discover available targets and confirm with the user before every query.**
 
-### Step 0: Confirm target
+### Step 0: Discover available targets
 
-Use `AskUserQuestion` to confirm the project and logstore:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --list-aliases
+```
 
-- If the user specifies project/logstore explicitly → use them directly
-- If the user gives env/service names (e.g., "prod saas") → use `AskUserQuestion` to present the resolved mapping for confirmation
-- If unknown → use `AskUserQuestion` to ask the user for project and logstore
+This shows:
+- **Environments**: `dev`, `prod`, `qa`, etc. with project and logstore patterns
+- **Explicit Aliases**: `dev/base`, `prod/saas`, etc. with exact logstore names
 
-After the user confirms a new mapping, ask: "Save this mapping to project CLAUDE.md for future use?"
-If yes, append the mapping to the project's CLAUDE.md under an `## SLS Mappings` section, like:
+### Step 1: Confirm target with user
+
+Use `AskUserQuestion` with options from `--list-aliases`:
+
+**If user mentioned env/service** (e.g., "dev robot-order"):
+- Check if alias exists (e.g., `dev/robot-order`)
+- If yes → use it directly
+- If no → list logstores and let user pick
+
+**If user didn't specify**:
+- Show common aliases as options (e.g., "dev/base", "prod/saas")
+- Include "Other" for custom input
+
+**Example AskUserQuestion**:
+```
+Which service logs do you want to query?
+Options:
+- dev/base (project: robot-k8s-dev, logstore: dev-base)
+- prod/saas (project: robot-k8s-prod, logstore: saas)
+- Other (I'll specify)
+```
+
+### Step 2: Verify logstore exists
+
+If using a non-alias target, list logstores first:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --list-logstores <project>
+```
+
+If logstore doesn't exist, show available logstores and ask user to pick.
+
+### Step 3: Save mapping (optional)
+
+After confirming a new mapping, ask: "Save this to CLAUDE.md?"
+If yes, append under `## SLS Mappings`:
 ```
 ## SLS Mappings
 - prod/saas → project=robot-k8s-prod, logstore=saas
