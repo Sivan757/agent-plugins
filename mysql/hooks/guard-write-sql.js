@@ -64,16 +64,16 @@ for (const op of WRITE_OPS) {
     sqlUpper === op
   ) {
     const preview = sql.length > 150 ? sql.substring(0, 150) + "..." : sql;
-    console.log("⛔ WRITE OPERATION BLOCKED");
-    console.log("");
-    console.log(`Operation: ${op}`);
-    console.log(`SQL: ${preview}`);
-    console.log("");
-    console.log("Database write operations are FORBIDDEN without explicit user confirmation.");
-    console.log("You MUST:");
-    console.log("  1. Show the full SQL to the user");
-    console.log("  2. Ask the user to confirm the operation");
-    console.log("  3. If confirmed, re-run with --user-confirmed added to the command");
+    console.error("⛔ WRITE OPERATION BLOCKED");
+    console.error("");
+    console.error(`Operation: ${op}`);
+    console.error(`SQL: ${preview}`);
+    console.error("");
+    console.error("Database write operations are FORBIDDEN without explicit user confirmation.");
+    console.error("You MUST:");
+    console.error("  1. Show the full SQL to the user");
+    console.error("  2. Ask the user to confirm the operation");
+    console.error("  3. If confirmed, re-run with --user-confirmed added to the command");
     process.exit(2);
   }
 }

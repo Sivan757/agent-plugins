@@ -24,7 +24,7 @@
     },
     {
       "name": "mysql",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "source": "./mysql",
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     },
@@ -57,12 +57,6 @@
       "version": "0.2.0",
       "source": "./ticktick",
       "description": "Manage TickTick (Dida365) tasks, projects, tags, habits, kanban columns, folders, focus sessions, and productivity statistics via the bundled CLI."
-    },
-    {
-      "name": "telegram",
-      "version": "0.1.0",
-      "source": "./telegram",
-      "description": "Add Telegram channel support to NanoClaw using skills engine for deterministic code changes."
     }
   ]
 }
