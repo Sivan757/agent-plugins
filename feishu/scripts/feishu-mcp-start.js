@@ -29,7 +29,7 @@ const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
 
-const CONFIG_PATH = path.join(os.homedir(), '.cache', 'apex-plugin', 'feishu.json');
+const CONFIG_PATH = path.join(os.homedir(), '.cache', 'apex-plugin', '.feishu.json');
 const LEGACY_CONFIG_NAME = '.claude/.feishu.json';
 
 function findLegacyConfig() {

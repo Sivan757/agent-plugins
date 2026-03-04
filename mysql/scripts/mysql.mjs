@@ -24,7 +24,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
-const CONFIG_PATH = path.join(os.homedir(), ".cache", "apex-plugin", "mysql.json");
+const CONFIG_PATH = path.join(os.homedir(), ".cache", "apex-plugin", ".mysql-connections.json");
 const LEGACY_CONFIG_DIR = ".claude";
 const LEGACY_CONFIG_FILE = ".mysql-connections.json";
 const DEFAULT_ROW_LIMIT = 10;

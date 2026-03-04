@@ -31,19 +31,6 @@ Automatically installs 14 P3C rule files into your project's `.claude/rules/p3c/
 claude plugin add /path/to/apex-plugin/p3c
 ```
 
-On next session start, the plugin creates a symlink:
-
-```
-.claude/rules/p3c/ -> <plugin-root>/rules/
-```
-
-## How it works
-
-- A `SessionStart` hook runs `p3c-setup.sh`
-- The hook symlinks the bundled `rules/` directory into `.claude/rules/p3c/`
-- Each rule file uses `paths: ["**/*.java"]` frontmatter so rules only activate when editing Java files
-- If `.claude/rules/p3c/` already exists as a regular directory (user-managed), the hook skips installation with a warning
-
 ## Uninstallation
 
 ```bash

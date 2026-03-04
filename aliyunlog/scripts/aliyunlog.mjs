@@ -38,7 +38,7 @@ const require = createRequire(import.meta.url);
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CONFIG_PATH = path.join(os.homedir(), ".cache", "apex-plugin", "aliyunlog.json");
+const CONFIG_PATH = path.join(os.homedir(), ".cache", "apex-plugin", ".aliyun.json");
 const LEGACY_CONFIG_DIR = ".claude";
 const LEGACY_CONFIG_FILE = ".aliyun.json";
 const TEMP_DIR = path.join(os.tmpdir(), "claude-sls");
