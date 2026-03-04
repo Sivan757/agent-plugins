@@ -54,7 +54,7 @@
     },
     {
       "name": "ticktick",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./ticktick",
       "description": "Manage TickTick (Dida365) tasks, projects, tags, habits, kanban columns, folders, focus sessions, and productivity statistics via the bundled CLI."
     }
