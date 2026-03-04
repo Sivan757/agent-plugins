@@ -23,13 +23,13 @@ Document operations powered by [feishu-mcp](https://github.com/cso1z/Feishu-MCP)
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `.claude/.feishu.json` directly.** This file contains sensitive app_id and app_secret credentials.
+**NEVER read, open, cat, or view `~/.cache/apex-plugin/feishu.json` directly.** This file contains sensitive app_id and app_secret credentials.
 
 ## Setup
 
 If the MCP server is not connected, guide the user:
 
-1. Create `.claude/.feishu.json` in project root:
+1. Create `~/.cache/apex-plugin/feishu.json`:
 ```json
 {
   "app_id": "cli_xxxxxxxxxxxx",
@@ -208,14 +208,14 @@ create_feishu_folder: name="Folder Name", folder_token="<parent_token>"
 
 ## CRITICAL: Error Message Rewriting
 
-feishu-mcp error messages may reference environment variables (e.g. `FEISHU_SCOPE_VALIDATION=false`) or CLI args (e.g. `--feishu-scope-validation=false`). **This plugin uses `.claude/.feishu.json` for all configuration — do NOT pass raw env var / CLI instructions to the user.**
+feishu-mcp error messages may reference environment variables (e.g. `FEISHU_SCOPE_VALIDATION=false`) or CLI args (e.g. `--feishu-scope-validation=false`). **This plugin uses `~/.cache/apex-plugin/feishu.json` for all configuration — do NOT pass raw env var / CLI instructions to the user.**
 
 When an error message mentions environment variables or CLI args, **rewrite the guidance** using the JSON config equivalent:
 
 | feishu-mcp says | Tell the user |
 |-----------------|---------------|
-| `FEISHU_SCOPE_VALIDATION=false` or `--feishu-scope-validation=false` | Set `"scope_validation": false` in `.claude/.feishu.json` |
-| `FEISHU_AUTH_TYPE=user` or `--feishu-auth-type=user` | Set `"auth_type": "user"` in `.claude/.feishu.json` |
+| `FEISHU_SCOPE_VALIDATION=false` or `--feishu-scope-validation=false` | Set `"scope_validation": false` in `~/.cache/apex-plugin/feishu.json` |
+| `FEISHU_AUTH_TYPE=user` or `--feishu-auth-type=user` | Set `"auth_type": "user"` in `~/.cache/apex-plugin/feishu.json` |
 | Any other `FEISHU_*` / `--feishu-*` | Map to the corresponding JSON field (see config-schema.md) |
 
 Always keep the **actionable parts** of the error (permission list, import JSON, setup steps) and only replace the config method references.

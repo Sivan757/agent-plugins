@@ -5,17 +5,20 @@
 /**
  * SessionStart hook for the Feishu plugin.
  *
- * 1. Searches for .claude/.feishu.json config file.
- * 2. If not found, creates a template in the project root (or cwd).
- * 3. Validates required fields (app_id, app_secret).
+ * 1. Searches for config at ~/.cache/apex-plugin/feishu.json (global).
+ * 2. Falls back to legacy .claude/.feishu.json (project-local) with migration hint.
+ * 3. If not found, creates a template at the global path.
+ * 4. Validates required fields (app_id, app_secret).
  * Always exits 0 — never blocks the session.
  */
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { execSync } = require('child_process');
 
-const CONFIG_NAME = '.claude/.feishu.json';
+const CONFIG_PATH = path.join(os.homedir(), '.cache', 'apex-plugin', 'feishu.json');
+const LEGACY_CONFIG_NAME = '.claude/.feishu.json';
 
 const CONFIG_TEMPLATE = {
   app_id: '',
@@ -31,7 +34,7 @@ const CONFIG_TEMPLATE = {
 
 // ── Config file discovery ────────────────────────────────────────────────────
 
-function findConfigFile() {
+function findLegacyConfig() {
   // 1. Git repo root
   let projectRoot = '';
   try {
@@ -42,80 +45,76 @@ function findConfigFile() {
   } catch { /* not in a git repo */ }
 
   if (projectRoot) {
-    const p = path.join(projectRoot, CONFIG_NAME);
+    const p = path.join(projectRoot, LEGACY_CONFIG_NAME);
     if (fs.existsSync(p)) return p;
   }
 
-  // 2. Current working directory (when not in a git repo)
+  // 2. Current working directory
   const cwd = process.cwd();
   if (cwd !== projectRoot) {
-    const p = path.join(cwd, CONFIG_NAME);
+    const p = path.join(cwd, LEGACY_CONFIG_NAME);
     if (fs.existsSync(p)) return p;
   }
 
   // 3. User home directory
-  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const home = os.homedir();
   if (home) {
-    const p = path.join(home, CONFIG_NAME);
+    const p = path.join(home, LEGACY_CONFIG_NAME);
     if (fs.existsSync(p)) return p;
   }
 
   return null;
 }
 
-function getInitDir() {
-  try {
-    return execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    }).trim();
-  } catch {
-    return process.cwd();
-  }
+function findConfig() {
+  if (fs.existsSync(CONFIG_PATH)) return { path: CONFIG_PATH, legacy: false };
+  const legacyPath = findLegacyConfig();
+  if (legacyPath) return { path: legacyPath, legacy: true };
+  return null;
 }
 
 function initConfigFile() {
-  const baseDir = getInitDir();
-  const cfgPath = path.join(baseDir, CONFIG_NAME);
-  const dir = path.dirname(cfgPath);
-
+  const dir = path.dirname(CONFIG_PATH);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-
-  fs.writeFileSync(cfgPath, JSON.stringify(CONFIG_TEMPLATE, null, 2) + '\n', 'utf8');
-  return cfgPath;
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(CONFIG_TEMPLATE, null, 2) + '\n', 'utf8');
+  return CONFIG_PATH;
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 function main() {
-  let cfgPath = findConfigFile();
+  const result = findConfig();
 
-  if (!cfgPath) {
-    cfgPath = initConfigFile();
-    console.log(`[feishu] Config initialized: ${cfgPath}`);
+  if (!result) {
+    const cfgPath = initConfigFile();
+    console.log(`[feishu] Config created: ${cfgPath}`);
     console.log('  Fill in app_id and app_secret, then restart the session.');
     console.log('  Get credentials: https://open.feishu.cn/app');
     process.exit(0);
   }
 
+  if (result.legacy) {
+    console.log(`[feishu] Using legacy config: ${result.path}`);
+    console.log(`  Migrate to ${CONFIG_PATH} for global access.`);
+  }
+
   let cfg;
   try {
-    cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    cfg = JSON.parse(fs.readFileSync(result.path, 'utf8'));
   } catch (e) {
-    console.log(`[feishu] Invalid JSON in ${cfgPath}: ${e.message}`);
+    console.log(`[feishu] Invalid JSON in ${result.path}: ${e.message}`);
     process.exit(0);
   }
 
   if (!cfg.app_id || !cfg.app_secret) {
-    console.log(`[feishu] Missing app_id or app_secret in ${cfgPath}`);
+    console.log(`[feishu] Missing app_id or app_secret in ${result.path}`);
     console.log('  Fill in credentials and restart the session.');
     process.exit(0);
   }
 
-  const authType = cfg.auth_type || (cfg.oauth ? 'user' : 'tenant');
-  console.log(`[feishu] Config OK. (${cfgPath}, auth: ${authType})`);
+  // Silent when everything is OK — only print on init, legacy, or error
 }
 
 main();

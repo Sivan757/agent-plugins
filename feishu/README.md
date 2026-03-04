@@ -19,7 +19,7 @@
 
 ### Step 2: Configure Credentials (配置凭据)
 
-在项目根目录创建 `.claude/.feishu.json`：
+创建 `~/.cache/apex-plugin/feishu.json`：
 
 ```json
 {

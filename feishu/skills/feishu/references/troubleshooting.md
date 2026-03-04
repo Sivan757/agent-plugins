@@ -8,7 +8,7 @@
 [feishu] Config file not found.
 ```
 
-**Solution**: Create `.claude/.feishu.json` in your project root or home directory:
+**Solution**: Create `~/.cache/apex-plugin/feishu.json`:
 
 ```json
 {
@@ -87,7 +87,7 @@ Error: app_id or app_secret is invalid
 ```
 
 **Solution**:
-1. Verify `app_id` and `app_secret` in `.claude/.feishu.json`
+1. Verify `app_id` and `app_secret` in `~/.cache/apex-plugin/feishu.json`
 2. Check credentials at [Feishu Open Platform](https://open.feishu.cn/app)
 3. Confirm the app is not disabled
 
@@ -98,4 +98,15 @@ Tenant (app-level) mode has significant limitations:
 - Document edit history won't show user identity
 - Some APIs do not support tenant_access_token
 
-**Solution**: Switch to user mode by setting `"auth_type": "user"` in the config file. Restart the session and complete OAuth authorization when prompted.
+**Solution**: Switch to user mode by setting `"auth_type": "user"` in `~/.cache/apex-plugin/feishu.json`. Restart the session and complete OAuth authorization when prompted.
+
+### Legacy config migration
+
+If you previously used `.claude/.feishu.json`, move it to the global path:
+
+```bash
+mkdir -p ~/.cache/apex-plugin
+cp .claude/.feishu.json ~/.cache/apex-plugin/feishu.json
+```
+
+The legacy path still works as a fallback but is deprecated.

@@ -2,10 +2,12 @@
 
 ## Config File Location
 
-The plugin reads config from `.claude/.feishu.json`, searching in order:
+Config is stored globally at `~/.cache/apex-plugin/feishu.json`.
+
+Legacy fallback: `.claude/.feishu.json` (project-local, deprecated) is still searched in order:
 1. Git repository root
-2. Current working directory (when not in a git repo)
-3. User home directory `~/`
+2. Current working directory
+3. User home directory
 
 ## Schema
 
@@ -95,8 +97,9 @@ Values: `debug`, `info`, `log`, `warn`, `error`, `none`
 3. Fill in app name and description
 4. Get **App ID** and **App Secret** from "Credentials & Basic Info"
 5. For user mode: add redirect URL `http://localhost:3333/callback` in "Security Settings"
-6. Configure required permissions (see below)
-7. Detailed guide: [FEISHU_CONFIG.md](https://github.com/cso1z/Feishu-MCP/blob/main/FEISHU_CONFIG.md)
+6. Run setup hook or manually create `~/.cache/apex-plugin/feishu.json`
+7. Configure required permissions (see below)
+8. Detailed guide: [FEISHU_CONFIG.md](https://github.com/cso1z/Feishu-MCP/blob/main/FEISHU_CONFIG.md)
 
 ## Required Permissions
 
