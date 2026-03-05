@@ -20,13 +20,15 @@
 //                            ISO 8601: "2026-03-04T10:00:00+08:00"
 //   --to=<time>              End time (omit = now)
 //                            Same formats as --from
-//   --limit=<n>              Max log entries (default: 1)
+//   --limit=<n>              Max log entries (default: 20)
 //   --format=<fmt>           Output format: compact|csv|json (default: compact)
 //   --project=<name>         Override project (skip alias resolution)
 //   --logstore=<name>        Override logstore (skip alias resolution)
 //   --fields=<f1,f2,...>     Extract specific fields from results
 //   --count                  Shorthand: rewrite query to COUNT(*)
 //   --oldest                 Show oldest entries first (default: newest first)
+//   --summary                Enable smart summary for large compact output
+//   --no-context             Disable auto-saving query context
 //
 
 import fs from "fs";
@@ -653,7 +655,7 @@ function outputWithTokenOptimization(output) {
   const lineCount = output.split("\n").length;
   console.log(`[Output too large for inline display (${output.length} chars, ${lineCount} lines)]`);
   console.log(`Written to: ${tempFile}`);
-  console.log(`Use Read tool with offset/limit to inspect portions of this file.`);
+  console.log(`Use Read tool with offset/limit to inspect portions of this file, or rerun with --full for inline raw output.`);
 }
 
 // ── Interactive Setup Wizard ─────────────────────────────────────────────────
@@ -834,13 +836,15 @@ async function cmdTest(config) {
 
 function cmdHelp() {
   console.log(`Usage:
-  node aliyunlog.mjs <env> <service> [options]     Query logs by environment and service
+  node aliyunlog.mjs [query-options]               Query logs (recommended with --service + --project)
+  node aliyunlog.mjs <env> <service> [options]     Query logs by environment and service (legacy positional mode)
   node aliyunlog.mjs --init                         Create config template
   node aliyunlog.mjs --setup                        Interactive setup wizard
   node aliyunlog.mjs --list-logstores <project|env> List logstores in a project
   node aliyunlog.mjs --list-aliases                 Show configured aliases
   node aliyunlog.mjs --test                         Test SDK connection
   node aliyunlog.mjs --more                         Fetch next page (requires saved context)
+  node aliyunlog.mjs --full                         Re-run last query without summarization
   node aliyunlog.mjs --refine="filter"              Add filter to previous query
   node aliyunlog.mjs --clear-context                Clear saved context
 
@@ -858,12 +862,14 @@ Options:
                                ISO 8601: "2026-03-04T10:00:00+08:00"
   --to=<time>                  End time (omit = now)
                                Same formats as --from
-  --limit=<n>                  Max entries (default: 1)
+  --limit=<n>                  Max entries (default: 20)
   --format=compact|csv|json    Output format (default: compact)
   --extract-errors             Extract only exception types and stack traces
-  --full                       Skip smart summarization for large outputs
+  --full                       Skip summarization and force raw inline output
+  --summary                    Enable smart summary for large compact output
   --auto-broaden               Auto-retry with relaxed filters if 0 results
-  --save-context               Save query context for --more/--refine
+  --save-context               Save query context (legacy; now default behavior)
+  --no-context                 Disable auto-saving query context
   --project=<name>             Override project
   --logstore=<name>            Override logstore
   --fields=<f1,f2,...>         Extract specific fields (CSV output)
@@ -906,7 +912,7 @@ function relaxQuery(query, level) {
   return null; // Can't relax further
 }
 
-async function progressiveSearch(client, project, logstore, fromDate, toDate, query, limit, reverse) {
+async function progressiveSearch(client, project, logstore, fromDate, toDate, query, limit, reverse, startOffset = 0) {
   let currentQuery = query;
   let level = 0;
   const maxLevels = 3;
@@ -916,7 +922,7 @@ async function progressiveSearch(client, project, logstore, fromDate, toDate, qu
       info(`Try ${level + 1}: Broadening search...`);
     }
 
-    const results = await getLogs(client, project, logstore, fromDate, toDate, currentQuery, limit, reverse);
+    const results = await getLogs(client, project, logstore, fromDate, toDate, currentQuery, limit, reverse, startOffset);
 
     if (results && results.length > 0) {
       if (level > 0) {
@@ -944,10 +950,10 @@ async function progressiveSearch(client, project, logstore, fromDate, toDate, qu
 
 // ── Query with pagination ────────────────────────────────────────────────────
 
-async function getLogs(client, project, logstore, from, to, query, limit, reverse) {
+async function getLogs(client, project, logstore, from, to, query, limit, reverse, startOffset = 0) {
   const MAX_PER_CALL = 100;
   const allResults = [];
-  let offset = 0;
+  let offset = Math.max(0, Number(startOffset) || 0);
 
   while (allResults.length < limit) {
     const batchSize = Math.min(MAX_PER_CALL, limit - allResults.length);
@@ -999,17 +1005,27 @@ async function main() {
   }
   if (opts.test) return cmdTest(config);
 
-  // Handle --more and --refine (load previous context)
+  // Handle --more, --refine, and standalone --full (load previous context)
   let contextOverride = null;
-  if (opts.more || opts.refine) {
+  const standaloneFullOutput = opts.full && !opts.project && !opts.service && !opts.logstore && positional.length === 0;
+  if (opts.more || opts.refine || standaloneFullOutput) {
     const prevContext = loadContext();
     if (!prevContext) {
-      die("No previous context found. Run a query with --save-context first.");
+      if (standaloneFullOutput) {
+        die("No previous context found for standalone --full. Run a query first (context is auto-saved), or rerun the original query with --full.");
+      }
+      die("No previous context found. Run a query first (context is auto-saved unless --no-context is used).");
     }
 
     if (opts.more) {
       info("Loading previous query context for next page...");
-      contextOverride = { ...prevContext, offset: (prevContext.offset || 0) + (prevContext.limit || 1) };
+      contextOverride = {
+        ...prevContext,
+        offset: (Number(prevContext.offset) || 0) + (Number(prevContext.limit) || 1),
+      };
+    } else if (standaloneFullOutput) {
+      info("Loading previous query context with full output...");
+      contextOverride = { ...prevContext };
     } else if (opts.refine) {
       info(`Refining previous query: ${prevContext.query}`);
       const refinement = opts.refine;
@@ -1106,18 +1122,20 @@ async function main() {
     info(`Template expanded: ${query}`);
   }
 
-  const fromDate = contextOverride?.from ? new Date(contextOverride.from) : (parseTime(opts.from) || defaultFromDate());
-  const toDate = contextOverride?.to ? new Date(contextOverride.to) : (parseTime(opts.to) || defaultToDate());
-  const limit = contextOverride?.limit || parseInt(opts.limit || "1", 10);
+  const fromDate = opts.from ? parseTime(opts.from) : (contextOverride?.from ? new Date(contextOverride.from) : defaultFromDate());
+  const toDate = opts.to ? parseTime(opts.to) : (contextOverride?.to ? new Date(contextOverride.to) : defaultToDate());
+  const limit = Number(opts.limit || contextOverride?.limit || "20");
   if (isNaN(limit) || limit <= 0) die(`Invalid --limit value: "${opts.limit}". Must be a positive integer.`);
-  const format = contextOverride?.format || opts.format || "compact";
+  const format = opts.format || contextOverride?.format || "compact";
   const fields = opts.fields || "";
   const count = opts.count || false;
   const extractErrorsMode = opts["extract-errors"] || false;
   const fullOutput = opts.full || false;
+  const summaryMode = opts.summary || false;
   const autoBroaden = opts["auto-broaden"] || false;
-  const saveContextFlag = opts["save-context"] || false;
-  const reverse = !opts.oldest; // default newest-first
+  const persistContext = !opts["no-context"];
+  const reverse = opts.oldest ? false : (contextOverride?.reverse !== undefined ? Boolean(contextOverride.reverse) : true); // default newest-first
+  const startOffset = Math.max(0, Number(contextOverride?.offset) || 0);
 
   // --count shorthand: rewrite query to COUNT(*)
   if (count) {
@@ -1137,21 +1155,36 @@ async function main() {
     let searchLevel = 0;
 
     if (autoBroaden) {
-      const result = await progressiveSearch(client, project, logstore, fromDate, toDate, query, limit, reverse);
+      const result = await progressiveSearch(client, project, logstore, fromDate, toDate, query, limit, reverse, startOffset);
       data = result.results;
       finalQuery = result.finalQuery;
       searchLevel = result.level;
     } else {
-      data = await getLogs(client, project, logstore, fromDate, toDate, query, limit, reverse);
+      data = await getLogs(client, project, logstore, fromDate, toDate, query, limit, reverse, startOffset);
     }
 
     const n = data ? data.length : 0;
     const order = reverse ? "newest" : "oldest";
-    const limitInfo = count ? "count mode" : `limit=${limit}`;
+    const limitInfo = count ? "count mode" : `limit=${limit}, offset=${startOffset}`;
     const queryDisplay = finalQuery === "*" ? "*" : finalQuery;
     info(`${project}/${logstore} | ${n} results | ${queryDisplay} | ${formatTimeForDisplay(fromDate)} ~ ${formatTimeForDisplay(toDate)} | ${limitInfo} | ${order} first`);
 
+    const contextPayload = {
+      project,
+      logstore,
+      query: finalQuery,
+      from: fromDate.toISOString(),
+      to: toDate.toISOString(),
+      limit,
+      format,
+      offset: startOffset,
+      reverse,
+    };
+
     if (n === 0) {
+      if (persistContext) {
+        saveContext(contextPayload);
+      }
       if (autoBroaden && searchLevel > 0) {
         console.log("(no results found even after broadening search)");
       } else {
@@ -1179,43 +1212,28 @@ async function main() {
       }
     }
 
-    // Smart summarization for large outputs
-    if (!fullOutput && !extractErrorsMode && output.split('\n').length > 50) {
+    // Smart summarization is opt-in and only applies to large compact outputs.
+    const canSummarize = summaryMode && !fullOutput && !extractErrorsMode && format === "compact" && !fields;
+    if (canSummarize && output.split('\n').length > 50) {
       const summary = summarizeData(data);
       console.log(summary);
 
-      // Save context if requested
-      if (saveContextFlag) {
-        saveContext({
-          project,
-          logstore,
-          query: finalQuery,
-          from: fromDate.toISOString(),
-          to: toDate.toISOString(),
-          limit,
-          format,
-          offset: 0,
-        });
+      if (persistContext) {
+        saveContext(contextPayload);
         info("Context saved. Use --more for next page or --refine to add filters.");
       }
 
       return;
     }
 
-    outputWithTokenOptimization(output);
+    if (fullOutput) {
+      console.log(output);
+    } else {
+      outputWithTokenOptimization(output);
+    }
 
-    // Save context if requested
-    if (saveContextFlag) {
-      saveContext({
-        project,
-        logstore,
-        query: finalQuery,
-        from: fromDate.toISOString(),
-        to: toDate.toISOString(),
-        limit,
-        format,
-        offset: 0,
-      });
+    if (persistContext) {
+      saveContext(contextPayload);
       info("Context saved. Use --more for next page or --refine to add filters.");
     }
   } catch (err) {

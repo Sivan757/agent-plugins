@@ -13,7 +13,8 @@
 - **`(no results)`** - Use `--auto-broaden` to automatically relax the query, or widen time range, simplify query, try full-text search instead of field search
 - **Chinese search returns 0** - Use exact phrase quotes, try shorter keywords, or search by structured field (order number, traceId) instead
 - **Permission errors** - Verify SLS access key has read permission on target project
-- **`No previous context found`** - Run a query with `--save-context` before using `--more` or `--refine`
+- **`No previous context found`** - Run a query first (context is auto-saved by default), and don't use `--no-context` if you need `--more`/`--refine`/`--full`
+- **`--full` shows usage instead of replaying context** - Your plugin version is old; rerun the original query with `--full`, or upgrade to latest plugin
 
 ## npm Install Failures
 
@@ -25,7 +26,7 @@
 
 - **Request timeout** - SLS queries on large logstores may take time. Narrow the time range or simplify the query.
 - **Rate limited (HTTP 403/429)** - Reduce query frequency. SLS has per-project rate limits. Wait a few seconds and retry.
-- **Endpoint unreachable** - Verify the `endpoint` in `~/.cache/apex-plugin/aliyunlog.json` matches your SLS region (e.g., `cn-hangzhou.log.aliyuncs.com`)
+- **Endpoint unreachable** - Verify the `endpoint` in `~/.cache/apex-plugin/.aliyun.json` matches your SLS region (e.g., `cn-hangzhou.log.aliyuncs.com`)
 
 ## Time Format
 
@@ -42,6 +43,6 @@ Default time range is **15 minutes** from now. For investigating historical issu
 
 ## Config Security
 
-- Config is stored globally at `~/.cache/apex-plugin/aliyunlog.json` — outside project directories, no gitignore needed
+- Config is stored globally at `~/.cache/apex-plugin/.aliyun.json` — outside project directories, no gitignore needed
 - **Never read config directly** — use `--test` to verify connectivity, `--list-aliases` to check aliases
 - **Legacy config**: If upgrading from v0.6.0 or earlier, migrate `.claude/.aliyun.json` to the global path

@@ -29,6 +29,37 @@ Query Alibaba Cloud SLS logs via `@alicloud/log` Node.js SDK.
 node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs [options]
 ```
 
+## Minimal Workflow (Recommended)
+
+Use this 3-command flow by default:
+
+```bash
+# 1) First query (context auto-saved)
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs \
+  --service=robot-order --project=robot-k8s-dev \
+  --query="<traceId|orderId|keyword>" --from=-2h --limit=20
+
+# 2) View full raw logs from same query context
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --full
+
+# 3) Continue investigation with pagination or refinement
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --more
+# or
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --refine="BusinessException"
+```
+
+For machine-readable output:
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --full --format=json
+```
+
+Compatibility fallback for older plugin versions (where standalone `--full` is not supported):
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs \
+  --service=robot-order --project=robot-k8s-dev \
+  --query="<same query>" --from=-2h --limit=20 --full
+```
+
 ### Query Options
 
 | Option | Description |
@@ -41,7 +72,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs [options]
 | `--keyword=<text>` | Additional keyword for templates |
 | `--from=<time>` | Start time (omit = last 15 min) |
 | `--to=<time>` | End time (omit = now) |
-| `--limit=<n>` | Max entries (default: **1**) |
+| `--limit=<n>` | Max entries (default: **20**) |
 | `--format=compact\|csv\|json` | Output format (default: compact) |
 | `--fields=<f1,f2,...>` | Extract specific fields as CSV |
 | `--count` | Shorthand for COUNT(*) query |
@@ -52,14 +83,16 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs [options]
 | Option | Description |
 |--------|-------------|
 | `--extract-errors` | Extract only exception types and stack traces |
-| `--full` | Skip smart summarization for large outputs |
+| `--full` | Skip summarization and force raw inline output |
+| `--summary` | Enable smart summary for large compact output (opt-in) |
 | `--auto-broaden` | Auto-retry with relaxed filters if 0 results |
 
 ### Session Context Options
 
 | Option | Description |
 |--------|-------------|
-| `--save-context` | Save query context for `--more`/`--refine` |
+| `--save-context` | Legacy option, context is auto-saved by default |
+| `--no-context` | Disable auto-saving query context |
 | `--more` | Fetch next page using saved context |
 | `--refine=<filter>` | Add filter to previous query |
 | `--clear-context` | Clear saved context |
@@ -147,10 +180,10 @@ Available templates:
 ```bash
 # 1. Start with template + extract-errors + auto-broaden
 node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --service=robot-order --project=robot-k8s-dev \
-  --template=error-by-service --from=-2h --limit=10 --extract-errors --auto-broaden --save-context
+  --template=error-by-service --from=-2h --limit=10 --extract-errors --auto-broaden
 
-# 2. See more results
-node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --more --extract-errors
+# 2. See full raw logs from same context
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --full
 
 # 3. Narrow down to specific error
 node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --refine="BusinessException" --extract-errors
@@ -170,9 +203,9 @@ When a specific query returns 0 results, use `--auto-broaden`:
 
 1. **Start with `--count`** to verify data exists
 2. **Use `--extract-errors`** for clean error summaries
-3. **Smart summarization** — outputs >50 lines auto-summarize (use `--full` to skip)
+3. **Smart summarization** — disabled by default; add `--summary` when you want a compact summary
 4. **Use `--fields`** to extract only needed fields as CSV
-5. **Use `--save-context` + `--more`** to paginate instead of large `--limit`
+5. **Use `--more`** to paginate instead of large `--limit` (context auto-saved)
 
 ## IMPORTANT: Chinese Keyword Search
 
