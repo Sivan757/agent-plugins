@@ -46,6 +46,29 @@
 - AI-facing help text (--help, SKILL.md): avoid fuzzy natural language for defaults — say "omit = auto" not "default: 15 min ago"
 - Commits: stage plugin files by name (`git add <plugin>/... marketplace.json`) — don't use `git add -A` since unrelated plugin work may be in-tree
 
+## Aliyunlog Service Mappings
+
+**Auto-discovered 2026-03-05** — use these to avoid repeated logstore discovery:
+
+### robot-k8s-dev (Development)
+- **dev1-saas**: robot-order, bfg, robot-fulfillment, saas-gateway, workflow-engine
+- **dev-base**: (empty/legacy)
+- **robot-base-dev**: saas-gateway, workflow-engine (not robot services)
+
+### Quick reference
+```bash
+# Robot order service logs (dev)
+node scripts/aliyunlog.mjs --project=robot-k8s-dev --logstore=dev1-saas \
+  --query="_container_name_:robot-order and (ERROR or Exception)" \
+  --from="2026-03-04T12:00:00+08:00"
+
+# Common filters
+# - Error logs: and (ERROR or Exception)
+# - NPE: and NullPointerException
+# - Specific keyword: and "订单处理失败"
+# - Service filter: _container_name_:robot-order
+```
+
 ## SOP: Plugin Development & Optimization
 
 ### Phase 1 — Audit (read-only)

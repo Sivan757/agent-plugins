@@ -3,14 +3,17 @@
 ## Common Errors
 
 - **`@alicloud/log not found`** - Run `npm install --prefix <plugin-dir>` or restart the session to trigger auto-install
-- **`Invalid accessKeyId`** - Edit `~/.cache/apex-plugin/aliyunlog.json` with real credentials
-- **`No config found`** - Run `--init` to create `~/.cache/apex-plugin/aliyunlog.json`
+- **`Invalid accessKeyId`** - Run `--setup` for interactive configuration, or edit `~/.cache/apex-plugin/.aliyun.json` with real credentials
+- **`No config found`** - Run `--setup` (interactive) or `--init` (template) to create `~/.cache/apex-plugin/.aliyun.json`
 - **`Failed to parse config`** - Check for trailing commas, missing quotes, or other JSON syntax errors
-- **`logstore does not exist`** - Run `--list-logstores <project>` to see available logstores, or use `--list-aliases` to see configured aliases
+- **`logstore does not exist`** - Run `--list-logstores <project>` to see available logstores, or use `--service=<name>` for auto-discovery
 - **`The Project does not exist`** - Check project name spelling. Run `--list-aliases` to see configured projects
-- **`(no results)`** - Widen time range, simplify query, or try full-text search instead of field search (`ERROR` instead of `content:ERROR`). Field search requires the field to be indexed.
+- **`Service not found in any logstore`** - Service name doesn't match any `_container_name_` in the project. Check spelling or try `--list-logstores` to explore manually
+- **`Service found in multiple logstores`** - Specify `--logstore` to disambiguate, or add an alias to config
+- **`(no results)`** - Use `--auto-broaden` to automatically relax the query, or widen time range, simplify query, try full-text search instead of field search
 - **Chinese search returns 0** - Use exact phrase quotes, try shorter keywords, or search by structured field (order number, traceId) instead
 - **Permission errors** - Verify SLS access key has read permission on target project
+- **`No previous context found`** - Run a query with `--save-context` before using `--more` or `--refine`
 
 ## npm Install Failures
 
@@ -26,11 +29,14 @@
 
 ## Time Format
 
-Only ISO 8601 standard dates are accepted:
-- `--from="2026-03-04T10:00:00+08:00"` (with timezone)
-- `--from="2026-03-04 10:00:00"` (local time)
-
-**Relative time expressions are NOT supported** (no `-30m`, `-2h`, `3 days ago`). Calculate exact timestamps before passing to the script.
+Supports **relative time** and ISO 8601:
+- `--from=-24h` (24 hours ago)
+- `--from=-2d` (2 days ago)
+- `--from=-30m` (30 minutes ago)
+- `--from="2 hours ago"` (2 hours ago)
+- `--to=now` (current time)
+- `--from="2026-03-04T10:00:00+08:00"` (ISO 8601 with timezone)
+- `--from="2026-03-04 10:00:00"` (ISO 8601 local time)
 
 Default time range is **15 minutes** from now. For investigating historical issues, always specify `--from`.
 
