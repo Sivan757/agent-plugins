@@ -7,7 +7,7 @@ description: >-
   "insert into", "find records", "look up in the database",
   "database schema", "count rows", "cross-database comparison",
   "compare databases", or "analyze database".
-  Provides the ability to execute SQL queries against MySQL databases via a bundled
+  Provides the ability to execute SQL queries against MySQL databases via a
   Node.js script with multi-connection support, including schema inspection,
   parameterized queries, and multiple output formats.
 model: sonnet
@@ -16,7 +16,7 @@ allowed-tools: Bash(node:*), Read, AskUserQuestion
 
 # MySQL Query Execution
 
-Execute SQL queries via the bundled `mysql2` Node.js script with multi-connection support.
+Execute SQL queries via `mysql2` Node.js script with multi-connection support.
 
 ## CRITICAL: Credential Security
 
@@ -85,20 +85,20 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs <connection> "<sql>" [options]
 
 | Option | Description |
 |--------|-------------|
-| `--format=csv\|table\|json` | Output format (default: csv) |
+| `--format=csv\|table\|json\|compact` | Output format (default: csv; compact = tab-delimited, minimal) |
 | `--params='["val"]'` | Parameterized query values |
-| `--limit=N` | Max rows (default: 10, 0=unlimited) |
-| `--col-width=N` | Max column width (default: 80) |
+| `--limit=N` | Max rows (default: 1, 0=unlimited) |
+| `--col-width=N` | Max column width (default: 40) |
 
 Subcommands: `--init`, `--list`, `--test [name]`, `--columns <conn> <table>`, `--help`
 
 ## Token Optimization Rules
 
-1. **NEVER `SELECT *`** — run `--columns` first, then pick minimal columns
-2. **Aggregate first** — `COUNT(*)`, `GROUP BY`, `SUM()` over raw rows
-3. **Keep default `--limit=10`** — only increase when explicitly needed
+1. **Preview first** — default limit is 1 row; check the data shape before requesting more with `--limit=N`
+2. **NEVER `SELECT *`** — run `--columns` first, then pick minimal columns
+3. **Aggregate first** — `COUNT(*)`, `GROUP BY`, `SUM()` over raw rows
 4. **Filter with WHERE** — narrow server-side, not by scanning results
-5. **Default CSV** — most token-efficient format
+5. **Default CSV** — most token-efficient format; use `--format=compact` for even less overhead
 
 ## Reference Files
 

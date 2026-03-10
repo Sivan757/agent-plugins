@@ -27,8 +27,8 @@ const require = createRequire(import.meta.url);
 const CONFIG_PATH = path.join(os.homedir(), ".cache", "apex-plugin", ".mysql-connections.json");
 const LEGACY_CONFIG_DIR = ".claude";
 const LEGACY_CONFIG_FILE = ".mysql-connections.json";
-const DEFAULT_ROW_LIMIT = 10;
-const DEFAULT_COL_WIDTH = 80;
+const DEFAULT_ROW_LIMIT = 1;
+const DEFAULT_COL_WIDTH = 40;
 
 const TEMPLATE = {
   connections: {},
@@ -226,6 +226,16 @@ function truncate(value, maxLen) {
   return s.slice(0, maxLen - 3) + "...";
 }
 
+function formatCompact(rows, colWidth) {
+  if (!rows || rows.length === 0) return "(empty)";
+  const headers = Object.keys(rows[0]);
+  const lines = [headers.join("\t")];
+  for (const row of rows) {
+    lines.push(headers.map((h) => truncate(row[h], colWidth)).join("\t"));
+  }
+  return lines.join("\n");
+}
+
 function formatCSV(rows, colWidth) {
   if (!rows || rows.length === 0) return "(empty result set)";
   const headers = Object.keys(rows[0]);
@@ -305,11 +315,11 @@ async function main() {
 Config: ${CONFIG_PATH}
 
 Options:
-  --format=csv|table|json      Output format (default: csv)
-  --params='["val"]'           Parameterized query values
-  --limit=N                    Max rows (default: 10, 0=unlimited)
-  --col-width=N                Max column width (default: 80)
-  --user-confirmed             Bypass write-operation guard (after user approval)`);
+  --format=csv|table|json|compact  Output format (default: csv)
+  --params='["val"]'               Parameterized query values
+  --limit=N                        Max rows (default: 1, 0=unlimited)
+  --col-width=N                    Max column width (default: 40)
+  --user-confirmed                 Bypass write-operation guard (after user approval)`);
     return;
   }
 
@@ -375,7 +385,7 @@ Options:
         insertId: rows.insertId != null ? String(rows.insertId) : undefined,
         changedRows: rows.changedRows,
         info: rows.info,
-      }, null, 2));
+      }));
       return;
     }
 
@@ -390,7 +400,10 @@ Options:
 
     switch (format) {
       case "json":
-        console.log(JSON.stringify(displayRows, null, 2));
+        console.log(JSON.stringify(displayRows));
+        break;
+      case "compact":
+        console.log(formatCompact(displayRows, colWidth));
         break;
       case "csv":
         console.log(formatCSV(displayRows, colWidth));
