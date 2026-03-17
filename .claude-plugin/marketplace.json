@@ -57,6 +57,12 @@
       "version": "0.2.0",
       "source": "./ticktick",
       "description": "Manage TickTick (Dida365) tasks, projects, tags, habits, kanban columns, folders, focus sessions, and productivity statistics via the bundled CLI."
+    },
+    {
+      "name": "get-shit-done",
+      "version": "1.25.1",
+      "source": "./get-shit-done",
+      "description": "Meta-prompting, context engineering and spec-driven development system. Solves context rot with phased execution, parallel subagents, and atomic commits."
     }
   ]
 }
