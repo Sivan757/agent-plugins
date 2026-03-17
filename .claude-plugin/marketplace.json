@@ -63,6 +63,12 @@
       "version": "1.25.1",
       "source": "./get-shit-done",
       "description": "Meta-prompting, context engineering and spec-driven development system. Solves context rot with phased execution, parallel subagents, and atomic commits."
+    },
+    {
+      "name": "find-skills",
+      "version": "0.1.0",
+      "source": "./find-skills",
+      "description": "Discover and install agent skills from the skills.sh ecosystem when users ask about extending capabilities or finding tools for specific tasks."
     }
   ]
 }
