@@ -20,7 +20,7 @@
 //                            ISO 8601: "2026-03-04T10:00:00+08:00"
 //   --to=<time>              End time (omit = now)
 //                            Same formats as --from
-//   --limit=<n>              Max log entries (default: 20)
+//   --limit=<n>              Max log entries (default: 5)
 //   --format=<fmt>           Output format: compact|csv|json (default: compact)
 //   --project=<name>         Override project (skip alias resolution)
 //   --logstore=<name>        Override logstore (skip alias resolution)
@@ -51,7 +51,6 @@ const LEGACY_CONFIG_DIR = ".claude";
 const LEGACY_CONFIG_FILE = ".aliyun.json";
 const TEMP_DIR = path.join(os.tmpdir(), "claude-sls");
 const AUTO_TEMP_THRESHOLD = 2000; // chars
-const COMPACT_MAX_LINE = 500; // max chars per content line in compact mode
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -587,11 +586,7 @@ function formatCompact(data) {
       if (shouldSkip(k) || HEADER_FIELDS.has(k)) continue;
       if (v === null || v === undefined || v === '') continue;
       const s = String(v);
-      if (s.length > COMPACT_MAX_LINE) {
-        lines.push(`  ${s.slice(0, COMPACT_MAX_LINE)}... (${s.length} chars, use --format=json for full)`);
-      } else {
-        lines.push(`  ${s}`);
-      }
+      lines.push(`  ${s}`);
     }
     lines.push("");
   }
@@ -618,7 +613,7 @@ function formatCsv(data, fields) {
 
 function formatJson(data) {
   if (!data.length) return "(no results)";
-  return JSON.stringify(data, null, 2);
+  return JSON.stringify(data);
 }
 
 // ── Token optimization: auto temp file ───────────────────────────────────────
@@ -862,7 +857,7 @@ Options:
                                ISO 8601: "2026-03-04T10:00:00+08:00"
   --to=<time>                  End time (omit = now)
                                Same formats as --from
-  --limit=<n>                  Max entries (default: 20)
+  --limit=<n>                  Max entries (default: 5)
   --format=compact|csv|json    Output format (default: compact)
   --extract-errors             Extract only exception types and stack traces
   --full                       Skip summarization and force raw inline output
@@ -1124,7 +1119,7 @@ async function main() {
 
   const fromDate = opts.from ? parseTime(opts.from) : (contextOverride?.from ? new Date(contextOverride.from) : defaultFromDate());
   const toDate = opts.to ? parseTime(opts.to) : (contextOverride?.to ? new Date(contextOverride.to) : defaultToDate());
-  const limit = Number(opts.limit || contextOverride?.limit || "20");
+  const limit = Number(opts.limit || contextOverride?.limit || "5");
   if (isNaN(limit) || limit <= 0) die(`Invalid --limit value: "${opts.limit}". Must be a positive integer.`);
   const format = opts.format || contextOverride?.format || "compact";
   const fields = opts.fields || "";

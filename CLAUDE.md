@@ -22,18 +22,6 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 - **MCP-based** (feishu, augment, jetbrains): `.mcp.json` configures external MCP servers
 - **Policy/rules** (security, p3c): Hooks-only, no scripts or MCP
 
-**Standard directory layout:**
-```
-<plugin>/
-  .claude-plugin/plugin.json   # Required: name, version, description, author
-  hooks/hooks.json             # Required: SessionStart (setup) and/or PreToolUse (guards)
-  hooks/<plugin>-setup.sh      # SessionStart hook — must exit 0 (never block session)
-  skills/<plugin>/SKILL.md     # Skill with frontmatter (name, description, model, allowed-tools)
-  skills/<plugin>/references/  # config-schema.md, troubleshooting.md, etc.
-  scripts/<plugin>.mjs         # CLI script (CLI-based plugins)
-  .mcp.json                    # MCP server config (MCP-based plugins)
-```
-
 **Marketplace registry:** `.claude-plugin/marketplace.json` — all plugins must be listed here
 
 ## Conventions
@@ -42,7 +30,7 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 - PreToolUse hooks exit 2 to block, exit 0 to allow; support `permissionDecision: "ask"` for soft blocks
 - SKILL.md frontmatter: `model: sonnet`, `allowed-tools: Bash(node:*)` for CLI plugins
 - Token-saving mode: enforce limits (default limit=1-10), prefer CSV over JSON, aggregate before detail, server-side filtering
-- Credentials: store in `~/.cache/apex-plugin/<plugin>.json` (global) or `scripts/.env` (gitignored), never read directly in sessions
+- Credentials: store in `~/.cache/apex-plugin/<plugin>.json` (global), never read directly in sessions
 - Version bumps: use `bump-plugin-version.sh` instead of editing 3 files manually — avoids version-check hook firing mid-edit
 - AI-facing help text (--help, SKILL.md): avoid fuzzy natural language for defaults — say "omit = auto" not "default: 15 min ago"
 - Commits: stage plugin files by name (`git add <plugin>/... marketplace.json`) — don't use `git add -A` since unrelated plugin work may be in-tree

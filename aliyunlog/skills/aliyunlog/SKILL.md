@@ -72,7 +72,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs \
 | `--keyword=<text>` | Additional keyword for templates |
 | `--from=<time>` | Start time (omit = last 15 min) |
 | `--to=<time>` | End time (omit = now) |
-| `--limit=<n>` | Max entries (default: **20**) |
+| `--limit=<n>` | Max entries (default: **5**) |
 | `--format=compact\|csv\|json` | Output format (default: compact) |
 | `--fields=<f1,f2,...>` | Extract specific fields as CSV |
 | `--count` | Shorthand for COUNT(*) query |
@@ -201,11 +201,13 @@ When a specific query returns 0 results, use `--auto-broaden`:
 
 ### Token-efficient approach
 
-1. **Start with `--count`** to verify data exists
-2. **Use `--extract-errors`** for clean error summaries
-3. **Smart summarization** — disabled by default; add `--summary` when you want a compact summary
-4. **Use `--fields`** to extract only needed fields as CSV
-5. **Use `--more`** to paginate instead of large `--limit` (context auto-saved)
+1. **Preview first** — default limit is 5 entries; check the data before requesting more with `--limit=N`
+2. **Start with `--count`** to verify data exists before fetching full logs
+3. **Use `--extract-errors`** for clean error summaries instead of full logs
+4. **Use `--fields`** to extract only needed fields as CSV (e.g., `--fields=_time_,content`)
+5. **Aggregate first** — use SLS aggregation queries (`COUNT`, `GROUP BY`) over raw logs
+6. **Use `--more`** to paginate instead of large `--limit` (context auto-saved)
+7. **Default compact format** — most token-efficient; JSON is compact (no pretty-print)
 
 ## IMPORTANT: Chinese Keyword Search
 
