@@ -29,6 +29,12 @@
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     },
     {
+      "name": "postgresql",
+      "version": "0.1.0",
+      "source": "./postgresql",
+      "description": "Enables AI to execute SQL queries against PostgreSQL databases via Node.js with multi-connection support for schema inspection and discovery."
+    },
+    {
       "name": "aliyunlog",
       "version": "1.1.0",
       "source": "./aliyunlog",

@@ -1,0 +1,16 @@
+{
+  "name": "postgresql",
+  "version": "0.1.0",
+  "description": "Enables AI to execute SQL queries against PostgreSQL databases via Node.js scripts with multi-database connection support.",
+  "author": {
+    "name": "Robotees"
+  },
+  "keywords": [
+    "postgresql",
+    "sql",
+    "database",
+    "query",
+    "pg",
+    "node"
+  ]
+}
