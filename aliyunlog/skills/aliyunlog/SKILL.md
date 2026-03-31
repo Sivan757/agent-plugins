@@ -97,14 +97,21 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs \
 | `--refine=<filter>` | Add filter to previous query |
 | `--clear-context` | Clear saved context |
 
-### Subcommands
+### Discovery Subcommands
+
+| Command | Description |
+|---------|-------------|
+| `--find-service=<name>` | **Find which logstore contains a service** (auto-caches result) |
+| `--list-services=<logstore>` | List all services running in a logstore |
+| `--list-logstores <project>` | List all logstores in a project |
+| `--list-aliases` | Show configured aliases |
+
+### Other Subcommands
 
 | Command | Description |
 |---------|-------------|
 | `--init` | Create config template |
 | `--setup` | Interactive setup wizard |
-| `--list-logstores <project>` | List logstores in a project |
-| `--list-aliases` | Show configured aliases |
 | `--test` | Test SDK connection |
 
 ## Time Format
@@ -122,33 +129,32 @@ Supports **relative time** and ISO 8601:
 
 If the user says "last 2 hours", use `--from=-2h`. If `--from`/`--to` are omitted, defaults to last 15 minutes.
 
-## MANDATORY: Target Discovery Workflow
+## MANDATORY: Service Discovery Workflow
 
-### Step 0: Discover target
+### When you don't know the logstore
 
-**Preferred: Use `--service` for auto-discovery:**
+**Use `--find-service` to discover where a service lives:**
+```bash
+# Find which logstore contains robot-order
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --find-service=robot-order --project=robot-k8s-dev
+# Output: qa1-saas (1234 logs in last 2h)
+# Auto-caches the mapping for future queries
+
+# List all services in a logstore
+node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --list-services=qa1-saas --project=robot-k8s-dev
+```
+
+### Normal query flow (after discovery)
+
+`--service` auto-resolves from cache:
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --service=robot-order --project=robot-k8s-dev --query="ERROR" --from=-1h --limit=5
 ```
-- Auto-discovers which logstore contains the service
-- Caches mapping in `~/.cache/apex-plugin/aliyunlog-mappings.json` for instant reuse
-- If found in multiple logstores, shows list and asks user to specify `--logstore`
 
-**Fallback: Check aliases:**
-```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/aliyunlog.mjs --list-aliases
-```
-
-### Step 1: Confirm target with user
-
-Use `AskUserQuestion` when:
-- User didn't specify env/service
-- Service found in multiple logstores
-- No alias configured
-
-### Step 2: Save mapping (optional)
-
-After confirming a new mapping, ask: "Save this to CLAUDE.md?" and append under `## Aliyunlog Service Mappings`.
+### NEVER guess project or logstore names
+- There are only **2 SLS projects**: `robot-k8s-dev` (dev/qa/uat) and `robot-k8s-prod` (prod)
+- **Do NOT invent** names like `robot-k8s-qa`, `robot-k8s-uat` — they don't exist
+- If unsure, use `--find-service` to discover automatically
 
 ## Query Templates
 

@@ -251,6 +251,134 @@ async function discoverServiceLocation(client, project, serviceName) {
   }
 }
 
+// ── Fast Service Discovery ───────────────────────────────────────────────────
+
+async function discoverServiceFast(client, project, serviceName) {
+  // Fast discovery: only scan "saas"-like logstores (the common shared ones)
+  // rather than all 47+ logstores
+  const result = await client.listLogStore(project);
+  const allLogstores = result.logstores || [];
+
+  // Prioritize logstores likely to contain application services
+  const priority = allLogstores.filter((ls) =>
+    ls.includes("saas") || ls.includes("base") || ls.includes("imes") ||
+    ls.includes("cps") || ls.includes("feelinker") || ls.includes("trend")
+  );
+  const rest = allLogstores.filter((ls) => !priority.includes(ls));
+
+  const candidates = [];
+  const fromDate = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2h lookback
+  const toDate = new Date();
+
+  // Search priority logstores first
+  for (const logstore of [...priority, ...rest]) {
+    try {
+      const query = `_container_name_:${serviceName} | SELECT COUNT(*) as c`;
+      const logs = await client.getLogs(project, logstore, fromDate, toDate, {
+        query,
+        line: 1,
+        offset: 0,
+      });
+      if (logs && Array.isArray(logs) && logs.length > 0) {
+        const count = parseInt(logs[0].c || "0", 10);
+        if (count > 0) {
+          candidates.push({ logstore, count });
+        }
+      }
+    } catch {
+      continue;
+    }
+
+    // Short-circuit: if found in a priority logstore, that's usually sufficient
+    if (candidates.length > 0 && priority.includes(candidates[0].logstore)) {
+      break;
+    }
+  }
+
+  return candidates;
+}
+
+async function cmdFindService(config, project, serviceName) {
+  if (!serviceName) die("Usage: --find-service <service_name>");
+  validateCredentials(config);
+
+  project = project || config.default_project || "";
+  if (!project) die("No project specified. Use --project=<name> or set default_project in config.");
+
+  const client = createClient(config);
+
+  info(`Searching for service "${serviceName}" across logstores in ${project}...`);
+  const candidates = await discoverServiceFast(client, project, serviceName);
+
+  if (candidates.length === 0) {
+    console.error(`Service "${serviceName}" not found in any logstore in project "${project}" (last 2h).`);
+    console.error(`\nAvailable logstores:`);
+    const result = await client.listLogStore(project);
+    const appLogstores = (result.logstores || []).filter(
+      (ls) => !ls.startsWith("alb-") && !ls.startsWith("apiserver-") &&
+              !ls.startsWith("audit-") && !ls.startsWith("ccm-") &&
+              !ls.startsWith("kcm-") && !ls.startsWith("scheduler-") &&
+              !ls.startsWith("controlplane-") && !ls.startsWith("security-")
+    );
+    for (const ls of appLogstores.sort()) {
+      console.error(`  ${ls}`);
+    }
+    process.exit(1);
+  }
+
+  for (const { logstore, count } of candidates) {
+    console.log(`${logstore} (${count} logs in last 2h)`);
+  }
+
+  // Auto-cache the mapping
+  const cache = loadMappingsCache();
+  if (!cache[project]) cache[project] = {};
+  for (const { logstore } of candidates) {
+    cache[project][serviceName] = logstore;
+  }
+  saveMappingsCache(cache);
+  info(`Cached: ${serviceName} -> ${candidates[0].logstore}`);
+  info(`Query example: node aliyunlog.mjs --service=${serviceName} --project=${project} --query="ERROR" --from=-1h`);
+}
+
+async function cmdListServices(config, project, logstoreName) {
+  if (!logstoreName) die("Usage: --list-services <logstore> [--project=<name>]");
+  validateCredentials(config);
+
+  project = project || config.default_project || "";
+  if (!project) die("No project specified. Use --project=<name> or set default_project in config.");
+
+  const client = createClient(config);
+  const fromDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const toDate = new Date();
+
+  try {
+    const query = `* | SELECT DISTINCT _container_name_ ORDER BY _container_name_ LIMIT 200`;
+    const logs = await client.getLogs(project, logstoreName, fromDate, toDate, {
+      query,
+      line: 200,
+      offset: 0,
+    });
+
+    if (!logs || logs.length === 0) {
+      console.log(`(no services found in ${logstoreName} in the last 24h)`);
+      return;
+    }
+
+    console.log(`Services in ${project}/${logstoreName}:`);
+    const services = logs
+      .map((e) => e._container_name_)
+      .filter(Boolean)
+      .sort();
+    for (const svc of services) {
+      console.log(`  ${svc}`);
+    }
+    info(`${services.length} services found`);
+  } catch (err) {
+    die(`Failed to list services: ${err.message}`);
+  }
+}
+
 // ── Query Templates ──────────────────────────────────────────────────────────
 
 const QUERY_TEMPLATES = {
@@ -835,6 +963,8 @@ function cmdHelp() {
   node aliyunlog.mjs <env> <service> [options]     Query logs by environment and service (legacy positional mode)
   node aliyunlog.mjs --init                         Create config template
   node aliyunlog.mjs --setup                        Interactive setup wizard
+  node aliyunlog.mjs --find-service=<name> [--project=<p>]  Find which logstore a service belongs to
+  node aliyunlog.mjs --list-services=<logstore> [--project=<p>]  List services in a logstore
   node aliyunlog.mjs --list-logstores <project|env> List logstores in a project
   node aliyunlog.mjs --list-aliases                 Show configured aliases
   node aliyunlog.mjs --test                         Test SDK connection
@@ -999,6 +1129,16 @@ async function main() {
     return cmdListLogstores(config, project);
   }
   if (opts.test) return cmdTest(config);
+  if (opts["find-service"]) {
+    const serviceName = typeof opts["find-service"] === "string" ? opts["find-service"] : positional[0];
+    const project = opts.project || resolveProjectName(config, positional[0]) || "";
+    return cmdFindService(config, project, serviceName);
+  }
+  if (opts["list-services"]) {
+    const logstoreName = typeof opts["list-services"] === "string" ? opts["list-services"] : positional[0];
+    const project = opts.project ? opts.project : config.default_project || "";
+    return cmdListServices(config, project, logstoreName);
+  }
 
   // Handle --more, --refine, and standalone --full (load previous context)
   let contextOverride = null;
@@ -1055,7 +1195,17 @@ async function main() {
       const candidates = await discoverServiceLocation(tempClient, project, serviceName);
 
       if (candidates.length === 0) {
-        die(`Service "${serviceName}" not found in any logstore in project "${project}"`);
+        // Fallback: try fast discovery before giving up
+        const fastCandidates = await discoverServiceFast(tempClient, project, serviceName);
+        if (fastCandidates.length > 0) {
+          logstore = fastCandidates[0].logstore;
+          info(`Fast-discovered: ${serviceName} -> ${logstore}`);
+          if (!cache[project]) cache[project] = {};
+          cache[project][serviceName] = logstore;
+          saveMappingsCache(cache);
+        } else {
+          die(`Service "${serviceName}" not found in any logstore in project "${project}".\nTry: node ${__filename} --list-services=<logstore> --project=${project}`);
+        }
       } else if (candidates.length === 1) {
         logstore = candidates[0];
         info(`Discovered: ${serviceName} -> ${logstore}`);
@@ -1233,9 +1383,16 @@ async function main() {
     }
   } catch (err) {
     const msg = err.message || String(err);
-    if (msg.includes("does not exist")) {
+    if (msg.includes("does not exist") || msg.includes("LogStoreNotExist") || msg.includes("ProjectNotExist")) {
       process.stderr.write(`ERROR: ${msg}\n`);
-      process.stderr.write(`\nTry: node ${__filename} --list-logstores ${project}\n`);
+      if (serviceName) {
+        process.stderr.write(`\nHint: The logstore "${logstore}" does not exist. Discover the correct one:\n`);
+        process.stderr.write(`  node ${__filename} --find-service=${serviceName} --project=${project}\n`);
+      } else {
+        process.stderr.write(`\nHint: List available logstores:\n`);
+        process.stderr.write(`  node ${__filename} --list-logstores ${project}\n`);
+      }
+      process.stderr.write(`  node ${__filename} --list-services=<logstore> --project=${project}\n`);
       process.exit(1);
     }
     die(`Query failed: ${msg}`);
