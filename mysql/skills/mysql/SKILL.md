@@ -77,6 +77,27 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs <conn> "SELECT col1, col2 FROM tabl
 | `sub_order_code` | May be `origin_code` | `--columns` first |
 | `PO-211-xxx` as `order_code` | Actually `origin_code` | `--columns` first |
 
+## MANDATORY: Database Discovery Before Cross-DB Queries
+
+Each connection has a default database. If a table doesn't exist in the default database, **do NOT guess** — use discovery:
+
+```bash
+# Step 1: Find which database a table belongs to
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --find-table <conn> <table_name>
+# Example output: robot_fulfillment.fulfillment_main_data (~1234 rows)
+
+# Step 2: Use database.table syntax in your query
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs <conn> "SELECT * FROM robot_fulfillment.fulfillment_main_data WHERE ..."
+
+# Fuzzy search with % pattern
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --find-table <conn> "%warehouse%"
+
+# List all databases on a connection
+node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --databases <conn>
+```
+
+**NEVER create additional connections for the same host.** Use `database.table` syntax instead.
+
 ## Command Reference
 
 ```bash
@@ -90,7 +111,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs <connection> "<sql>" [options]
 | `--limit=N` | Max rows (default: 1, 0=unlimited) |
 | `--col-width=N` | Max column width (default: 40) |
 
-Subcommands: `--init`, `--list`, `--test [name]`, `--columns <conn> <table>`, `--help`
+Subcommands: `--init`, `--list`, `--test [name]`, `--columns <conn> <table>`, `--databases <conn>`, `--find-table <conn> <table|%pat%>`, `--help`
 
 ## Token Optimization Rules
 

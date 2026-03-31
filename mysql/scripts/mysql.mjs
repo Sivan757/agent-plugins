@@ -218,6 +218,91 @@ async function listColumns(connName, tableName) {
   }
 }
 
+// ── Database Discovery ───────────────────────────────────────────────────────
+
+async function listDatabases(connName) {
+  const config = loadConfig();
+  if (!config) {
+    console.error(`No config found. Run --init to create ${CONFIG_PATH}`);
+    process.exit(1);
+  }
+  const connConfig = (config.connections || {})[connName];
+  if (!connConfig) {
+    console.error(`Error: Connection "${connName}" not found.`);
+    listConnections();
+    process.exit(1);
+  }
+
+  const mysql = loadMysql2();
+  let connection;
+  try {
+    connection = await createConnection(mysql, connConfig);
+    const [rows] = await connection.execute("SHOW DATABASES");
+    const systemDbs = new Set(["information_schema", "mysql", "performance_schema", "sys"]);
+    const dbs = rows.map((r) => r.Database).filter((d) => !systemDbs.has(d));
+    console.log("Available databases:");
+    for (const db of dbs) {
+      const marker = db === connConfig.database ? " (default)" : "";
+      console.log(`  ${db}${marker}`);
+    }
+    info(`${dbs.length} databases on ${connConfig.host}`);
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    if (err.code) console.error(`Code: ${err.code}`);
+    process.exit(1);
+  } finally {
+    if (connection) await connection.end();
+  }
+}
+
+async function findTable(connName, tableName) {
+  const config = loadConfig();
+  if (!config) {
+    console.error(`No config found. Run --init to create ${CONFIG_PATH}`);
+    process.exit(1);
+  }
+  const connConfig = (config.connections || {})[connName];
+  if (!connConfig) {
+    console.error(`Error: Connection "${connName}" not found.`);
+    listConnections();
+    process.exit(1);
+  }
+
+  const mysql = loadMysql2();
+  let connection;
+  try {
+    connection = await createConnection(mysql, connConfig);
+    // Search across all databases for the table (exact or LIKE match)
+    const isPattern = tableName.includes("%");
+    const sql = isPattern
+      ? "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_NAME LIKE ? AND TABLE_SCHEMA NOT IN ('information_schema','mysql','performance_schema','sys') ORDER BY TABLE_SCHEMA, TABLE_NAME"
+      : "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_NAME = ? AND TABLE_SCHEMA NOT IN ('information_schema','mysql','performance_schema','sys') ORDER BY TABLE_SCHEMA, TABLE_NAME";
+    const [rows] = await connection.execute(sql, [tableName]);
+
+    if (rows.length === 0) {
+      console.error(`Table "${tableName}" not found in any database on this connection.`);
+      if (!isPattern) {
+        console.error(`Hint: Try fuzzy search with --find-table ${connName} "%${tableName}%"`);
+      }
+      process.exit(1);
+    }
+
+    for (const row of rows) {
+      console.log(`${row.TABLE_SCHEMA}.${row.TABLE_NAME} (~${row.TABLE_ROWS ?? "?"} rows)`);
+    }
+    info(`Found in ${rows.length} location(s). Use database.table syntax in queries, e.g.:`);
+    if (rows.length > 0) {
+      info(`  node mysql.mjs ${connName} "SELECT * FROM ${rows[0].TABLE_SCHEMA}.${rows[0].TABLE_NAME} LIMIT 1"`);
+    }
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    if (err.code) console.error(`Code: ${err.code}`);
+    process.exit(1);
+  } finally {
+    if (connection) await connection.end();
+  }
+}
+
 // ── Formatters ───────────────────────────────────────────────────────────────
 
 function truncate(value, maxLen) {
@@ -304,6 +389,31 @@ async function main() {
     return;
   }
 
+  // --databases <connection>
+  if (args.includes("--databases")) {
+    const idx = args.indexOf("--databases");
+    const connName = args[idx + 1];
+    if (!connName || connName.startsWith("--")) {
+      console.error("Usage: --databases <connection>");
+      process.exit(1);
+    }
+    await listDatabases(connName);
+    return;
+  }
+
+  // --find-table <connection> <table>
+  if (args.includes("--find-table")) {
+    const idx = args.indexOf("--find-table");
+    const connName = args[idx + 1];
+    const tableName = args[idx + 2];
+    if (!connName || !tableName || connName.startsWith("--") || tableName.startsWith("--")) {
+      console.error("Usage: --find-table <connection> <table_name_or_pattern>");
+      process.exit(1);
+    }
+    await findTable(connName, tableName);
+    return;
+  }
+
   if (args.includes("--help") || args.includes("-h")) {
     console.log(`Usage:
   node mysql.mjs <connection-name> <sql> [options]
@@ -311,6 +421,8 @@ async function main() {
   node mysql.mjs --list                             List available connections
   node mysql.mjs --test [name]                      Test connection(s)
   node mysql.mjs --columns <conn> <table>           List column names of a table
+  node mysql.mjs --databases <conn>                 List all databases on the connection
+  node mysql.mjs --find-table <conn> <table|%pat%>  Find which database a table belongs to
 
 Config: ${CONFIG_PATH}
 
@@ -428,6 +540,15 @@ Options:
     if (err.message.includes("Unknown column")) {
       console.error(`\nHint: Run --columns to see available column names:`);
       console.error(`  node mysql.mjs --columns ${connName} <table_name>`);
+    }
+
+    if (err.code === "ER_NO_SUCH_TABLE") {
+      // Extract table name from error message
+      const tableMatch = err.message.match(/Table '([^']+)'/);
+      const badTable = tableMatch ? tableMatch[1].split(".").pop() : "<table>";
+      console.error(`\nHint: The table may exist in a different database. Find it with:`);
+      console.error(`  node mysql.mjs --find-table ${connName} ${badTable}`);
+      console.error(`  node mysql.mjs --databases ${connName}`);
     }
 
     process.exit(1);
