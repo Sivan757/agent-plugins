@@ -1,9 +1,0 @@
-{
-  "name": "security",
-  "version": "0.1.0",
-  "description": "Enforces sensitive file access policy. Blocks direct reads of hidden files, dotfiles, credentials, and environment variables — requires explicit user approval.",
-  "author": {
-    "name": "Robotees"
-  },
-  "keywords": ["security", "guard", "dotfiles", "credentials", "policy"]
-}

@@ -29,12 +29,6 @@
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     },
     {
-      "name": "security",
-      "version": "0.1.0",
-      "source": "./security",
-      "description": "Enforces sensitive file access policy. Blocks reads of hidden files, dotfiles, credentials, and environment variables without explicit user approval."
-    },
-    {
       "name": "aliyunlog",
       "version": "1.1.0",
       "source": "./aliyunlog",
@@ -69,6 +63,12 @@
       "version": "0.1.0",
       "source": "./find-skills",
       "description": "Discover and install agent skills from the skills.sh ecosystem when users ask about extending capabilities or finding tools for specific tasks."
+    },
+    {
+      "name": "kotlin-architect",
+      "version": "0.1.0",
+      "source": "./kotlin-architect",
+      "description": "System architect persona for Kotlin + Spring Boot + Jimmer + Gradle projects with opinionated best practices and Java-to-Kotlin migration expertise."
     }
   ]
 }
