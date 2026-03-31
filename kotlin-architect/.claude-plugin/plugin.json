@@ -1,0 +1,18 @@
+{
+  "name": "kotlin-architect",
+  "version": "0.1.0",
+  "description": "System architect persona for Kotlin + Spring Boot + Jimmer + Gradle projects with Java-to-Kotlin migration expertise",
+  "author": {
+    "name": "robotees"
+  },
+  "license": "MIT",
+  "keywords": [
+    "kotlin",
+    "spring-boot",
+    "jimmer",
+    "gradle",
+    "architecture",
+    "java-to-kotlin",
+    "migration"
+  ]
+}
