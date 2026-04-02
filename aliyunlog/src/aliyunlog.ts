@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 //
-// aliyunlog.mjs - Alibaba Cloud SLS log query via @alicloud/log SDK
+// aliyunlog.ts - Alibaba Cloud SLS log query via @alicloud/log SDK
 //
 // Simplifies SLS log querying by resolving environment/service aliases
 // to project/logstore via a configuration file.
@@ -31,46 +31,99 @@
 //   --no-context             Disable auto-saving query context
 //
 
-import fs from "fs";
-import path from "path";
-import os from "os";
-import readline from "readline";
-import { fileURLToPath } from "url";
-import { createRequire } from "module";
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import readline from 'readline';
+import { fileURLToPath } from 'url';
+import { requireConfig, configPath, PluginError } from '@apex/core';
+
+// Type declarations are in alicloud-log.d.ts
+import ALY from '@alicloud/log';
+
+// Convenience alias for use in function signatures
+type ALYClient = InstanceType<typeof ALY>;
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const require = createRequire(import.meta.url);
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CONFIG_PATH = path.join(os.homedir(), ".cache", "apex-plugin", ".aliyun.json");
-const MAPPINGS_CACHE_PATH = path.join(os.homedir(), ".cache", "apex-plugin", "aliyunlog-mappings.json");
-const CONTEXT_PATH = path.join(os.homedir(), ".cache", "apex-plugin", "aliyunlog-context.json");
-const LEGACY_CONFIG_DIR = ".claude";
-const LEGACY_CONFIG_FILE = ".aliyun.json";
-const TEMP_DIR = path.join(os.tmpdir(), "claude-sls");
+const CONFIG_PATH = configPath('aliyunlog');
+const MAPPINGS_CACHE_PATH = path.join(os.homedir(), '.cache', 'apex-plugin', 'aliyunlog-mappings.json');
+const CONTEXT_PATH = path.join(os.homedir(), '.cache', 'apex-plugin', 'aliyunlog-context.json');
+const TEMP_DIR = path.join(os.tmpdir(), 'claude-sls');
 const AUTO_TEMP_THRESHOLD = 2000; // chars
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface AliyunLogConfig extends Record<string, unknown> {
+  credentials: {
+    accessKeyId: string;
+    accessKeySecret: string;
+    endpoint: string;
+  };
+  default_project?: string;
+  environments?: Record<string, EnvConfig>;
+  aliases?: Record<string, AliasConfig>;
+}
+
+interface EnvConfig {
+  project?: string;
+  logstore_pattern?: string;
+}
+
+interface AliasConfig {
+  project?: string;
+  logstore?: string;
+}
+
+interface QueryContext {
+  project: string;
+  logstore: string;
+  query: string;
+  from: string;
+  to: string;
+  limit: number;
+  format: string;
+  offset: number;
+  reverse: boolean;
+}
+
+interface MappingsCache {
+  [project: string]: {
+    [service: string]: string;
+  };
+}
+
+interface ServiceCandidate {
+  logstore: string;
+  count: number;
+}
+
+interface ParsedArgs {
+  opts: Record<string, string | boolean>;
+  positional: string[];
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function die(msg) {
+function die(msg: string): never {
   process.stderr.write(`ERROR: ${msg}\n`);
   process.exit(1);
 }
 
-function info(msg) {
+function info(msg: string): void {
   process.stderr.write(`[SLS] ${msg}\n`);
 }
 
-function parseArgs(argv) {
-  const opts = {};
-  const positional = [];
+function parseArgs(argv: string[]): ParsedArgs {
+  const opts: Record<string, string | boolean> = {};
+  const positional: string[] = [];
   for (const arg of argv) {
     const m = arg.match(/^--([a-z-]+)=(.*)$/);
     if (m) {
       opts[m[1]] = m[2];
-    } else if (arg.startsWith("--")) {
+    } else if (arg.startsWith('--')) {
       opts[arg.slice(2)] = true;
     } else {
       positional.push(arg);
@@ -81,133 +134,84 @@ function parseArgs(argv) {
 
 // ── SDK Loader ───────────────────────────────────────────────────────────────
 
-function loadSDK() {
-  const pluginRoot = path.resolve(__dirname, "..");
-  try {
-    const sdkPath = require.resolve("@alicloud/log", {
-      paths: [pluginRoot],
-    });
-    return require(sdkPath);
-  } catch {
-    console.error("Error: @alicloud/log package not found in plugin directory.");
-    console.error(`Run: npm install --prefix "${pluginRoot}"`);
-    process.exit(1);
-  }
-}
-
-// ── Configuration ────────────────────────────────────────────────────────────
-
-function findLegacyConfig() {
-  const configName = path.join(LEGACY_CONFIG_DIR, LEGACY_CONFIG_FILE);
-  let dir = process.cwd();
-  while (dir !== path.dirname(dir)) {
-    const candidate = path.join(dir, configName);
-    if (fs.existsSync(candidate)) return candidate;
-    dir = path.dirname(dir);
-  }
-  return null;
-}
-
-function findConfig() {
-  // Primary: global config
-  if (fs.existsSync(CONFIG_PATH)) return { path: CONFIG_PATH, legacy: false };
-  // Fallback: legacy project-local config
-  const legacyPath = findLegacyConfig();
-  if (legacyPath) return { path: legacyPath, legacy: true };
-  return null;
-}
-
-function loadConfig() {
-  const result = findConfig();
-  if (!result) return null;
-  if (result.legacy) {
-    info(`Using legacy config: ${result.path}`);
-    info(`Run --init to create global config at ${CONFIG_PATH}, then migrate your settings.`);
-  }
-  try {
-    return JSON.parse(fs.readFileSync(result.path, "utf-8"));
-  } catch (e) {
-    die(`Failed to parse ${result.path}: ${e.message}\nCheck for syntax errors in your config file.`);
-  }
-}
-
-function validateCredentials(config) {
-  const c = config.credentials;
-  if (!c) die("Missing 'credentials' section in config. Run --init for template.");
-  if (!c.accessKeyId || c.accessKeyId.includes("<"))
-    die(`Invalid accessKeyId in config. Edit ${CONFIG_PATH} with real credentials.`);
-  if (!c.accessKeySecret || c.accessKeySecret.includes("<"))
-    die(`Invalid accessKeySecret in config. Edit ${CONFIG_PATH} with real credentials.`);
-  if (!c.endpoint)
-    die(`Missing endpoint in config. Edit ${CONFIG_PATH} with your SLS endpoint.`);
-}
-
-function createClient(config) {
-  const Client = loadSDK();
-  return new Client({
+function createClient(config: AliyunLogConfig): ALYClient {
+  return new ALY({
     accessKeyId: config.credentials.accessKeyId,
     accessKeySecret: config.credentials.accessKeySecret,
     endpoint: config.credentials.endpoint,
   });
 }
 
+// ── Configuration ────────────────────────────────────────────────────────────
+
+function validateCredentials(config: AliyunLogConfig): void {
+  const c = config.credentials;
+  if (!c) die(`Missing 'credentials' section in config. Run --init for template.`);
+  if (!c.accessKeyId || c.accessKeyId.includes('<'))
+    die(`Invalid accessKeyId in config. Edit ${CONFIG_PATH} with real credentials.`);
+  if (!c.accessKeySecret || c.accessKeySecret.includes('<'))
+    die(`Invalid accessKeySecret in config. Edit ${CONFIG_PATH} with real credentials.`);
+  if (!c.endpoint)
+    die(`Missing endpoint in config. Edit ${CONFIG_PATH} with your SLS endpoint.`);
+}
+
 // ── Session Context Preservation ─────────────────────────────────────────────
 
-function loadContext() {
+function loadContext(): QueryContext | null {
   try {
     if (fs.existsSync(CONTEXT_PATH)) {
-      return JSON.parse(fs.readFileSync(CONTEXT_PATH, "utf-8"));
+      return JSON.parse(fs.readFileSync(CONTEXT_PATH, 'utf-8')) as QueryContext;
     }
   } catch (e) {
-    info(`Warning: Failed to load context: ${e.message}`);
+    info(`Warning: Failed to load context: ${(e as Error).message}`);
   }
   return null;
 }
 
-function saveContext(context) {
+function saveContext(context: QueryContext): void {
   try {
     const dir = path.dirname(CONTEXT_PATH);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(CONTEXT_PATH, JSON.stringify(context, null, 2));
   } catch (e) {
-    info(`Warning: Failed to save context: ${e.message}`);
+    info(`Warning: Failed to save context: ${(e as Error).message}`);
   }
 }
 
-function clearContext() {
+function clearContext(): void {
   try {
     if (fs.existsSync(CONTEXT_PATH)) {
       fs.unlinkSync(CONTEXT_PATH);
     }
   } catch (e) {
-    info(`Warning: Failed to clear context: ${e.message}`);
+    info(`Warning: Failed to clear context: ${(e as Error).message}`);
   }
 }
 
 // ── Service Discovery & Mapping Cache ────────────────────────────────────────
 
-function loadMappingsCache() {
+function loadMappingsCache(): MappingsCache {
   try {
     if (fs.existsSync(MAPPINGS_CACHE_PATH)) {
-      return JSON.parse(fs.readFileSync(MAPPINGS_CACHE_PATH, "utf-8"));
+      return JSON.parse(fs.readFileSync(MAPPINGS_CACHE_PATH, 'utf-8')) as MappingsCache;
     }
   } catch (e) {
-    info(`Warning: Failed to load mappings cache: ${e.message}`);
+    info(`Warning: Failed to load mappings cache: ${(e as Error).message}`);
   }
   return {};
 }
 
-function saveMappingsCache(cache) {
+function saveMappingsCache(cache: MappingsCache): void {
   try {
     const dir = path.dirname(MAPPINGS_CACHE_PATH);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(MAPPINGS_CACHE_PATH, JSON.stringify(cache, null, 2));
   } catch (e) {
-    info(`Warning: Failed to save mappings cache: ${e.message}`);
+    info(`Warning: Failed to save mappings cache: ${(e as Error).message}`);
   }
 }
 
-async function discoverServiceLocation(client, project, serviceName) {
+async function discoverServiceLocation(client: ALYClient, project: string, serviceName: string): Promise<string[]> {
   info(`Discovering logstore for service: ${serviceName} in project: ${project}`);
 
   try {
@@ -215,7 +219,7 @@ async function discoverServiceLocation(client, project, serviceName) {
     const result = await client.listLogStore(project);
     const logstores = result.logstores || [];
 
-    const candidates = [];
+    const candidates: string[] = [];
 
     // Query each logstore to check if it contains the service
     for (const logstore of logstores) {
@@ -232,14 +236,14 @@ async function discoverServiceLocation(client, project, serviceName) {
 
         if (logs && Array.isArray(logs)) {
           for (const entry of logs) {
-            const containerName = entry._container_name_ || "";
+            const containerName = String(entry._container_name_ || '');
             if (containerName === serviceName || containerName.includes(serviceName)) {
               candidates.push(logstore);
               break;
             }
           }
         }
-      } catch (err) {
+      } catch {
         // Skip logstores that fail (might be empty or have access issues)
         continue;
       }
@@ -247,13 +251,13 @@ async function discoverServiceLocation(client, project, serviceName) {
 
     return candidates;
   } catch (err) {
-    die(`Failed to discover service location: ${err.message}`);
+    die(`Failed to discover service location: ${(err as Error).message}`);
   }
 }
 
 // ── Fast Service Discovery ───────────────────────────────────────────────────
 
-async function discoverServiceFast(client, project, serviceName) {
+async function discoverServiceFast(client: ALYClient, project: string, serviceName: string): Promise<ServiceCandidate[]> {
   // Fast discovery: only scan "saas"-like logstores (the common shared ones)
   // rather than all 47+ logstores
   const result = await client.listLogStore(project);
@@ -261,12 +265,12 @@ async function discoverServiceFast(client, project, serviceName) {
 
   // Prioritize logstores likely to contain application services
   const priority = allLogstores.filter((ls) =>
-    ls.includes("saas") || ls.includes("base") || ls.includes("imes") ||
-    ls.includes("cps") || ls.includes("feelinker") || ls.includes("trend")
+    ls.includes('saas') || ls.includes('base') || ls.includes('imes') ||
+    ls.includes('cps') || ls.includes('feelinker') || ls.includes('trend')
   );
   const rest = allLogstores.filter((ls) => !priority.includes(ls));
 
-  const candidates = [];
+  const candidates: ServiceCandidate[] = [];
   const fromDate = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2h lookback
   const toDate = new Date();
 
@@ -280,7 +284,7 @@ async function discoverServiceFast(client, project, serviceName) {
         offset: 0,
       });
       if (logs && Array.isArray(logs) && logs.length > 0) {
-        const count = parseInt(logs[0].c || "0", 10);
+        const count = parseInt(String(logs[0].c || '0'), 10);
         if (count > 0) {
           candidates.push({ logstore, count });
         }
@@ -298,12 +302,12 @@ async function discoverServiceFast(client, project, serviceName) {
   return candidates;
 }
 
-async function cmdFindService(config, project, serviceName) {
-  if (!serviceName) die("Usage: --find-service <service_name>");
+async function cmdFindService(config: AliyunLogConfig, project: string, serviceName: string): Promise<void> {
+  if (!serviceName) die('Usage: --find-service <service_name>');
   validateCredentials(config);
 
-  project = project || config.default_project || "";
-  if (!project) die("No project specified. Use --project=<name> or set default_project in config.");
+  project = project || config.default_project || '';
+  if (!project) die('No project specified. Use --project=<name> or set default_project in config.');
 
   const client = createClient(config);
 
@@ -315,10 +319,10 @@ async function cmdFindService(config, project, serviceName) {
     console.error(`\nAvailable logstores:`);
     const result = await client.listLogStore(project);
     const appLogstores = (result.logstores || []).filter(
-      (ls) => !ls.startsWith("alb-") && !ls.startsWith("apiserver-") &&
-              !ls.startsWith("audit-") && !ls.startsWith("ccm-") &&
-              !ls.startsWith("kcm-") && !ls.startsWith("scheduler-") &&
-              !ls.startsWith("controlplane-") && !ls.startsWith("security-")
+      (ls) => !ls.startsWith('alb-') && !ls.startsWith('apiserver-') &&
+              !ls.startsWith('audit-') && !ls.startsWith('ccm-') &&
+              !ls.startsWith('kcm-') && !ls.startsWith('scheduler-') &&
+              !ls.startsWith('controlplane-') && !ls.startsWith('security-')
     );
     for (const ls of appLogstores.sort()) {
       console.error(`  ${ls}`);
@@ -341,12 +345,12 @@ async function cmdFindService(config, project, serviceName) {
   info(`Query example: node aliyunlog.mjs --service=${serviceName} --project=${project} --query="ERROR" --from=-1h`);
 }
 
-async function cmdListServices(config, project, logstoreName) {
-  if (!logstoreName) die("Usage: --list-services <logstore> [--project=<name>]");
+async function cmdListServices(config: AliyunLogConfig, project: string, logstoreName: string): Promise<void> {
+  if (!logstoreName) die('Usage: --list-services <logstore> [--project=<name>]');
   validateCredentials(config);
 
-  project = project || config.default_project || "";
-  if (!project) die("No project specified. Use --project=<name> or set default_project in config.");
+  project = project || config.default_project || '';
+  if (!project) die('No project specified. Use --project=<name> or set default_project in config.');
 
   const client = createClient(config);
   const fromDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -367,7 +371,7 @@ async function cmdListServices(config, project, logstoreName) {
 
     console.log(`Services in ${project}/${logstoreName}:`);
     const services = logs
-      .map((e) => e._container_name_)
+      .map((e) => String(e._container_name_ || ''))
       .filter(Boolean)
       .sort();
     for (const svc of services) {
@@ -375,40 +379,40 @@ async function cmdListServices(config, project, logstoreName) {
     }
     info(`${services.length} services found`);
   } catch (err) {
-    die(`Failed to list services: ${err.message}`);
+    die(`Failed to list services: ${(err as Error).message}`);
   }
 }
 
 // ── Query Templates ──────────────────────────────────────────────────────────
 
-const QUERY_TEMPLATES = {
-  "error-by-service": (service) =>
+const QUERY_TEMPLATES: Record<string, (service: string, keyword?: string) => string> = {
+  'error-by-service': (service) =>
     `_container_name_:${service} and (ERROR or Exception)`,
-  "npe": (service, keyword) =>
+  'npe': (service, keyword) =>
     keyword
       ? `_container_name_:${service} and NullPointerException and ${keyword}`
       : `_container_name_:${service} and NullPointerException`,
-  "recent-errors": (service) =>
+  'recent-errors': (service) =>
     `_container_name_:${service} and (ERROR or WARN or Exception)`,
-  "fatal": (service) =>
+  'fatal': (service) =>
     `_container_name_:${service} and (FATAL or "Fatal error")`,
-  "timeout": (service) =>
+  'timeout': (service) =>
     `_container_name_:${service} and (timeout or "timed out" or TimeoutException)`,
-  "oom": (service) =>
+  'oom': (service) =>
     `_container_name_:${service} and (OutOfMemoryError or "out of memory")`,
 };
 
-function expandTemplate(templateName, service, keyword) {
+function expandTemplate(templateName: string, service: string, keyword?: string): string {
   const template = QUERY_TEMPLATES[templateName];
   if (!template) {
-    die(`Unknown template: ${templateName}\nAvailable templates: ${Object.keys(QUERY_TEMPLATES).join(", ")}`);
+    die(`Unknown template: ${templateName}\nAvailable templates: ${Object.keys(QUERY_TEMPLATES).join(', ')}`);
   }
   return template(service, keyword);
 }
 
 // ── Alias Resolution ─────────────────────────────────────────────────────────
 
-function resolveAlias(config, env, service) {
+function resolveAlias(config: AliyunLogConfig, env: string, service: string): { project: string; logstore: string } {
   const envConfig = (config.environments || {})[env];
 
   // 1) Exact alias match
@@ -419,28 +423,28 @@ function resolveAlias(config, env, service) {
       aliases[key].project ||
       (envConfig && envConfig.project) ||
       config.default_project ||
-      "";
-    return { project, logstore: aliases[key].logstore || "" };
+      '';
+    return { project, logstore: aliases[key].logstore || '' };
   }
 
   // 2) Environment pattern
   if (envConfig) {
-    const project = envConfig.project || config.default_project || "";
-    const pattern = envConfig.logstore_pattern || "{service}";
-    return { project, logstore: pattern.replace("{service}", service) };
+    const project = envConfig.project || config.default_project || '';
+    const pattern = envConfig.logstore_pattern || '{service}';
+    return { project, logstore: pattern.replace('{service}', service) };
   }
 
   // 3) Fallback
   return {
-    project: config.default_project || "",
+    project: config.default_project || '',
     logstore: env ? `${env}-${service}` : service,
   };
 }
 
 // ── Resolve env name to project name ─────────────────────────────────────────
 
-function resolveProjectName(config, nameOrEnv) {
-  if (!nameOrEnv) return "";
+function resolveProjectName(config: AliyunLogConfig, nameOrEnv: string): string {
+  if (!nameOrEnv) return '';
   const envConfig = (config.environments || {})[nameOrEnv];
   if (envConfig) return envConfig.project || config.default_project || nameOrEnv;
   return nameOrEnv;
@@ -448,18 +452,18 @@ function resolveProjectName(config, nameOrEnv) {
 
 // ── Time helpers ─────────────────────────────────────────────────────────────
 
-function parseRelativeTime(str) {
+function parseRelativeTime(str: string): Date | null {
   const now = Date.now();
 
   // Handle "now"
-  if (str === "now") return new Date(now);
+  if (str === 'now') return new Date(now);
 
   // Handle "-24h", "-2d", "-30m" format
   const shortMatch = str.match(/^-(\d+)([smhd])$/);
   if (shortMatch) {
     const value = parseInt(shortMatch[1], 10);
     const unit = shortMatch[2];
-    const multipliers = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+    const multipliers: Record<string, number> = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
     return new Date(now - value * multipliers[unit]);
   }
 
@@ -468,12 +472,12 @@ function parseRelativeTime(str) {
   if (longMatch) {
     const value = parseInt(longMatch[1], 10);
     const unit = longMatch[2].toLowerCase();
-    const multipliers = {
+    const multipliers: Record<string, number> = {
       second: 1000,
       minute: 60000,
       hour: 3600000,
       day: 86400000,
-      week: 604800000
+      week: 604800000,
     };
     return new Date(now - value * multipliers[unit]);
   }
@@ -481,8 +485,8 @@ function parseRelativeTime(str) {
   return null;
 }
 
-function parseTime(str) {
-  if (!str) return null;
+function parseTime(str: string): Date {
+  if (!str) return new Date();
 
   // Try relative time first
   const relative = parseRelativeTime(str);
@@ -496,16 +500,16 @@ function parseTime(str) {
   return d;
 }
 
-function defaultFromDate() {
+function defaultFromDate(): Date {
   return new Date(Date.now() - 15 * 60 * 1000);
 }
 
-function defaultToDate() {
+function defaultToDate(): Date {
   return new Date();
 }
 
-function formatTimeForDisplay(date) {
-  const pad = (n) => String(n).padStart(2, "0");
+function formatTimeForDisplay(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
   const y = date.getFullYear();
   const mo = pad(date.getMonth() + 1);
   const d = pad(date.getDate());
@@ -518,36 +522,36 @@ function formatTimeForDisplay(date) {
 // ── Output formatters ────────────────────────────────────────────────────────
 
 const HEADER_FIELDS = new Set([
-  "_container_name_",
-  "_namespace_",
-  "_pod_name_",
+  '_container_name_',
+  '_namespace_',
+  '_pod_name_',
 ]);
 
 const SKIP_FIELDS = new Set([
-  "__source__",
-  "__topic__",
-  "__time__",
-  "_source_",
-  "_time_",
-  "_container_ip_",
-  "_pod_uid_",
-  "_image_name_",
+  '__source__',
+  '__topic__',
+  '__time__',
+  '_source_',
+  '_time_',
+  '_container_ip_',
+  '_pod_uid_',
+  '_image_name_',
 ]);
 
-function shouldSkip(k) {
-  return SKIP_FIELDS.has(k) || k.startsWith("__tag__:");
+function shouldSkip(k: string): boolean {
+  return SKIP_FIELDS.has(k) || k.startsWith('__tag__:');
 }
 
-function extractErrors(data) {
-  if (!data.length) return "(no results)";
+function extractErrors(data: Array<Record<string, string | number>>): string {
+  if (!data.length) return '(no results)';
 
-  const lines = [];
+  const lines: string[] = [];
   for (const entry of data) {
     const time = extractTime(entry);
-    const container = entry._container_name_ || "";
+    const container = String(entry._container_name_ || '');
 
     // Find the content field (usually 'content' or 'message')
-    let content = entry.content || entry.message || entry.log || "";
+    let content = String(entry.content || entry.message || entry.log || '');
     if (!content) {
       // Try to find any field that looks like a log message
       for (const [k, v] of Object.entries(entry)) {
@@ -568,10 +572,10 @@ function extractErrors(data) {
     const exceptionMsg = exceptionMatch[2];
 
     // Extract stack trace (first 10 lines)
-    const stackLines = [];
-    const lines_in_content = content.split('\n');
+    const stackLines: string[] = [];
+    const linesInContent = content.split('\n');
     let inStack = false;
-    for (const line of lines_in_content) {
+    for (const line of linesInContent) {
       if (line.includes('at ') || line.includes('Caused by:')) {
         inStack = true;
         stackLines.push(line.trim());
@@ -593,28 +597,28 @@ function extractErrors(data) {
     lines.push('');
   }
 
-  return lines.length > 0 ? lines.join('\n') : "(no errors found)";
+  return lines.length > 0 ? lines.join('\n') : '(no errors found)';
 }
 
-function summarizeData(data) {
-  if (!data.length) return "(no results)";
+function summarizeData(data: Array<Record<string, string | number>>): string {
+  if (!data.length) return '(no results)';
 
-  const summary = [];
-  const errorTypes = {};
-  const timestamps = [];
-  const stackTraces = {};
+  const summary: string[] = [];
+  const errorTypes: Record<string, number> = {};
+  const timestamps: number[] = [];
+  const stackTraces: Record<string, number> = {};
 
   // Analyze data
   for (const entry of data) {
     // Extract timestamp
     const timeField = entry._time_ || entry.__time__;
     if (timeField) {
-      const ts = typeof timeField === 'number' ? timeField * 1000 : new Date(timeField).getTime();
+      const ts = typeof timeField === 'number' ? timeField * 1000 : new Date(String(timeField)).getTime();
       if (!isNaN(ts)) timestamps.push(ts);
     }
 
     // Find content field
-    let content = entry.content || entry.message || entry.log || "";
+    let content = String(entry.content || entry.message || entry.log || '');
     if (!content) {
       for (const [k, v] of Object.entries(entry)) {
         if (!shouldSkip(k) && !HEADER_FIELDS.has(k) && typeof v === 'string' && v.length > 50) {
@@ -646,7 +650,7 @@ function summarizeData(data) {
 
   // Error types
   if (Object.keys(errorTypes).length > 0) {
-    summary.push("Error types:");
+    summary.push('Error types:');
     const sorted = Object.entries(errorTypes).sort((a, b) => b[1] - a[1]);
     for (const [type, count] of sorted.slice(0, 5)) {
       summary.push(`  ${type}: ${count} occurrences`);
@@ -666,7 +670,7 @@ function summarizeData(data) {
 
   // Top stack trace patterns
   if (Object.keys(stackTraces).length > 0) {
-    summary.push("Top stack trace patterns:");
+    summary.push('Top stack trace patterns:');
     const sorted = Object.entries(stackTraces).sort((a, b) => b[1] - a[1]);
     for (const [pattern, count] of sorted.slice(0, 3)) {
       summary.push(`  ${pattern} (${count}x)`);
@@ -674,41 +678,41 @@ function summarizeData(data) {
     summary.push('');
   }
 
-  summary.push("Use --full to see complete output");
+  summary.push('Use --full to see complete output');
 
   return summary.join('\n');
 }
 
-function extractTime(entry) {
-  let t = entry._time_ || entry.__time__ || "";
-  if (typeof t === "number") {
+function extractTime(entry: Record<string, string | number>): string {
+  let t: string | number = entry._time_ || entry.__time__ || '';
+  if (typeof t === 'number') {
     const d = new Date(t * 1000);
-    return formatTimeForDisplay(d).split(" ")[1];
+    return formatTimeForDisplay(d).split(' ')[1];
   }
-  if (t.includes("T")) {
-    t = t.split("T")[1];
-    if (t.includes(".")) t = t.slice(0, t.indexOf("."));
-    else if (t.includes("+")) t = t.split("+")[0];
-    else if (t.includes("-")) t = t.split("-")[0];
+  if (t.includes('T')) {
+    t = t.split('T')[1];
+    if (t.includes('.')) t = t.slice(0, t.indexOf('.'));
+    else if (t.includes('+')) t = t.split('+')[0];
+    else if (t.includes('-')) t = t.split('-')[0];
   }
   return t;
 }
 
-function formatCompact(data) {
-  if (!data.length) return "(no results)";
-  const lines = [];
+function formatCompact(data: Array<Record<string, string | number>>): string {
+  if (!data.length) return '(no results)';
+  const lines: string[] = [];
   for (const entry of data) {
     const time = extractTime(entry);
-    const container = entry._container_name_ || "";
-    const pod = entry._pod_name_ || "";
-    const source = entry.__source__ || "";
+    const container = String(entry._container_name_ || '');
+    const pod = String(entry._pod_name_ || '');
+    const source = String(entry.__source__ || '');
 
-    const parts = [];
+    const parts: string[] = [];
     if (time) parts.push(time);
     if (container) parts.push(`[${container}]`);
     if (pod) parts.push(pod);
     else if (source) parts.push(source);
-    if (parts.length) lines.push(parts.join(" "));
+    if (parts.length) lines.push(parts.join(' '));
 
     for (const [k, v] of Object.entries(entry)) {
       if (shouldSkip(k) || HEADER_FIELDS.has(k)) continue;
@@ -716,37 +720,37 @@ function formatCompact(data) {
       const s = String(v);
       lines.push(`  ${s}`);
     }
-    lines.push("");
+    lines.push('');
   }
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
-function formatCsv(data, fields) {
-  if (!data.length) return "(no results)";
+function formatCsv(data: Array<Record<string, string | number>>, fields?: string): string {
+  if (!data.length) return '(no results)';
   const cols = fields
-    ? fields.split(",")
+    ? fields.split(',')
     : Object.keys(data[0]).filter((k) => !shouldSkip(k));
-  const escape = (v) => {
-    const s = String(v ?? "");
-    return s.includes(",") || s.includes('"') || s.includes("\n")
+  const escape = (v: string | number | undefined) => {
+    const s = String(v ?? '');
+    return s.includes(',') || s.includes('"') || s.includes('\n')
       ? `"${s.replace(/"/g, '""')}"`
       : s;
   };
-  const lines = [cols.join(",")];
+  const rows = [cols.join(',')];
   for (const entry of data) {
-    lines.push(cols.map((c) => escape(entry[c])).join(","));
+    rows.push(cols.map((c) => escape(entry[c])).join(','));
   }
-  return lines.join("\n");
+  return rows.join('\n');
 }
 
-function formatJson(data) {
-  if (!data.length) return "(no results)";
+function formatJson(data: Array<Record<string, string | number>>): string {
+  if (!data.length) return '(no results)';
   return JSON.stringify(data);
 }
 
 // ── Token optimization: auto temp file ───────────────────────────────────────
 
-function cleanupOldTempFiles() {
+function cleanupOldTempFiles(): void {
   try {
     if (!fs.existsSync(TEMP_DIR)) return;
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
@@ -760,7 +764,7 @@ function cleanupOldTempFiles() {
   } catch { /* ignore cleanup errors */ }
 }
 
-function outputWithTokenOptimization(output) {
+function outputWithTokenOptimization(output: string): void {
   if (output.length <= AUTO_TEMP_THRESHOLD) {
     console.log(output);
     return;
@@ -773,9 +777,9 @@ function outputWithTokenOptimization(output) {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
   const timestamp = Date.now();
   const tempFile = path.join(TEMP_DIR, `sls-${timestamp}.txt`);
-  fs.writeFileSync(tempFile, output, "utf-8");
+  fs.writeFileSync(tempFile, output, 'utf-8');
 
-  const lineCount = output.split("\n").length;
+  const lineCount = output.split('\n').length;
   console.log(`[Output too large for inline display (${output.length} chars, ${lineCount} lines)]`);
   console.log(`Written to: ${tempFile}`);
   console.log(`Use Read tool with offset/limit to inspect portions of this file, or rerun with --full for inline raw output.`);
@@ -783,75 +787,69 @@ function outputWithTokenOptimization(output) {
 
 // ── Interactive Setup Wizard ─────────────────────────────────────────────────
 
-function prompt(question) {
+function prompt(question: string): Promise<string> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
   return new Promise((resolve) => {
-    rl.question(question, (answer) => {
+    rl.question(question, (answer: string) => {
       rl.close();
       resolve(answer.trim());
     });
   });
 }
 
-async function cmdSetup() {
-  console.log("=== Aliyun SLS Setup Wizard ===\n");
+async function cmdSetup(): Promise<void> {
+  console.log('=== Aliyun SLS Setup Wizard ===\n');
 
   // Check if config already exists
   if (fs.existsSync(CONFIG_PATH)) {
     const overwrite = await prompt(`Config already exists at ${CONFIG_PATH}. Overwrite? (y/N): `);
     if (overwrite.toLowerCase() !== 'y') {
-      console.log("Setup cancelled.");
+      console.log('Setup cancelled.');
       return;
     }
   }
 
   // Gather credentials
-  console.log("\n1. Enter your Aliyun credentials:");
-  const accessKeyId = await prompt("   AccessKey ID: ");
-  const accessKeySecret = await prompt("   AccessKey Secret: ");
-  const endpoint = await prompt("   Endpoint (default: cn-hangzhou.log.aliyuncs.com): ") || "cn-hangzhou.log.aliyuncs.com";
+  console.log('\n1. Enter your Aliyun credentials:');
+  const accessKeyId = await prompt('   AccessKey ID: ');
+  const accessKeySecret = await prompt('   AccessKey Secret: ');
+  const endpoint = await prompt('   Endpoint (default: cn-hangzhou.log.aliyuncs.com): ') || 'cn-hangzhou.log.aliyuncs.com';
 
   // Create config object
-  const config = {
+  const config: AliyunLogConfig = {
     credentials: {
       accessKeyId,
       accessKeySecret,
       endpoint,
     },
-    default_project: "",
+    default_project: '',
     environments: {},
     aliases: {},
   };
 
   // Test connection
-  console.log("\n2. Testing connection...");
+  console.log('\n2. Testing connection...');
   try {
-    const Client = loadSDK();
-    const client = new Client({
-      accessKeyId: config.credentials.accessKeyId,
-      accessKeySecret: config.credentials.accessKeySecret,
-      endpoint: config.credentials.endpoint,
-    });
-
+    const client = createClient(config);
     // Try to list projects (this validates credentials)
     await client.listProject();
-    console.log("   ✓ Connection successful!");
+    console.log('   \u2713 Connection successful!');
   } catch (err) {
-    console.log(`   ✗ Connection failed: ${err.message}`);
-    const continueAnyway = await prompt("   Continue anyway? (y/N): ");
+    console.log(`   \u2717 Connection failed: ${(err as Error).message}`);
+    const continueAnyway = await prompt('   Continue anyway? (y/N): ');
     if (continueAnyway.toLowerCase() !== 'y') {
-      console.log("Setup cancelled.");
+      console.log('Setup cancelled.');
       return;
     }
   }
 
   // Ask for default project
-  console.log("\n3. Set default project (optional):");
-  const defaultProject = await prompt("   Default project name (leave empty to skip): ");
+  console.log('\n3. Set default project (optional):');
+  const defaultProject = await prompt('   Default project name (leave empty to skip): ');
   if (defaultProject) {
     config.default_project = defaultProject;
   }
@@ -859,18 +857,18 @@ async function cmdSetup() {
   // Save config
   const configDir = path.dirname(CONFIG_PATH);
   fs.mkdirSync(configDir, { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n");
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n');
 
-  console.log(`\n✓ Configuration saved to: ${CONFIG_PATH}`);
-  console.log("\nNext steps:");
-  console.log("  - Run 'node aliyunlog.mjs --test' to verify setup");
-  console.log("  - Run 'node aliyunlog.mjs --list-logstores <project>' to explore logstores");
-  console.log("  - Edit the config file to add environment aliases and service mappings");
+  console.log(`\n\u2713 Configuration saved to: ${CONFIG_PATH}`);
+  console.log('\nNext steps:');
+  console.log('  - Run \'node aliyunlog.mjs --test\' to verify setup');
+  console.log('  - Run \'node aliyunlog.mjs --list-logstores <project>\' to explore logstores');
+  console.log('  - Edit the config file to add environment aliases and service mappings');
 }
 
-// ── Subcommands ───────────────────────────────────────────────────���──────────
+// ── Subcommands ───────────────────────────────────────────────────────────────
 
-function cmdInit() {
+function cmdInit(): void {
   if (fs.existsSync(CONFIG_PATH)) {
     console.log(`Config already exists: ${CONFIG_PATH}`);
     return;
@@ -878,31 +876,24 @@ function cmdInit() {
 
   const template = {
     credentials: {
-      accessKeyId: "<your-access-key-id>",
-      accessKeySecret: "<your-access-key-secret>",
-      endpoint: "cn-hangzhou.log.aliyuncs.com",
+      accessKeyId: '<your-access-key-id>',
+      accessKeySecret: '<your-access-key-secret>',
+      endpoint: 'cn-hangzhou.log.aliyuncs.com',
     },
-    default_project: "",
+    default_project: '',
     environments: {},
     aliases: {},
   };
 
   const configDir = path.dirname(CONFIG_PATH);
   fs.mkdirSync(configDir, { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(template, null, 2) + "\n");
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(template, null, 2) + '\n');
   console.log(`Created: ${CONFIG_PATH}`);
-  console.log("Edit this file with your SLS credentials and project/logstore mapping.");
-
-  // Hint about legacy config if it exists
-  const legacyPath = findLegacyConfig();
-  if (legacyPath) {
-    console.log(`\nNote: Legacy config found at ${legacyPath}`);
-    console.log(`Copy your settings from the legacy file, then remove it.`);
-  }
+  console.log('Edit this file with your SLS credentials and project/logstore mapping.');
 }
 
-async function cmdListLogstores(config, project) {
-  if (!project) die("Missing project name. Usage: --list-logstores <project|env>");
+async function cmdListLogstores(config: AliyunLogConfig, project: string): Promise<void> {
+  if (!project) die('Missing project name. Usage: --list-logstores <project|env>');
   validateCredentials(config);
 
   const client = createClient(config);
@@ -914,24 +905,24 @@ async function cmdListLogstores(config, project) {
     }
     info(`${logstores.length} logstores in ${project}`);
   } catch (err) {
-    die(`Failed to list logstores: ${err.message}`);
+    die(`Failed to list logstores: ${(err as Error).message}`);
   }
 }
 
-function cmdListAliases(config) {
-  console.log("=== Environments ===");
+function cmdListAliases(config: AliyunLogConfig): void {
+  console.log('=== Environments ===');
   for (const [env, cfg] of Object.entries(config.environments || {}).sort()) {
-    const project = cfg.project || config.default_project || "?";
-    const pattern = cfg.logstore_pattern || "{service}";
+    const project = cfg.project || config.default_project || '?';
+    const pattern = cfg.logstore_pattern || '{service}';
     console.log(`  ${env}: project=${project}, logstore=${pattern}`);
   }
 
   const aliases = config.aliases || {};
   if (Object.keys(aliases).length) {
-    console.log("\n=== Explicit Aliases ===");
+    console.log('\n=== Explicit Aliases ===');
     for (const [key, val] of Object.entries(aliases).sort()) {
-      const logstore = val.logstore || "?";
-      const project = val.project || "";
+      const logstore = val.logstore || '?';
+      const project = val.project || '';
       console.log(
         project ? `  ${key} -> ${project}/${logstore}` : `  ${key} -> ${logstore}`
       );
@@ -939,25 +930,25 @@ function cmdListAliases(config) {
   }
 }
 
-async function cmdTest(config) {
+async function cmdTest(config: AliyunLogConfig): Promise<void> {
   validateCredentials(config);
 
-  console.log("Testing SLS SDK connection...");
+  console.log('Testing SLS SDK connection...');
   const client = createClient(config);
 
   const project = config.default_project;
-  if (!project) die("No default_project set in config.");
+  if (!project) die('No default_project set in config.');
 
   try {
     const result = await client.listLogStore(project);
     console.log(`OK: connected to ${project} (${result.count || 0} logstores)`);
   } catch (err) {
-    console.log(`FAILED: ${err.message}`);
+    console.log(`FAILED: ${(err as Error).message}`);
     process.exit(1);
   }
 }
 
-function cmdHelp() {
+function cmdHelp(): void {
   console.log(`Usage:
   node aliyunlog.mjs [query-options]               Query logs (recommended with --service + --project)
   node aliyunlog.mjs <env> <service> [options]     Query logs by environment and service (legacy positional mode)
@@ -1004,7 +995,7 @@ Options:
 
 // ── Progressive Search Strategy ──────────────────────────────────────────────
 
-function relaxQuery(query, level) {
+function relaxQuery(query: string, level: number): string | null {
   // Level 1: Remove specific keywords but keep exception types
   if (level === 1) {
     // Extract service filter and exception types
@@ -1037,7 +1028,17 @@ function relaxQuery(query, level) {
   return null; // Can't relax further
 }
 
-async function progressiveSearch(client, project, logstore, fromDate, toDate, query, limit, reverse, startOffset = 0) {
+async function progressiveSearch(
+  client: ALYClient,
+  project: string,
+  logstore: string,
+  fromDate: Date,
+  toDate: Date,
+  query: string,
+  limit: number,
+  reverse: boolean,
+  startOffset: number = 0
+): Promise<{ results: Array<Record<string, string | number>>; finalQuery: string; level: number }> {
   let currentQuery = query;
   let level = 0;
   const maxLevels = 3;
@@ -1051,7 +1052,7 @@ async function progressiveSearch(client, project, logstore, fromDate, toDate, qu
 
     if (results && results.length > 0) {
       if (level > 0) {
-        info(`✓ Found ${results.length} results with relaxed query: ${currentQuery}`);
+        info(`\u2713 Found ${results.length} results with relaxed query: ${currentQuery}`);
       }
       return { results, finalQuery: currentQuery, level };
     }
@@ -1075,9 +1076,19 @@ async function progressiveSearch(client, project, logstore, fromDate, toDate, qu
 
 // ── Query with pagination ────────────────────────────────────────────────────
 
-async function getLogs(client, project, logstore, from, to, query, limit, reverse, startOffset = 0) {
+async function getLogs(
+  client: ALYClient,
+  project: string,
+  logstore: string,
+  from: Date,
+  to: Date,
+  query: string,
+  limit: number,
+  reverse: boolean,
+  startOffset: number = 0
+): Promise<Array<Record<string, string | number>>> {
   const MAX_PER_CALL = 100;
-  const allResults = [];
+  const allResults: Array<Record<string, string | number>> = [];
   let offset = Math.max(0, Number(startOffset) || 0);
 
   while (allResults.length < limit) {
@@ -1103,63 +1114,73 @@ async function getLogs(client, project, logstore, from, to, query, limit, revers
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-async function main() {
+async function main(): Promise<void> {
   const { opts, positional } = parseArgs(process.argv.slice(2));
 
-  // Subcommands that don't need config
+  // Subcommands that don't need config — handle before requireConfig
   if (opts.init) return cmdInit();
-  if (opts.setup) return await cmdSetup();
   if (opts.help || opts.h) return cmdHelp();
 
-  // Handle context commands
-  if (opts["clear-context"]) {
+  if (opts.setup) return await cmdSetup();
+
+  // Handle context commands (no config needed)
+  if (opts['clear-context']) {
     clearContext();
-    console.log("Context cleared");
+    console.log('Context cleared');
     return;
   }
 
-  // Load config once for all remaining operations
-  const config = loadConfig();
-  if (!config) die(`No config found. Run with --init to create ${CONFIG_PATH}`);
+  // Load config for all remaining operations
+  let config: AliyunLogConfig;
+  try {
+    config = await requireConfig<AliyunLogConfig>('aliyunlog');
+  } catch (e) {
+    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
+      die(`No config found. Run with --init to create ${CONFIG_PATH}`);
+    }
+    throw e;
+  }
 
   // Subcommands that need config
-  if (opts["list-aliases"]) return cmdListAliases(config);
-  if (opts["list-logstores"]) {
+  if (opts['list-aliases']) return cmdListAliases(config);
+  if (opts['list-logstores']) {
     const project = resolveProjectName(config, positional[0]);
     return cmdListLogstores(config, project);
   }
   if (opts.test) return cmdTest(config);
-  if (opts["find-service"]) {
-    const serviceName = typeof opts["find-service"] === "string" ? opts["find-service"] : positional[0];
-    const project = opts.project || resolveProjectName(config, positional[0]) || "";
+  if (opts['find-service']) {
+    const serviceName = typeof opts['find-service'] === 'string' ? opts['find-service'] : positional[0];
+    const project = typeof opts.project === 'string'
+      ? opts.project
+      : (resolveProjectName(config, positional[0]) || '');
     return cmdFindService(config, project, serviceName);
   }
-  if (opts["list-services"]) {
-    const logstoreName = typeof opts["list-services"] === "string" ? opts["list-services"] : positional[0];
-    const project = opts.project ? opts.project : config.default_project || "";
+  if (opts['list-services']) {
+    const logstoreName = typeof opts['list-services'] === 'string' ? opts['list-services'] : positional[0];
+    const project = typeof opts.project === 'string' ? opts.project : (config.default_project || '');
     return cmdListServices(config, project, logstoreName);
   }
 
   // Handle --more, --refine, and standalone --full (load previous context)
-  let contextOverride = null;
+  let contextOverride: QueryContext | null = null;
   const standaloneFullOutput = opts.full && !opts.project && !opts.service && !opts.logstore && positional.length === 0;
   if (opts.more || opts.refine || standaloneFullOutput) {
     const prevContext = loadContext();
     if (!prevContext) {
       if (standaloneFullOutput) {
-        die("No previous context found for standalone --full. Run a query first (context is auto-saved), or rerun the original query with --full.");
+        die('No previous context found for standalone --full. Run a query first (context is auto-saved), or rerun the original query with --full.');
       }
-      die("No previous context found. Run a query first (context is auto-saved unless --no-context is used).");
+      die('No previous context found. Run a query first (context is auto-saved unless --no-context is used).');
     }
 
     if (opts.more) {
-      info("Loading previous query context for next page...");
+      info('Loading previous query context for next page...');
       contextOverride = {
         ...prevContext,
         offset: (Number(prevContext.offset) || 0) + (Number(prevContext.limit) || 1),
       };
     } else if (standaloneFullOutput) {
-      info("Loading previous query context with full output...");
+      info('Loading previous query context with full output...');
       contextOverride = { ...prevContext };
     } else if (opts.refine) {
       info(`Refining previous query: ${prevContext.query}`);
@@ -1168,17 +1189,17 @@ async function main() {
     }
   }
 
-  // ── Resolve project & logstore ─────────────────────────────────���─────────
+  // ── Resolve project & logstore ──────────────────────────────────────────
 
-  let project = contextOverride?.project || opts.project || "";
-  let logstore = contextOverride?.logstore || opts.logstore || "";
-  let serviceName = ""; // Track service name for template expansion
+  let project = contextOverride?.project || (typeof opts.project === 'string' ? opts.project : '') || '';
+  let logstore = contextOverride?.logstore || (typeof opts.logstore === 'string' ? opts.logstore : '') || '';
+  let serviceName = ''; // Track service name for template expansion
 
   // Handle --service flag for auto-discovery
   if (opts.service && !logstore) {
-    serviceName = opts.service;
-    project = project || config.default_project || "";
-    if (!project) die("--service requires a project. Use --project or set default_project in config.");
+    serviceName = String(opts.service);
+    project = project || config.default_project || '';
+    if (!project) die('--service requires a project. Use --project or set default_project in config.');
 
     // Check cache first
     const cache = loadMappingsCache();
@@ -1224,7 +1245,7 @@ async function main() {
     }
   } else if (opts.service && logstore) {
     // Service specified but logstore already provided - just use the logstore
-    serviceName = opts.service;
+    serviceName = String(opts.service);
   } else if (project && logstore) {
     // Both overridden — use as-is
   } else if (positional.length >= 2) {
@@ -1235,7 +1256,7 @@ async function main() {
   } else if (project && positional.length >= 1) {
     logstore = positional[0];
   } else if (positional.length === 1) {
-    project = config.default_project || "";
+    project = config.default_project || '';
     logstore = positional[0];
   } else {
     cmdHelp();
@@ -1244,49 +1265,53 @@ async function main() {
 
   if (!project || !logstore) {
     die(
-      "Could not resolve project/logstore. Check config or use --project/--logstore."
+      'Could not resolve project/logstore. Check config or use --project/--logstore.'
     );
   }
 
-  // ── Create SDK client ──────────────────────────────────────────────────
+  // ── Create SDK client ────────────────────────────────────────────────────
 
   validateCredentials(config);
   const client = createClient(config);
 
   // ── Build query parameters ───────────────────────────────────────────────
 
-  let query = contextOverride?.query || opts.query || "*";
+  let query = contextOverride?.query || (typeof opts.query === 'string' ? opts.query : '') || '*';
 
   // Template expansion
   if (opts.template) {
     if (!serviceName) {
-      die("--template requires service name. Usage: node aliyunlog.mjs <env> <service> --template=<name>");
+      die('--template requires service name. Usage: node aliyunlog.mjs <env> <service> --template=<name>');
     }
-    const keyword = opts.keyword || "";
-    query = expandTemplate(opts.template, serviceName, keyword);
+    const keyword = typeof opts.keyword === 'string' ? opts.keyword : '';
+    query = expandTemplate(String(opts.template), serviceName, keyword);
     info(`Template expanded: ${query}`);
   }
 
-  const fromDate = opts.from ? parseTime(opts.from) : (contextOverride?.from ? new Date(contextOverride.from) : defaultFromDate());
-  const toDate = opts.to ? parseTime(opts.to) : (contextOverride?.to ? new Date(contextOverride.to) : defaultToDate());
-  const limit = Number(opts.limit || contextOverride?.limit || "5");
+  const fromDate = opts.from
+    ? parseTime(String(opts.from))
+    : (contextOverride?.from ? new Date(contextOverride.from) : defaultFromDate());
+  const toDate = opts.to
+    ? parseTime(String(opts.to))
+    : (contextOverride?.to ? new Date(contextOverride.to) : defaultToDate());
+  const limit = Number(opts.limit || contextOverride?.limit || '5');
   if (isNaN(limit) || limit <= 0) die(`Invalid --limit value: "${opts.limit}". Must be a positive integer.`);
-  const format = opts.format || contextOverride?.format || "compact";
-  const fields = opts.fields || "";
+  const format = (typeof opts.format === 'string' ? opts.format : null) || contextOverride?.format || 'compact';
+  const fields = typeof opts.fields === 'string' ? opts.fields : '';
   const count = opts.count || false;
-  const extractErrorsMode = opts["extract-errors"] || false;
+  const extractErrorsMode = opts['extract-errors'] || false;
   const fullOutput = opts.full || false;
   const summaryMode = opts.summary || false;
-  const autoBroaden = opts["auto-broaden"] || false;
-  const persistContext = !opts["no-context"];
+  const autoBroaden = opts['auto-broaden'] || false;
+  const persistContext = !opts['no-context'];
   const reverse = opts.oldest ? false : (contextOverride?.reverse !== undefined ? Boolean(contextOverride.reverse) : true); // default newest-first
   const startOffset = Math.max(0, Number(contextOverride?.offset) || 0);
 
   // --count shorthand: rewrite query to COUNT(*)
   if (count) {
-    if (query.includes("|")) {
+    if (query.includes('|')) {
       // Already has analysis — don't rewrite
-      info("--count ignored: query already contains analysis statement");
+      info('--count ignored: query already contains analysis statement');
     } else {
       query = `${query} | SELECT COUNT(*) as total`;
     }
@@ -1295,7 +1320,7 @@ async function main() {
   // ── Execute query ────────────────────────────────────────────────────────
 
   try {
-    let data;
+    let data: Array<Record<string, string | number>>;
     let finalQuery = query;
     let searchLevel = 0;
 
@@ -1309,12 +1334,12 @@ async function main() {
     }
 
     const n = data ? data.length : 0;
-    const order = reverse ? "newest" : "oldest";
-    const limitInfo = count ? "count mode" : `limit=${limit}, offset=${startOffset}`;
-    const queryDisplay = finalQuery === "*" ? "*" : finalQuery;
+    const order = reverse ? 'newest' : 'oldest';
+    const limitInfo = count ? 'count mode' : `limit=${limit}, offset=${startOffset}`;
+    const queryDisplay = finalQuery === '*' ? '*' : finalQuery;
     info(`${project}/${logstore} | ${n} results | ${queryDisplay} | ${formatTimeForDisplay(fromDate)} ~ ${formatTimeForDisplay(toDate)} | ${limitInfo} | ${order} first`);
 
-    const contextPayload = {
+    const contextPayload: QueryContext = {
       project,
       logstore,
       query: finalQuery,
@@ -1331,25 +1356,25 @@ async function main() {
         saveContext(contextPayload);
       }
       if (autoBroaden && searchLevel > 0) {
-        console.log("(no results found even after broadening search)");
+        console.log('(no results found even after broadening search)');
       } else {
-        console.log("(no results)");
+        console.log('(no results)');
       }
       return;
     }
 
-    let output;
+    let output: string;
     if (extractErrorsMode) {
       output = extractErrors(data);
     } else {
       switch (format) {
-        case "compact":
+        case 'compact':
           output = fields ? formatCsv(data, fields) : formatCompact(data);
           break;
-        case "csv":
+        case 'csv':
           output = formatCsv(data, fields);
           break;
-        case "json":
+        case 'json':
           output = formatJson(data);
           break;
         default:
@@ -1358,14 +1383,14 @@ async function main() {
     }
 
     // Smart summarization is opt-in and only applies to large compact outputs.
-    const canSummarize = summaryMode && !fullOutput && !extractErrorsMode && format === "compact" && !fields;
+    const canSummarize = summaryMode && !fullOutput && !extractErrorsMode && format === 'compact' && !fields;
     if (canSummarize && output.split('\n').length > 50) {
       const summary = summarizeData(data);
       console.log(summary);
 
       if (persistContext) {
         saveContext(contextPayload);
-        info("Context saved. Use --more for next page or --refine to add filters.");
+        info('Context saved. Use --more for next page or --refine to add filters.');
       }
 
       return;
@@ -1379,11 +1404,11 @@ async function main() {
 
     if (persistContext) {
       saveContext(contextPayload);
-      info("Context saved. Use --more for next page or --refine to add filters.");
+      info('Context saved. Use --more for next page or --refine to add filters.');
     }
   } catch (err) {
-    const msg = err.message || String(err);
-    if (msg.includes("does not exist") || msg.includes("LogStoreNotExist") || msg.includes("ProjectNotExist")) {
+    const msg = (err as Error).message || String(err);
+    if (msg.includes('does not exist') || msg.includes('LogStoreNotExist') || msg.includes('ProjectNotExist')) {
       process.stderr.write(`ERROR: ${msg}\n`);
       if (serviceName) {
         process.stderr.write(`\nHint: The logstore "${logstore}" does not exist. Discover the correct one:\n`);

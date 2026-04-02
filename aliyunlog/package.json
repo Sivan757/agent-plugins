@@ -1,8 +1,14 @@
 {
-  "name": "aliyunlog-plugin",
+  "name": "aliyunlog",
   "version": "1.1.2",
-  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/aliyunlog.ts --bundle --platform=node --format=esm --outfile=dist/aliyunlog.mjs --external:@alicloud/log",
+    "dev": "tsx src/aliyunlog.ts",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
+    "@apex/core": "*",
     "@alicloud/log": "^1.2.5"
   }
 }
