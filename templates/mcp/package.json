@@ -1,0 +1,13 @@
+{
+  "name": "__PLUGIN__",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/__PLUGIN__-mcp-start.ts --bundle --platform=node --format=esm --outfile=dist/__PLUGIN__-mcp-start.mjs",
+    "dev": "tsx src/__PLUGIN__-mcp-start.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@apex/core": "*"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "__PLUGIN__": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/__PLUGIN__-mcp-start.mjs"]
+    }
+  }
+}
