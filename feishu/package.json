@@ -3,7 +3,7 @@
   "version": "0.6.0",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/feishu-mcp-start.ts --bundle --platform=node --format=esm --outfile=dist/feishu-mcp-start.mjs",
+    "build": "bash ../scripts/build-plugin.sh src/feishu-mcp-start.ts dist/feishu-mcp-start.mjs",
     "dev": "tsx src/feishu-mcp-start.ts",
     "typecheck": "tsc --noEmit"
   },

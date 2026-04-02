@@ -3,12 +3,13 @@
   "version": "1.2.0",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/aliyunlog.ts --bundle --platform=node --format=esm --outfile=dist/aliyunlog.mjs --external:@alicloud/log",
+    "build": "bash ../scripts/build-plugin.sh src/aliyunlog.ts dist/aliyunlog.mjs",
     "dev": "tsx src/aliyunlog.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@apex/core": "*",
-    "@alicloud/log": "^1.2.5"
+    "@alicloud/log": "^1.2.5",
+    "commander": "*"
   }
 }

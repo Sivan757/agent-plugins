@@ -44,7 +44,7 @@ import ALY from '@alicloud/log';
 // Convenience alias for use in function signatures
 type ALYClient = InstanceType<typeof ALY>;
 
-const __filename = fileURLToPath(import.meta.url);
+// __filename and __dirname are provided by the esbuild banner shim
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
