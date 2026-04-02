@@ -1,6 +1,6 @@
 {
   "name": "mysql",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "type": "module",
   "scripts": {
     "build": "esbuild src/mysql.ts --bundle --platform=node --format=esm --outfile=dist/mysql.mjs --external:mysql2",

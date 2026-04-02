@@ -4,7 +4,7 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 
 ## Plugin Design Principles
 1. Configuration stored globally in `~/.cache/apex-plugin` — never in project directories
-2. Initial configuration guided through a visual interface with unified style — accept credentials via UI, not session input
+2. Use playground and frontend-design create initial configuration page, guided through a visual interface with unified style — accept credentials via UI, not session input
 3. Every plugin must include: initialization/setup guidance, usage documentation, and troubleshooting
 4. Primary goal: serve users. Secondary: optimize interaction frequency and reduce token usage
 
@@ -17,14 +17,31 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 
 ## Architecture
 
-**8 plugins across 3 types:**
-- **CLI-based** (mysql, aliyunlog, ticktick): Bundled Node.js scripts in `scripts/`, skills in `skills/`
-- **MCP-based** (feishu, augment, jetbrains): `.mcp.json` configures external MCP servers
-- **Policy/rules** (security, p3c): Hooks-only, no scripts or MCP
+**Plugin types** (see `.claude-plugin/marketplace.json` for the full list):
+- **CLI-based**: Bundled Node.js scripts in `scripts/`, skills in `skills/`
+- **MCP-based**: `.mcp.json` configures external MCP servers
+- **Policy/rules**: Hooks-only, no scripts or MCP
+- **Meta/tooling**: Workflows, templates, and agent orchestration (no runtime scripts)
 
 **Marketplace registry:** `.claude-plugin/marketplace.json` — all plugins must be listed here
 
+## Development
+- `bash scripts/dev.sh` — launch Claude Code with all local plugins loaded
+- `bash scripts/dev.sh mysql feishu` — load specific plugins only
+- `bash scripts/dev.sh --list` — list available plugins with versions
+- Changes are picked up with `/reload-plugins` inside the session (no restart needed)
+
+## Config UI
+- `node scripts/config-ui.mjs --config <path> --schema '<json>'` — launch browser-based config form
+- Schema fields: `text`, `password`, `select`, `number`, `textarea`, `checkbox`
+- Credentials go browser → file, never through the LLM
+- Use in setup hooks when config is missing (see `ticktick/hooks/ticktick-setup.sh` for example)
+- `.json` configs auto-detected; dot-notation keys (`a.b.c`) write nested objects
+- i18n: `--lang zh` or `schema.lang`; auto-detects from browser; translations in `i18n` object inside script
+- All 5 credential plugins integrated: ticktick, mysql, postgresql, aliyunlog, feishu
+
 ## Conventions
+- Installed marketplace (`~/.claude/plugins/marketplaces/apex-plugins/`) is a separate copy — edit workspace, then sync with `cp` or `scripts/dev.sh` for testing
 - `${CLAUDE_PLUGIN_ROOT}` resolves to plugin install path at runtime — use in SKILL.md and hooks
 - SessionStart hooks exit 0 (success) always — log warnings but never block
 - PreToolUse hooks exit 2 to block, exit 0 to allow; support `permissionDecision: "ask"` for soft blocks
@@ -34,6 +51,7 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 - Version bumps: use `bump-plugin-version.sh` instead of editing 3 files manually — avoids version-check hook firing mid-edit
 - AI-facing help text (--help, SKILL.md): avoid fuzzy natural language for defaults — say "omit = auto" not "default: 15 min ago"
 - Commits: stage plugin files by name (`git add <plugin>/... marketplace.json`) — don't use `git add -A` since unrelated plugin work may be in-tree
+- CJK font fallback: always include `PingFang SC`, `Noto Sans SC`, `Microsoft YaHei` in font stacks for Chinese support
 
 ## SOP: Plugin Development & Optimization
 
@@ -56,14 +74,6 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 3. **Convention compliance** — file renames, hook hardening, noise removal
 4. **Documentation** — SKILL.md rewrite, help text, reference docs
 5. **Version bump last** — `bash scripts/bump-plugin-version.sh <plugin> <new-version>`
-
-### Phase 3 — Verify
-
-1. `node scripts/<plugin>.mjs --help` — runs without error
-2. `bash hooks/<plugin>-setup.sh` — silent when deps exist, installs on first run
-3. `bash scripts/check-plugin-versions.sh` — no mismatches
-4. Test invalid inputs (bad --limit, bad --from) — clear error messages
-5. Test edge cases specific to plugin (e.g., field value `0` not skipped)
 
 ### Rules for AI-facing interfaces
 

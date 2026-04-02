@@ -1,6 +1,6 @@
 {
   "name": "feishu",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Integrates feishu-mcp server for document search, reading, creation, block-level editing, folder management, and Wiki browsing.",
   "author": {
     "name": "Robotees"
