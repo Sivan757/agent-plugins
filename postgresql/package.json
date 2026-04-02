@@ -1,6 +1,6 @@
 {
   "name": "postgresql",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "build": "bash ../scripts/build-plugin.sh src/postgresql.ts dist/postgresql.mjs",

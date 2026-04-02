@@ -1,6 +1,6 @@
 {
   "name": "mysql",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Enables AI to execute SQL queries against MySQL databases via Node.js scripts with multi-database connection support.",
   "author": {
     "name": "Robotees"
