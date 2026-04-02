@@ -10,5 +10,4 @@ external-resources/*
 .playwright-mcp
 .vscode/
 node_modules/
-dist/
 *.tsbuildinfo
