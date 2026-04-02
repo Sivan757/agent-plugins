@@ -7,7 +7,8 @@
     "ticktick",
     "postgresql",
     "mysql",
-    "aliyunlog"
+    "aliyunlog",
+    "feishu"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
