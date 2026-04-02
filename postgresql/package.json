@@ -1,7 +1,17 @@
 {
   "name": "postgresql",
   "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/postgresql.ts --bundle --platform=node --format=esm --outfile=dist/postgresql.mjs --external:pg",
+    "dev": "tsx src/postgresql.ts",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
+    "@apex/core": "*",
     "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8"
   }
 }
