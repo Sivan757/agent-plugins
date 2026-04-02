@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@apex/core": "*",
+    "commander": "*",
     "pg": "^8.20.0"
   },
   "devDependencies": {
