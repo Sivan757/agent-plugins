@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@apex/core": "*"
+    "@apex/core": "*",
+    "commander": "*"
   }
 }

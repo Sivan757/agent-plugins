@@ -7,6 +7,7 @@ import { randomBytes } from 'crypto';
 import { createServer } from 'http';
 import { tmpdir } from 'os';
 
+import { Command } from 'commander';
 import { requireConfig, saveConfig, PluginError } from '@apex/core';
 
 // =============================================================================
@@ -282,28 +283,23 @@ function projectSummary(p: Project): Record<string, unknown> {
 }
 
 // =============================================================================
-// CLI Argument Parsing
+// CLI Argument Parsing helper (used by commander action handlers)
 // =============================================================================
 
-interface ParsedArgs {
-  args: string[];
-  opts: Record<string, string | boolean>;
-}
-
-function parseArgs(argv: string[]): ParsedArgs {
+function parseRawOpts(rawArgs: string[]): { args: string[]; opts: Record<string, string | boolean> } {
   const args: string[] = [];
   const opts: Record<string, string | boolean> = {};
   let i = 0;
-  while (i < argv.length) {
-    if (argv[i].startsWith('--')) {
-      const key = argv[i].slice(2);
-      if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
-        opts[key] = argv[++i];
+  while (i < rawArgs.length) {
+    if (rawArgs[i].startsWith('--')) {
+      const key = rawArgs[i].slice(2);
+      if (i + 1 < rawArgs.length && !rawArgs[i + 1].startsWith('--')) {
+        opts[key] = rawArgs[++i];
       } else {
         opts[key] = true;
       }
     } else {
-      args.push(argv[i]);
+      args.push(rawArgs[i]);
     }
     i++;
   }
@@ -315,13 +311,13 @@ function parseArgs(argv: string[]): ParsedArgs {
 // =============================================================================
 
 async function main(): Promise<void> {
-  // Check for --help / help before loading config (no credentials needed)
-  const argvEarly = process.argv.slice(2);
-  if (argvEarly.length === 0 || argvEarly[0] === 'help' || argvEarly[0] === '--help') {
-    const HELP_EARLY = `TickTick CLI — AI-friendly task management
+  const program = new Command();
 
-Usage: ticktick <resource> <action> [args] [--options]
-
+  program
+    .name('ticktick')
+    .description('TickTick CLI — AI-friendly task management')
+    .version('0.3.0')
+    .addHelpText('after', `
 Resources:
   tasks       list|get|create|quick-add|update|complete|delete|move|search|batch-create|batch-complete|batch-delete
               set-parent|unset-parent|subtasks|checklist|checklist-add|checklist-check|checklist-uncheck|checklist-remove|checklist-rename
@@ -344,50 +340,250 @@ Examples:
   ticktick projects create "Work" --color "#FF6347" --view kanban
   ticktick habits checkin-all
   ticktick tags list
-  ticktick user stats
-`;
-    console.log(HELP_EARLY);
-    return;
+  ticktick user stats`);
+
+  // Register resource-based subcommands. Each takes <action> [args...] plus
+  // any unknown options (--key value / --flag) which are passed through to the
+  // existing handler signatures unchanged.
+  const resourceNames = ['tasks', 'projects', 'folders', 'tags', 'columns', 'habits', 'user', 'focus'];
+  for (const res of resourceNames) {
+    program
+      .command(res)
+      .description(`Manage ${res}`)
+      .argument('<action>', 'Action to perform (see --help)')
+      .argument('[args...]', 'Positional arguments for the action')
+      .allowUnknownOption(true)
+      .allowExcessArguments(true)
+      .action(async (action: string, positionalArgs: string[], _cmdObj: Command) => {
+        // Collect everything that commander couldn't parse: unknown opts come
+        // through as the remaining raw argv after the subcommand + known tokens.
+        // Commander stores unparsed tokens in _cmdObj.args when allowUnknownOption is set,
+        // but since we captured <action> and [args...] we need to look at the
+        // raw process.argv that follows the subcommand name.
+        const subCmdIdx = process.argv.indexOf(res);
+        const rawAfterSubcmd = subCmdIdx >= 0 ? process.argv.slice(subCmdIdx + 1) : [];
+        // rawAfterSubcmd is: [action, ...positionalArgs, --opt val, --flag, ...]
+        // Skip the action token and known positional args to get only option tokens.
+        const rawOpts = rawAfterSubcmd.slice(1 + positionalArgs.length);
+        const { opts } = parseRawOpts(rawOpts);
+
+        const config = await requireConfig<TickTickConfig>('ticktick');
+        const HOST = config.host || 'ticktick.com';
+        const API_V2 = `https://api.${HOST}/api/v2`;
+        const API_V1 = `https://api.${HOST}/open/v1`;
+
+        function buildXDevice(): string {
+          if (config.xDevice) {
+            try {
+              const parsed = JSON.parse(config.xDevice) as Record<string, unknown>;
+              return JSON.stringify(parsed);
+            } catch { /* fall through to construct */ }
+          }
+          const id = config.deviceId || randomBytes(12).toString('hex');
+          return JSON.stringify({ platform: 'web', os: 'macOS 10.15.7', device: 'Chrome 145.0.0.0', name: '', version: 8023, id, channel: 'website', campaign: '', websocket: '' });
+        }
+
+        const X_DEVICE = buildXDevice();
+
+        let _syncCache: SyncState | null = null;
+        async function sync(): Promise<SyncState> {
+          if (!_syncCache) _syncCache = await v2('GET', '/batch/check/0', undefined, config, API_V2, HOST, X_DEVICE) as SyncState;
+          return _syncCache;
+        }
+
+        async function apiV2(method: string, path: string, body?: unknown): Promise<unknown> {
+          return v2(method, path, body, config, API_V2, HOST, X_DEVICE);
+        }
+
+        async function apiV1(method: string, path: string, body?: unknown): Promise<unknown> {
+          return v1(method, path, body, config, API_V1);
+        }
+
+        async function getV2TokenBound(): Promise<V2Session> {
+          return getV2Token(config, HOST, X_DEVICE);
+        }
+
+        await runResourceAction(res, action, positionalArgs, opts, { sync, apiV2, apiV1, getV2TokenBound, config });
+      });
   }
 
-  const config = await requireConfig<TickTickConfig>('ticktick');
-  const HOST = config.host || 'ticktick.com';
-  const API_V2 = `https://api.${HOST}/api/v2`;
-  const API_V1 = `https://api.${HOST}/open/v1`;
+  // Sync — no action argument
+  program
+    .command('sync')
+    .description('Full account sync — dump all projects, tasks, tags')
+    .action(async () => {
+      const config = await requireConfig<TickTickConfig>('ticktick');
+      const HOST = config.host || 'ticktick.com';
+      const API_V2 = `https://api.${HOST}/api/v2`;
+      function buildXDevice(): string {
+        if (config.xDevice) {
+          try { return JSON.stringify(JSON.parse(config.xDevice) as Record<string, unknown>); } catch { /* fall through */ }
+        }
+        const id = config.deviceId || randomBytes(12).toString('hex');
+        return JSON.stringify({ platform: 'web', os: 'macOS 10.15.7', device: 'Chrome 145.0.0.0', name: '', version: 8023, id, channel: 'website', campaign: '', websocket: '' });
+      }
+      const X_DEVICE = buildXDevice();
+      const data = await v2('GET', '/batch/check/0', undefined, config, API_V2, HOST, X_DEVICE) as SyncState;
+      out(data);
+    });
 
-  // X-Device header: prefer stored full JSON, then construct from deviceId
-  function buildXDevice(): string {
-    if (config.xDevice) {
-      try {
-        const parsed = JSON.parse(config.xDevice) as Record<string, unknown>;
-        return JSON.stringify(parsed);
-      } catch { /* fall through to construct */ }
+  // Auth — OAuth2 flow
+  program
+    .command('auth')
+    .description('OAuth2 token acquisition — opens browser')
+    .action(async () => {
+      const config = await requireConfig<TickTickConfig>('ticktick');
+      const HOST = config.host || 'ticktick.com';
+      await authFlow(config, HOST);
+    });
+
+  // Setup — parse X-Device header
+  program
+    .command('setup')
+    .argument('<subcommand>', 'x-device')
+    .argument('[args...]', 'Arguments for the subcommand')
+    .allowUnknownOption(true)
+    .description('Setup helpers — e.g. setup x-device \'{"platform":"web",...}\'')
+    .action(async (sub: string, subArgs: string[]) => {
+      if (sub === 'x-device') {
+        const subCmdIdx = process.argv.indexOf('setup');
+        const rawAfterSetup = subCmdIdx >= 0 ? process.argv.slice(subCmdIdx + 2) : [];
+        const { args: parsedArgs, opts: parsedOpts } = parseRawOpts(rawAfterSetup);
+        const json = parsedArgs[0] || String(parsedOpts['json'] || subArgs[0] || '');
+        if (!json) {
+          console.error('Usage: ticktick setup x-device \'{"platform":"web",...}\'');
+          console.error('Paste the X-Device header value from browser DevTools.');
+          process.exit(1);
+        }
+        await setupDevice(json);
+        return;
+      }
+      console.error(`Unknown setup action: ${sub}\nAvailable: x-device`);
+      process.exit(1);
+    });
+
+  await program.parseAsync();
+}
+
+// =============================================================================
+// Shared setup helpers (extracted so auth/setup commands can call them)
+// =============================================================================
+
+async function authFlow(config: TickTickConfig, HOST: string): Promise<void> {
+  const clientId = config.clientId;
+  const clientSecret = config.clientSecret;
+  if (!clientId || !clientSecret) {
+    console.error(`Error: clientId and clientSecret required in config`);
+    console.error('Get them at https://developer.' + HOST + '/manage');
+    process.exit(1);
+  }
+
+  const REDIRECT_PORT = 18321;
+  const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`;
+  const SCOPE = 'tasks:read tasks:write';
+  const STATE = randomBytes(8).toString('hex');
+
+  const authUrl = `https://${HOST}/oauth/authorize?` + new URLSearchParams({
+    client_id: clientId,
+    response_type: 'code',
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPE,
+    state: STATE,
+  }).toString();
+
+  const { promise, resolve: done } = Promise.withResolvers<{ access_token?: string; error?: string; details?: unknown }>();
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', `http://localhost:${REDIRECT_PORT}`);
+    if (url.pathname !== '/callback') {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
     }
-    const id = config.deviceId || randomBytes(12).toString('hex');
-    return JSON.stringify({ platform: 'web', os: 'macOS 10.15.7', device: 'Chrome 145.0.0.0', name: '', version: 8023, id, channel: 'website', campaign: '', websocket: '' });
+
+    const code = url.searchParams.get('code');
+    const state = url.searchParams.get('state');
+    if (state !== STATE) {
+      res.writeHead(400);
+      res.end('State mismatch — possible CSRF attack');
+      done({ error: 'state_mismatch' });
+      return;
+    }
+    if (!code) {
+      res.writeHead(400);
+      res.end('No authorization code received');
+      done({ error: 'no_code' });
+      return;
+    }
+
+    try {
+      const tokenResp = await fetch(`https://${HOST}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+          redirect_uri: REDIRECT_URI,
+          scope: SCOPE,
+        }).toString(),
+      });
+      const tokenData = await tokenResp.json() as { access_token?: string };
+      if (tokenData.access_token) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end('<h1>Authorization successful!</h1><p>You can close this tab.</p>');
+        done({ access_token: tokenData.access_token });
+      } else {
+        res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(`<h1>Token exchange failed</h1><pre>${JSON.stringify(tokenData, null, 2)}</pre>`);
+        done({ error: 'token_exchange_failed', details: tokenData });
+      }
+    } catch (err) {
+      res.writeHead(500);
+      res.end(`Token exchange error: ${(err as Error).message}`);
+      done({ error: (err as Error).message });
+    }
+  });
+
+  server.listen(REDIRECT_PORT, () => {
+    console.error(`Opening browser for authorization...`);
+    console.error(`If browser doesn't open, visit:\n${authUrl}\n`);
+    import('child_process').then(cp => cp.exec(`open "${authUrl}"`));
+  });
+
+  const result = await promise;
+  server.close();
+
+  if (result.error) {
+    console.error('Authorization failed:', result.error);
+    if (result.details) console.error(JSON.stringify(result.details, null, 2));
+    process.exit(1);
   }
 
-  const X_DEVICE = buildXDevice();
+  await saveConfig('ticktick', { accessToken: result.access_token }, true);
+  out({ ok: true, message: `Access token saved to config`, token_preview: (result.access_token ?? '').slice(0, 8) + '...' });
+}
 
-  // Sync — get everything at once
-  let _syncCache: SyncState | null = null;
-  async function sync(): Promise<SyncState> {
-    if (!_syncCache) _syncCache = await v2('GET', '/batch/check/0', undefined, config, API_V2, HOST, X_DEVICE) as SyncState;
-    return _syncCache;
-  }
+// =============================================================================
+// Resource action dispatcher (called by commander action handler)
+// =============================================================================
 
-  // Bound helpers for cleaner call sites
-  async function apiV2(method: string, path: string, body?: unknown): Promise<unknown> {
-    return v2(method, path, body, config, API_V2, HOST, X_DEVICE);
-  }
+interface Ctx {
+  sync: () => Promise<SyncState>;
+  apiV2: (method: string, path: string, body?: unknown) => Promise<unknown>;
+  apiV1: (method: string, path: string, body?: unknown) => Promise<unknown>;
+  getV2TokenBound: () => Promise<V2Session>;
+  config: TickTickConfig;
+}
 
-  async function apiV1(method: string, path: string, body?: unknown): Promise<unknown> {
-    return v1(method, path, body, config, API_V1);
-  }
-
-  async function getV2TokenBound(): Promise<V2Session> {
-    return getV2Token(config, HOST, X_DEVICE);
-  }
+async function runResourceAction(
+  resource: string,
+  action: string,
+  args: string[],
+  opts: Record<string, string | boolean>,
+  ctx: Ctx,
+): Promise<void> {
+  const { sync, apiV2, apiV1, getV2TokenBound } = ctx;
 
   // =============================================================================
   // Commands: Tasks
@@ -1119,198 +1315,17 @@ Examples:
   };
 
   // =============================================================================
-  // Commands: Sync
-  // =============================================================================
-
-  const syncCmd = {
-    async run(): Promise<void> {
-      out(await sync());
-    },
-  };
-
-  // =============================================================================
-  // Commands: Setup (parse X-Device header and save to config)
-  // =============================================================================
-
-  async function setupDevice(xDeviceJson: string): Promise<void> {
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(xDeviceJson) as Record<string, unknown>;
-    } catch (e) {
-      console.error(`Error: Invalid X-Device JSON: ${(e as Error).message}`);
-      console.error('Paste the full value from browser DevTools → Network → X-Device request header.');
-      process.exit(1);
-    }
-
-    if (!parsed.id) {
-      console.error('Error: X-Device JSON must contain an "id" field.');
-      process.exit(1);
-    }
-
-    await saveConfig('ticktick', {
-      deviceId: String(parsed.id),
-      xDevice: JSON.stringify(parsed),
-    }, true);
-
-    out({
-      ok: true,
-      message: `Device info saved to config`,
-      device_id: parsed.id,
-      version: parsed.version,
-      platform: parsed.platform,
-      os: parsed.os,
-      device: parsed.device,
-    });
-  }
-
-  // =============================================================================
-  // Commands: Auth (OAuth2 token acquisition)
-  // =============================================================================
-
-  async function authFlow(): Promise<void> {
-    const clientId = config.clientId;
-    const clientSecret = config.clientSecret;
-    if (!clientId || !clientSecret) {
-      console.error(`Error: clientId and clientSecret required in config`);
-      console.error('Get them at https://developer.' + HOST + '/manage');
-      process.exit(1);
-    }
-
-    const REDIRECT_PORT = 18321;
-    const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`;
-    const SCOPE = 'tasks:read tasks:write';
-    const STATE = randomBytes(8).toString('hex');
-
-    const authUrl = `https://${HOST}/oauth/authorize?` + new URLSearchParams({
-      client_id: clientId,
-      response_type: 'code',
-      redirect_uri: REDIRECT_URI,
-      scope: SCOPE,
-      state: STATE,
-    }).toString();
-
-    // Start local server to catch callback
-    const { promise, resolve: done } = Promise.withResolvers<{ access_token?: string; error?: string; details?: unknown }>();
-    const server = createServer(async (req, res) => {
-      const url = new URL(req.url ?? '/', `http://localhost:${REDIRECT_PORT}`);
-      if (url.pathname !== '/callback') {
-        res.writeHead(404);
-        res.end('Not found');
-        return;
-      }
-
-      const code = url.searchParams.get('code');
-      const state = url.searchParams.get('state');
-      if (state !== STATE) {
-        res.writeHead(400);
-        res.end('State mismatch — possible CSRF attack');
-        done({ error: 'state_mismatch' });
-        return;
-      }
-      if (!code) {
-        res.writeHead(400);
-        res.end('No authorization code received');
-        done({ error: 'no_code' });
-        return;
-      }
-
-      // Exchange code for token
-      try {
-        const tokenResp = await fetch(`https://${HOST}/oauth/token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            grant_type: 'authorization_code',
-            client_id: clientId,
-            client_secret: clientSecret,
-            code,
-            redirect_uri: REDIRECT_URI,
-            scope: SCOPE,
-          }).toString(),
-        });
-        const tokenData = await tokenResp.json() as { access_token?: string };
-        if (tokenData.access_token) {
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end('<h1>Authorization successful!</h1><p>You can close this tab.</p>');
-          done({ access_token: tokenData.access_token });
-        } else {
-          res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(`<h1>Token exchange failed</h1><pre>${JSON.stringify(tokenData, null, 2)}</pre>`);
-          done({ error: 'token_exchange_failed', details: tokenData });
-        }
-      } catch (err) {
-        res.writeHead(500);
-        res.end(`Token exchange error: ${(err as Error).message}`);
-        done({ error: (err as Error).message });
-      }
-    });
-
-    server.listen(REDIRECT_PORT, () => {
-      console.error(`Opening browser for authorization...`);
-      console.error(`If browser doesn't open, visit:\n${authUrl}\n`);
-      import('child_process').then(cp => cp.exec(`open "${authUrl}"`));
-    });
-
-    const result = await promise;
-    server.close();
-
-    if (result.error) {
-      console.error('Authorization failed:', result.error);
-      if (result.details) console.error(JSON.stringify(result.details, null, 2));
-      process.exit(1);
-    }
-
-    // Save token to config
-    await saveConfig('ticktick', { accessToken: result.access_token }, true);
-
-    out({ ok: true, message: `Access token saved to config`, token_preview: (result.access_token ?? '').slice(0, 8) + '...' });
-  }
-
-  // =============================================================================
   // Router
   // =============================================================================
 
   type CommandGroup = Record<string, (args: string[], opts: Record<string, string | boolean>) => Promise<void>>;
 
-  const COMMANDS: Record<string, CommandGroup> = { tasks, projects, folders, tags: tagsCmds, columns, habits, user: user as unknown as CommandGroup, focus, sync: syncCmd as unknown as CommandGroup };
-
-  const argv = argvEarly;
-  const resource = argv[0];
-  const action = argv[1] || 'list';
-  const { args, opts } = parseArgs(argv.slice(2));
-
-  // Special case: auth opens OAuth flow
-  if (resource === 'auth') {
-    await authFlow();
-    return;
-  }
-
-  // Special case: setup x-device <json>
-  if (resource === 'setup') {
-    if (action === 'x-device') {
-      const json = args[0] || String(opts.json || '');
-      if (!json) {
-        console.error('Usage: ticktick setup x-device \'{"platform":"web",...}\'');
-        console.error('Paste the X-Device header value from browser DevTools.');
-        process.exit(1);
-      }
-      await setupDevice(json);
-      return;
-    }
-    console.error(`Unknown setup action: ${action}\nAvailable: x-device`);
-    process.exit(1);
-  }
+  const COMMANDS: Record<string, CommandGroup> = { tasks, projects, folders, tags: tagsCmds, columns, habits, user: user as unknown as CommandGroup, focus };
 
   const cmdGroup = COMMANDS[resource];
   if (!cmdGroup) {
-    console.error(`Unknown resource: ${resource}\nRun 'ticktick help' for usage.`);
+    console.error(`Unknown resource: ${resource}\nRun 'ticktick --help' for usage.`);
     process.exit(1);
-  }
-
-  // Special case: sync has no subcommand
-  if (resource === 'sync') {
-    await syncCmd.run();
-    return;
   }
 
   // User commands have no args
@@ -1323,11 +1338,46 @@ Examples:
 
   const fn = cmdGroup[action];
   if (!fn) {
-    console.error(`Unknown action: ${resource} ${action}\nRun 'ticktick help' for usage.`);
+    console.error(`Unknown action: ${resource} ${action}\nRun 'ticktick --help' for usage.`);
     process.exit(1);
   }
 
   await fn(args, opts);
+}
+
+// =============================================================================
+// Commands: Setup (parse X-Device header and save to config)
+// =============================================================================
+
+async function setupDevice(xDeviceJson: string): Promise<void> {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(xDeviceJson) as Record<string, unknown>;
+  } catch (e) {
+    console.error(`Error: Invalid X-Device JSON: ${(e as Error).message}`);
+    console.error('Paste the full value from browser DevTools → Network → X-Device request header.');
+    process.exit(1);
+  }
+
+  if (!parsed.id) {
+    console.error('Error: X-Device JSON must contain an "id" field.');
+    process.exit(1);
+  }
+
+  await saveConfig('ticktick', {
+    deviceId: String(parsed.id),
+    xDevice: JSON.stringify(parsed),
+  }, true);
+
+  out({
+    ok: true,
+    message: `Device info saved to config`,
+    device_id: parsed.id,
+    version: parsed.version,
+    platform: parsed.platform,
+    os: parsed.os,
+    device: parsed.device,
+  });
 }
 
 main().catch((err: unknown) => {
