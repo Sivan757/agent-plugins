@@ -36,6 +36,7 @@ import path from 'path';
 import os from 'os';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
+import { Command } from 'commander';
 import { requireConfig, configPath, PluginError } from '@apex/core';
 
 // Type declarations are in alicloud-log.d.ts
@@ -100,11 +101,6 @@ interface ServiceCandidate {
   count: number;
 }
 
-interface ParsedArgs {
-  opts: Record<string, string | boolean>;
-  positional: string[];
-}
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function die(msg: string): never {
@@ -114,22 +110,6 @@ function die(msg: string): never {
 
 function info(msg: string): void {
   process.stderr.write(`[SLS] ${msg}\n`);
-}
-
-function parseArgs(argv: string[]): ParsedArgs {
-  const opts: Record<string, string | boolean> = {};
-  const positional: string[] = [];
-  for (const arg of argv) {
-    const m = arg.match(/^--([a-z-]+)=(.*)$/);
-    if (m) {
-      opts[m[1]] = m[2];
-    } else if (arg.startsWith('--')) {
-      opts[arg.slice(2)] = true;
-    } else {
-      positional.push(arg);
-    }
-  }
-  return { opts, positional };
 }
 
 // ── SDK Loader ───────────────────────────────────────────────────────────────
@@ -948,50 +928,7 @@ async function cmdTest(config: AliyunLogConfig): Promise<void> {
   }
 }
 
-function cmdHelp(): void {
-  console.log(`Usage:
-  node aliyunlog.mjs [query-options]               Query logs (recommended with --service + --project)
-  node aliyunlog.mjs <env> <service> [options]     Query logs by environment and service (legacy positional mode)
-  node aliyunlog.mjs --init                         Create config template
-  node aliyunlog.mjs --setup                        Interactive setup wizard
-  node aliyunlog.mjs --find-service=<name> [--project=<p>]  Find which logstore a service belongs to
-  node aliyunlog.mjs --list-services=<logstore> [--project=<p>]  List services in a logstore
-  node aliyunlog.mjs --list-logstores <project|env> List logstores in a project
-  node aliyunlog.mjs --list-aliases                 Show configured aliases
-  node aliyunlog.mjs --test                         Test SDK connection
-  node aliyunlog.mjs --more                         Fetch next page (requires saved context)
-  node aliyunlog.mjs --full                         Re-run last query without summarization
-  node aliyunlog.mjs --refine="filter"              Add filter to previous query
-  node aliyunlog.mjs --clear-context                Clear saved context
-
-Config: ${CONFIG_PATH}
-
-Options:
-  --query=<sls_query>          SLS query (default: *)
-  --service=<name>             Auto-discover logstore by service name
-  --template=<name>            Use query template (requires service name)
-                               Available: error-by-service, npe, recent-errors,
-                               fatal, timeout, oom
-  --keyword=<text>             Additional keyword for templates (e.g., npe)
-  --from=<time>                Start time (omit = auto last 15 min)
-                               Formats: now, -24h, -2d, "2 days ago"
-                               ISO 8601: "2026-03-04T10:00:00+08:00"
-  --to=<time>                  End time (omit = now)
-                               Same formats as --from
-  --limit=<n>                  Max entries (default: 5)
-  --format=compact|csv|json    Output format (default: compact)
-  --extract-errors             Extract only exception types and stack traces
-  --full                       Skip summarization and force raw inline output
-  --summary                    Enable smart summary for large compact output
-  --auto-broaden               Auto-retry with relaxed filters if 0 results
-  --save-context               Save query context (legacy; now default behavior)
-  --no-context                 Disable auto-saving query context
-  --project=<name>             Override project
-  --logstore=<name>            Override logstore
-  --fields=<f1,f2,...>         Extract specific fields (CSV output)
-  --count                      Rewrite query to COUNT(*)
-  --oldest                     Show oldest entries first (default: newest first)`);
-}
+// cmdHelp removed — commander generates help automatically
 
 // ── Progressive Search Strategy ──────────────────────────────────────────────
 
@@ -1112,58 +1049,52 @@ async function getLogs(
   return allResults;
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Helper: load config or die ────────────────────────────────────────────────
 
-async function main(): Promise<void> {
-  const { opts, positional } = parseArgs(process.argv.slice(2));
-
-  // Subcommands that don't need config — handle before requireConfig
-  if (opts.init) return cmdInit();
-  if (opts.help || opts.h) return cmdHelp();
-
-  if (opts.setup) return await cmdSetup();
-
-  // Handle context commands (no config needed)
-  if (opts['clear-context']) {
-    clearContext();
-    console.log('Context cleared');
-    return;
-  }
-
-  // Load config for all remaining operations
-  let config: AliyunLogConfig;
+async function loadConfig(): Promise<AliyunLogConfig> {
   try {
-    config = await requireConfig<AliyunLogConfig>('aliyunlog');
+    return await requireConfig<AliyunLogConfig>('aliyunlog');
   } catch (e) {
     if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
       die(`No config found. Run with --init to create ${CONFIG_PATH}`);
     }
     throw e;
   }
+}
 
-  // Subcommands that need config
-  if (opts['list-aliases']) return cmdListAliases(config);
-  if (opts['list-logstores']) {
-    const project = resolveProjectName(config, positional[0]);
-    return cmdListLogstores(config, project);
+// ── Query action (shared by default command) ──────────────────────────────────
+
+async function runQuery(
+  env: string | undefined,
+  service: string | undefined,
+  opts: {
+    project?: string;
+    logstore?: string;
+    service?: string;
+    query?: string;
+    template?: string;
+    keyword?: string;
+    from?: string;
+    to?: string;
+    limit?: string;
+    format?: string;
+    fields?: string;
+    count?: boolean;
+    oldest?: boolean;
+    summary?: boolean;
+    context?: boolean;
+    more?: boolean;
+    refine?: string;
+    full?: boolean;
+    extractErrors?: boolean;
+    autoBroaden?: boolean;
   }
-  if (opts.test) return cmdTest(config);
-  if (opts['find-service']) {
-    const serviceName = typeof opts['find-service'] === 'string' ? opts['find-service'] : positional[0];
-    const project = typeof opts.project === 'string'
-      ? opts.project
-      : (resolveProjectName(config, positional[0]) || '');
-    return cmdFindService(config, project, serviceName);
-  }
-  if (opts['list-services']) {
-    const logstoreName = typeof opts['list-services'] === 'string' ? opts['list-services'] : positional[0];
-    const project = typeof opts.project === 'string' ? opts.project : (config.default_project || '');
-    return cmdListServices(config, project, logstoreName);
-  }
+): Promise<void> {
+  const config = await loadConfig();
 
   // Handle --more, --refine, and standalone --full (load previous context)
   let contextOverride: QueryContext | null = null;
-  const standaloneFullOutput = opts.full && !opts.project && !opts.service && !opts.logstore && positional.length === 0;
+  const standaloneFullOutput = opts.full && !opts.project && !opts.service && !opts.logstore && !env;
   if (opts.more || opts.refine || standaloneFullOutput) {
     const prevContext = loadContext();
     if (!prevContext) {
@@ -1191,13 +1122,13 @@ async function main(): Promise<void> {
 
   // ── Resolve project & logstore ──────────────────────────────────────────
 
-  let project = contextOverride?.project || (typeof opts.project === 'string' ? opts.project : '') || '';
-  let logstore = contextOverride?.logstore || (typeof opts.logstore === 'string' ? opts.logstore : '') || '';
+  let project = contextOverride?.project || opts.project || '';
+  let logstore = contextOverride?.logstore || opts.logstore || '';
   let serviceName = ''; // Track service name for template expansion
 
   // Handle --service flag for auto-discovery
   if (opts.service && !logstore) {
-    serviceName = String(opts.service);
+    serviceName = opts.service;
     project = project || config.default_project || '';
     if (!project) die('--service requires a project. Use --project or set default_project in config.');
 
@@ -1225,7 +1156,7 @@ async function main(): Promise<void> {
           cache[project][serviceName] = logstore;
           saveMappingsCache(cache);
         } else {
-          die(`Service "${serviceName}" not found in any logstore in project "${project}".\nTry: node ${__filename} --list-services=<logstore> --project=${project}`);
+          die(`Service "${serviceName}" not found in any logstore in project "${project}".\nTry: node ${__filename} --find-service=${serviceName} --project=${project}`);
         }
       } else if (candidates.length === 1) {
         logstore = candidates[0];
@@ -1245,21 +1176,21 @@ async function main(): Promise<void> {
     }
   } else if (opts.service && logstore) {
     // Service specified but logstore already provided - just use the logstore
-    serviceName = String(opts.service);
+    serviceName = opts.service;
   } else if (project && logstore) {
     // Both overridden — use as-is
-  } else if (positional.length >= 2) {
-    const resolved = resolveAlias(config, positional[0], positional[1]);
+  } else if (env && service) {
+    const resolved = resolveAlias(config, env, service);
     if (!project) project = resolved.project;
     if (!logstore) logstore = resolved.logstore;
-    serviceName = positional[1]; // Save service name
-  } else if (project && positional.length >= 1) {
-    logstore = positional[0];
-  } else if (positional.length === 1) {
+    serviceName = service; // Save service name
+  } else if (project && env) {
+    logstore = env;
+  } else if (env) {
     project = config.default_project || '';
-    logstore = positional[0];
+    logstore = env;
   } else {
-    cmdHelp();
+    process.stdout.write(program.helpInformation());
     process.exit(1);
   }
 
@@ -1276,34 +1207,35 @@ async function main(): Promise<void> {
 
   // ── Build query parameters ───────────────────────────────────────────────
 
-  let query = contextOverride?.query || (typeof opts.query === 'string' ? opts.query : '') || '*';
+  let query = contextOverride?.query || opts.query || '*';
 
   // Template expansion
   if (opts.template) {
     if (!serviceName) {
       die('--template requires service name. Usage: node aliyunlog.mjs <env> <service> --template=<name>');
     }
-    const keyword = typeof opts.keyword === 'string' ? opts.keyword : '';
-    query = expandTemplate(String(opts.template), serviceName, keyword);
+    const keyword = opts.keyword || '';
+    query = expandTemplate(opts.template, serviceName, keyword);
     info(`Template expanded: ${query}`);
   }
 
   const fromDate = opts.from
-    ? parseTime(String(opts.from))
+    ? parseTime(opts.from)
     : (contextOverride?.from ? new Date(contextOverride.from) : defaultFromDate());
   const toDate = opts.to
-    ? parseTime(String(opts.to))
+    ? parseTime(opts.to)
     : (contextOverride?.to ? new Date(contextOverride.to) : defaultToDate());
   const limit = Number(opts.limit || contextOverride?.limit || '5');
   if (isNaN(limit) || limit <= 0) die(`Invalid --limit value: "${opts.limit}". Must be a positive integer.`);
-  const format = (typeof opts.format === 'string' ? opts.format : null) || contextOverride?.format || 'compact';
-  const fields = typeof opts.fields === 'string' ? opts.fields : '';
+  const format = opts.format || contextOverride?.format || 'compact';
+  const fields = opts.fields || '';
   const count = opts.count || false;
-  const extractErrorsMode = opts['extract-errors'] || false;
+  const extractErrorsMode = opts.extractErrors || false;
   const fullOutput = opts.full || false;
   const summaryMode = opts.summary || false;
-  const autoBroaden = opts['auto-broaden'] || false;
-  const persistContext = !opts['no-context'];
+  const autoBroaden = opts.autoBroaden || false;
+  // commander's --no-context sets opts.context = false
+  const persistContext = opts.context !== false;
   const reverse = opts.oldest ? false : (contextOverride?.reverse !== undefined ? Boolean(contextOverride.reverse) : true); // default newest-first
   const startOffset = Math.max(0, Number(contextOverride?.offset) || 0);
 
@@ -1424,4 +1356,128 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+// ── Commander CLI ─────────────────────────────────────────────────────────────
+
+const program = new Command();
+
+program
+  .name('aliyunlog')
+  .description('Alibaba Cloud SLS log query CLI')
+  .version('1.2.0');
+
+program
+  .command('init')
+  .description('Create config template')
+  .action(() => { cmdInit(); });
+
+program
+  .command('setup')
+  .description('Interactive setup wizard')
+  .action(async () => { await cmdSetup(); });
+
+program
+  .command('test')
+  .description('Test SDK connection')
+  .action(async () => {
+    const config = await loadConfig();
+    await cmdTest(config);
+  });
+
+program
+  .command('list-logstores')
+  .argument('<project>', 'Project or environment name')
+  .description('List logstores in a project')
+  .action(async (projectArg: string) => {
+    const config = await loadConfig();
+    const project = resolveProjectName(config, projectArg);
+    await cmdListLogstores(config, project);
+  });
+
+program
+  .command('list-aliases')
+  .description('Show configured aliases')
+  .action(async () => {
+    const config = await loadConfig();
+    cmdListAliases(config);
+  });
+
+program
+  .command('find-service')
+  .argument('<name>', 'Service name to search for')
+  .option('--project <p>', 'SLS project name')
+  .description('Find which logstore a service belongs to')
+  .action(async (name: string, opts: { project?: string }) => {
+    const config = await loadConfig();
+    const project = opts.project || config.default_project || '';
+    await cmdFindService(config, project, name);
+  });
+
+program
+  .command('list-services')
+  .argument('<logstore>', 'Logstore name')
+  .option('--project <p>', 'SLS project name')
+  .description('List services in a logstore')
+  .action(async (logstore: string, opts: { project?: string }) => {
+    const config = await loadConfig();
+    const project = opts.project || config.default_project || '';
+    await cmdListServices(config, project, logstore);
+  });
+
+program
+  .command('clear-context')
+  .description('Clear saved query context')
+  .action(() => {
+    clearContext();
+    console.log('Context cleared');
+  });
+
+program
+  .command('query', { isDefault: true })
+  .argument('[env]', 'Environment (legacy positional)')
+  .argument('[service]', 'Service name (legacy positional)')
+  .option('--project <name>', 'SLS project name')
+  .option('--logstore <name>', 'SLS logstore name')
+  .option('--service <name>', 'Auto-discover logstore by service')
+  .option('--query <q>', 'SLS query string', '*')
+  .option('--template <name>', 'Query template (error-by-service, npe, recent-errors, fatal, timeout, oom)')
+  .option('--keyword <text>', 'Keyword for template')
+  .option('--from <time>', 'Start time (omit = auto last 15 min). Formats: now, -24h, -2d, "2 days ago", ISO 8601')
+  .option('--to <time>', 'End time (omit = now). Same formats as --from')
+  .option('--limit <n>', 'Max entries', '5')
+  .option('--format <fmt>', 'Output format: compact|csv|json', 'compact')
+  .option('--fields <f>', 'Extract specific fields (comma-separated)')
+  .option('--count', 'COUNT(*) query')
+  .option('--oldest', 'Show oldest first (default: newest first)')
+  .option('--summary', 'Smart summary for large compact output')
+  .option('--no-context', 'Disable context saving')
+  .option('--more', 'Fetch next page (requires saved context)')
+  .option('--refine <filter>', 'Refine previous query with additional filter')
+  .option('--full', 'Raw inline output (skip summarization/temp file)')
+  .option('--extract-errors', 'Extract exceptions/stack traces')
+  .option('--auto-broaden', 'Auto-retry with relaxed filters if 0 results')
+  .action(async (env: string | undefined, service: string | undefined, opts: {
+    project?: string;
+    logstore?: string;
+    service?: string;
+    query?: string;
+    template?: string;
+    keyword?: string;
+    from?: string;
+    to?: string;
+    limit?: string;
+    format?: string;
+    fields?: string;
+    count?: boolean;
+    oldest?: boolean;
+    summary?: boolean;
+    context?: boolean;
+    more?: boolean;
+    refine?: string;
+    full?: boolean;
+    extractErrors?: boolean;
+    autoBroaden?: boolean;
+  }) => {
+    await runQuery(env, service, opts);
+  });
+
+await program.parseAsync();
