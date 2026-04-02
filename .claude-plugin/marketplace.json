@@ -65,10 +65,10 @@
       "description": "Discover and install agent skills from the skills.sh ecosystem when users ask about extending capabilities or finding tools for specific tasks."
     },
     {
-      "name": "kotlin-architect",
-      "version": "0.1.0",
-      "source": "./kotlin-architect",
-      "description": "System architect persona for Kotlin + Spring Boot + Jimmer + Gradle projects with opinionated best practices and Java-to-Kotlin migration expertise."
+      "name": "company-knowledge",
+      "version": "0.2.0",
+      "source": "./company-knowledge",
+      "description": "Aikero company knowledge base — Blade framework, team conventions, Gradle ecosystem, Kotlin/Spring Boot/Jimmer architecture, and Java-to-Kotlin migration"
     }
   ]
 }

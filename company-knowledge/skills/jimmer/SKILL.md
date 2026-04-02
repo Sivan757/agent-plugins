@@ -8,7 +8,8 @@ description: >-
   "configure Jimmer caching", "use Jimmer triggers", or works on any code
   involving Jimmer ORM, `@Entity` interfaces, `newFetcher`, `KRepository`,
   or Jimmer's type-safe SQL DSL.
-version: 0.1.0
+version: 0.2.0
+model: sonnet
 ---
 
 # Jimmer ORM
@@ -195,6 +196,76 @@ jimmer:
   show-sql: true
   pretty-sql: true
   database-validation-mode: ERROR
+```
+
+## Blade Jimmer Integration
+
+In Aikero projects, use the Blade Jimmer starter instead of the vanilla Jimmer starter.
+
+### BladeKotlinRepository
+
+Blade provides `BladeKotlinRepository` which extends Jimmer's `KRepository` with audit field support:
+
+```kotlin
+import team.aikero.blade.data.jimmer.repository.BladeKotlinRepository
+
+@Component
+class OrderRepository(sql: KSqlClient) : BladeKotlinRepository<Order, Long>(sql)
+```
+
+### Entity Base Interfaces
+
+Blade provides reusable entity interfaces for common audit fields:
+
+```kotlin
+@Entity
+@Table(name = "`order`")
+interface Order : LongId, CreatedTime, RevisedTime, Reviser, OrgWithFilter {
+    val name: String
+    @OneToMany(mappedBy = "order")
+    val orderDetails: List<OrderDetail>
+}
+```
+
+Available mixins: `LongId`, `BaseEntity`, `CreatedTime`, `RevisedTime`, `Reviser`, `OrgWithFilter`
+
+### Configuration
+
+```yaml
+jimmer:
+  language: kotlin
+  show-sql: true
+
+cosid:
+  namespace: ${spring.application.name}
+  snowflake:
+    enabled: true
+    epoch: 1654016400
+  machine:
+    enabled: true
+    distributor:
+      type: MANUAL
+      manual:
+        machine-id: 1
+
+blade:
+  jimmer:
+    filter:
+      organization: true   # Auto-filter by organization ID
+      creator: true         # Auto-filter by creator
+```
+
+### Gradle Dependencies
+
+```kotlin
+plugins {
+    alias(commonLibs.plugins.google.ksp)
+}
+dependencies {
+    implementation(commonLibs.blade.jimmer.spring.boot.starter)
+    ksp(commonLibs.jimmer.ksp)
+    runtimeOnly(springBootLibs.h2database.h2)  // or MySQL/PostgreSQL driver
+}
 ```
 
 ## Additional Resources

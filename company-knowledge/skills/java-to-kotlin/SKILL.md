@@ -7,7 +7,8 @@ description: >-
   "replace Java patterns with Kotlin idioms", "adopt coroutines",
   "convert callbacks to suspend functions", "modernize Java code",
   or works on migrating any Java codebase to Kotlin.
-version: 0.1.0
+version: 0.2.0
+model: sonnet
 ---
 
 # Java to Kotlin Migration
@@ -26,6 +27,18 @@ Comprehensive, opinionated guide for migrating Java Spring Boot applications to 
 6. **Repositories** — Migrate from JPA classes to Jimmer interfaces (if applicable)
 7. **Tests** — Convert to JUnit 5 + MockK + Kotest
 8. **Remove Java** — Delete Java sources once all code is converted
+
+### Aikero Blade Framework Migration
+
+When migrating within the Blade framework, also adopt:
+- **Blade starters** — replace manual Spring Boot dependencies with `blade-web-boot-spring-boot-starter`, `blade-auth-spring-boot-starter`, etc.
+- **DataResponse<T>** — replace `ResponseEntity` with `toSuccess()` / `failure()` pattern
+- **Auth annotations** — replace Spring Security with `@PreCheckPermission`, `@PreCheckRole`, `@PreCheckIgnore`
+- **Jimmer ORM** — consider migrating from JPA to Jimmer interfaces (see jpa-to-jimmer reference)
+- **Jakarta EE** — `javax.*` → `jakarta.*` (mandatory for Spring Boot 3.x)
+- **Sa-Token** — use `sa-token-spring-boot3-starter` (not the boot2 version)
+
+See the **blade-framework** skill for details. Upgrade guide: [Spring Boot 3 Upgrade](https://aikero-docs.robotees.tech/conventions/other/upgrade-sb3.html)
 
 ### Coexistence Rules
 

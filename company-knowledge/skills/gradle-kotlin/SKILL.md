@@ -8,7 +8,8 @@ description: >-
   "set up test configuration", "manage dependency versions",
   "create version catalog", "convert build.gradle to Kotlin DSL",
   or works on any Gradle build configuration for Kotlin Spring Boot projects.
-version: 0.1.0
+version: 0.2.0
+model: sonnet
 ---
 
 # Gradle Kotlin DSL
@@ -206,6 +207,60 @@ tasks.register("generateApiDocs") {
 3. **Missing `plugin.spring`** — Spring beans won't be proxied (AOP, `@Transactional` fail)
 4. **Using `annotationProcessor` for Kotlin** — use `ksp` instead
 5. **Groovy syntax in `.kts`** — no single quotes, use `=` not `:` for properties
+
+## Aikero Blade Framework Integration
+
+For Aikero projects using the Blade framework, the build setup differs from standalone projects:
+
+### Version Catalog from Blade
+
+Instead of maintaining your own `libs.versions.toml`, import the Blade catalog:
+
+```kotlin
+// settings.gradle.kts
+import team.aikero.gradle.plugin.version.catalog.versionCatalogConf
+
+plugins {
+    id("team.aikero.gradle.plugin.version-catalog")
+}
+
+versionCatalogConf {
+    artifactVersion = frameworkVersion  // from gradle.properties
+}
+```
+
+This provides type-safe accessors: `commonLibs.blade.web.spring.boot.starter`, `springBootLibs.spring.springBootStarterWeb`, etc.
+
+### Common-Conf Plugin
+
+Apply for shared Kotlin/repository/test configuration:
+```kotlin
+plugins {
+    alias(commonLibs.plugins.common.conf)
+}
+```
+Configures: Nexus repositories, Kotlin compiler options (`-Xjsr305=strict`), JUnit Platform, Kover coverage (95% minimum).
+
+### KSP for Blade Version Generation
+
+```kotlin
+ksp {
+    arg("bladeVersion", project.version.toString())
+    arg("moduleGen", "true")
+    arg("moduleName", project.name)
+}
+```
+
+### Required gradle.properties
+
+```properties
+group=team.aikero.<department>.<project>
+version=1.0.0-SNAPSHOT
+frameworkVersion=3.2.0
+```
+
+See the **aikero-gradle** skill for full details on Aikero Gradle plugins and publishing.
+Doc: [Gradle Project Structure](https://aikero-docs.robotees.tech/gradle/gradleproject.html)
 
 ## Additional Resources
 

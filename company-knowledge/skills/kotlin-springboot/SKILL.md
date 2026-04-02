@@ -8,7 +8,8 @@ description: >-
   "design domain models", "structure a Kotlin Spring Boot project", or works on
   any Kotlin + Spring Boot backend code. Provides opinionated, architect-level
   guidance for idiomatic Kotlin Spring Boot applications.
-version: 0.1.0
+version: 0.2.0
+model: sonnet
 ---
 
 # Kotlin Spring Boot Architecture
@@ -218,6 +219,83 @@ data class OrderProperties(
 - `@ConfigurationProperties` with `data class` for type-safe config
 - `application.yml` over `.properties` for readability
 - Spring profiles for environment-specific config
+
+## Blade Framework Patterns
+
+In Aikero projects using the Blade framework, several patterns replace the generic Spring Boot patterns above.
+
+### DataResponse<T> Replaces ResponseEntity
+
+Aikero APIs use `DataResponse<T>` instead of `ResponseEntity`. Import from `team.aikero.blade.core.protocol`:
+
+```kotlin
+@RestController
+@RequestMapping("/users")
+class UserController(private val userRepository: UserRepository) {
+    @GetMapping
+    @PreCheckPermission("[user]用户管理", ["user.list"])
+    fun getAllUsers(): DataResponse<List<UserReq>> =
+        userRepository.getAllUsers().toSuccess()
+
+    @GetMapping("/{id}")
+    fun getUserById(@PathVariable id: Long): DataResponse<UserReq> {
+        val user = userRepository.getUserById(id)
+            ?: return failure(HttpStatus.NOT_FOUND.reasonPhrase)
+        return user.toSuccess()
+    }
+
+    @PreCheckIgnore
+    @DeleteMapping("/{id}")
+    fun deleteUser(@PathVariable id: Long): DataResponse<Unit> {
+        userRepository.deleteUser(id)
+        return Unit.toSuccess()
+    }
+}
+```
+
+### Auth Annotations (Sa-Token)
+
+Replace Spring Security with Blade auth annotations:
+- `@PreCheckPermission(name, value)` — permission-based access
+- `@PreCheckRole(value)` — role-based access
+- `@PreCheckIgnore` — skip auth (public endpoints)
+
+### Logging
+
+Use kotlin-logging via Blade:
+```kotlin
+import team.aikero.blade.logging.core.log
+import team.aikero.blade.util.json.toJson
+
+log.info { "Users loaded: ${users.toJson()}" }
+```
+
+### Operation Logging
+
+```kotlin
+@OpLog(
+    success = "'Created order: ' + #_return.data.orderNo",
+    type = OpType.CREATE,
+    bizId = "#_return.data.id"
+)
+@PostMapping
+fun create(@RequestBody req: OrderReq): DataResponse<OrderInfo> = ...
+```
+
+### Service Layer
+
+Service NEVER returns `DataResponse` — only data or throws exceptions:
+```kotlin
+@Service
+class OrderService(private val orderRepository: OrderRepository) {
+    fun findById(id: Long): Order =
+        orderRepository.findById(id)
+            ?: throw ResourceNotFoundException("Order", id)
+}
+```
+
+See the **blade-framework** skill for comprehensive Blade API reference.
+Doc: [Blade Framework](https://aikero-docs.robotees.tech/blade/)
 
 ## Additional Resources
 
