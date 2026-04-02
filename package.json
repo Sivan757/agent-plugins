@@ -5,7 +5,8 @@
   "workspaces": [
     "packages/*",
     "ticktick",
-    "postgresql"
+    "postgresql",
+    "mysql"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

@@ -1,8 +1,14 @@
 {
-  "name": "mysql-plugin",
+  "name": "mysql",
   "version": "0.6.1",
-  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/mysql.ts --bundle --platform=node --format=esm --outfile=dist/mysql.mjs --external:mysql2",
+    "dev": "tsx src/mysql.ts",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
+    "@apex/core": "*",
     "mysql2": "^3"
   }
 }
