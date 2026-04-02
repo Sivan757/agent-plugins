@@ -14,6 +14,7 @@
  */
 
 import mysql from 'mysql2/promise';
+import { Command } from 'commander';
 
 import { requireConfig, saveConfig, configPath, PluginError } from '@apex/core';
 
@@ -336,220 +337,192 @@ function formatTable(rows: Record<string, unknown>[], colWidth: number): string 
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
+const program = new Command();
 
-  if (args.includes('--help') || args.includes('-h')) {
-    const CONFIG_PATH = configPath('mysql');
-    console.log(`Usage:
-  node mysql.mjs <connection-name> <sql> [options]
-  node mysql.mjs --init                             Create config template
-  node mysql.mjs --list                             List available connections
-  node mysql.mjs --test [name]                      Test connection(s)
-  node mysql.mjs --columns <conn> <table>           List column names of a table
-  node mysql.mjs --databases <conn>                 List all databases on the connection
-  node mysql.mjs --find-table <conn> <table|%pat%>  Find which database a table belongs to
+program
+  .name('mysql')
+  .description('MySQL query executor for Claude Code')
+  .version('0.7.0')
+  .option('--user-confirmed', 'Bypass write-operation guard (after user approval)');
 
-Config: ${CONFIG_PATH}
-
-Options:
-  --format=csv|table|json|compact  Output format (default: csv)
-  --params='["val"]'               Parameterized query values
-  --limit=N                        Max rows (default: 1, 0=unlimited)
-  --col-width=N                    Max column width (default: 40)
-  --user-confirmed                 Bypass write-operation guard (after user approval)`);
-    return;
-  }
-
-  if (args.includes('--init')) {
-    printTemplate();
-    return;
-  }
-
-  if (args.includes('--list')) {
-    await listConnections();
-    return;
-  }
-
-  if (args.includes('--test')) {
-    const testIdx = args.indexOf('--test');
-    const targetName =
-      args[testIdx + 1] && !args[testIdx + 1].startsWith('--')
-        ? args[testIdx + 1]
-        : null;
-    await testConnections(targetName);
-    return;
-  }
-
-  // --columns <connection> <table>
-  if (args.includes('--columns')) {
-    const idx = args.indexOf('--columns');
-    const connName = args[idx + 1];
-    const tableName = args[idx + 2];
-    if (!connName || !tableName || connName.startsWith('--') || tableName.startsWith('--')) {
-      console.error('Usage: --columns <connection> <table>');
-      process.exit(1);
-    }
-    await listColumns(connName, tableName);
-    return;
-  }
-
-  // --databases <connection>
-  if (args.includes('--databases')) {
-    const idx = args.indexOf('--databases');
-    const connName = args[idx + 1];
-    if (!connName || connName.startsWith('--')) {
-      console.error('Usage: --databases <connection>');
-      process.exit(1);
-    }
-    await listDatabases(connName);
-    return;
-  }
-
-  // --find-table <connection> <table>
-  if (args.includes('--find-table')) {
-    const idx = args.indexOf('--find-table');
-    const connName = args[idx + 1];
-    const tableName = args[idx + 2];
-    if (!connName || !tableName || connName.startsWith('--') || tableName.startsWith('--')) {
-      console.error('Usage: --find-table <connection> <table_name_or_pattern>');
-      process.exit(1);
-    }
-    await findTable(connName, tableName);
-    return;
-  }
-
-  if (args.length < 2) {
-    console.error("Usage: node mysql.mjs <connection-name> <sql> [--format=table|json|csv] [--params='[...]']");
-    console.error('       node mysql.mjs --help                         Show full help');
-    process.exit(1);
-  }
-
-  const connName = args[0];
-  const sql = args[1];
-
-  let format = 'csv';
-  let params: unknown[] = [];
-  let rowLimit = DEFAULT_ROW_LIMIT;
-  let colWidth = DEFAULT_COL_WIDTH;
-
-  for (let i = 2; i < args.length; i++) {
-    if (args[i].startsWith('--format=')) {
-      format = args[i].split('=')[1];
-    } else if (args[i].startsWith('--params=')) {
+// query command (default)
+program
+  .command('query', { isDefault: true })
+  .description('Execute a SQL query against a named connection')
+  .argument('<connection>', 'Connection name')
+  .argument('<sql>', 'SQL query to execute')
+  .option('--format <fmt>', 'Output format: table|json|csv|compact', 'csv')
+  .option('--params <json>', 'Parameterized query values as JSON array')
+  .option('--limit <n>', 'Max rows to display (0 = unlimited)', String(DEFAULT_ROW_LIMIT))
+  .option('--col-width <n>', 'Max column display width', String(DEFAULT_COL_WIDTH))
+  .action(async (connection: string, sql: string, opts: { format: string; params?: string; limit: string; colWidth: string }) => {
+    let params: unknown[] = [];
+    if (opts.params) {
       try {
-        params = JSON.parse(args[i].split('=').slice(1).join('=')) as unknown[];
+        params = JSON.parse(opts.params) as unknown[];
       } catch (e) {
         console.error(`Error: Invalid --params JSON: ${(e as Error).message}`);
         process.exit(1);
       }
-    } else if (args[i].startsWith('--limit=')) {
-      rowLimit = parseInt(args[i].split('=')[1], 10);
-      if (isNaN(rowLimit) || rowLimit < 0) {
-        console.error('Error: Invalid --limit value. Must be a non-negative integer.');
-        process.exit(1);
-      }
-    } else if (args[i].startsWith('--col-width=')) {
-      colWidth = parseInt(args[i].split('=')[1], 10);
     }
-    // --user-confirmed is consumed by the guard hook, no action needed here
-  }
 
-  let config: MySQLConfig;
-  try {
-    config = await requireConfig<MySQLConfig>('mysql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      console.error(`No config found. Run --init to create ${configPath('mysql')}`);
+    const rowLimit = parseInt(opts.limit, 10);
+    if (isNaN(rowLimit) || rowLimit < 0) {
+      console.error('Error: Invalid --limit value. Must be a non-negative integer.');
       process.exit(1);
     }
-    throw e;
-  }
 
-  const connConfig = (config.connections || {})[connName];
-  if (!connConfig) {
-    console.error(`Error: Connection "${connName}" not found.`);
+    const colWidth = parseInt(opts.colWidth, 10);
+
+    let config: MySQLConfig;
+    try {
+      config = await requireConfig<MySQLConfig>('mysql');
+    } catch (e) {
+      if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
+        console.error(`No config found. Run init to create ${configPath('mysql')}`);
+        process.exit(1);
+      }
+      throw e;
+    }
+
+    const connConfig = (config.connections || {})[connection];
+    if (!connConfig) {
+      console.error(`Error: Connection "${connection}" not found.`);
+      await listConnections();
+      process.exit(1);
+    }
+
+    let conn: mysql.Connection | undefined;
+    try {
+      conn = await createConnection(connConfig);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const [rows, fields] = await conn.execute(sql, params as any);
+
+      // DDL/DML statements return OkPacket
+      if (!Array.isArray(rows)) {
+        const okPacket = rows as mysql.OkPacket;
+        console.log(JSON.stringify({
+          affectedRows: okPacket.affectedRows,
+          insertId: okPacket.insertId != null ? String(okPacket.insertId) : undefined,
+          changedRows: (okPacket as mysql.OkPacket & { changedRows?: number }).changedRows,
+          info: (okPacket as mysql.OkPacket & { info?: string }).info,
+        }));
+        return;
+      }
+
+      void fields; // fields metadata available but not used for output
+
+      if (rows.length === 0) {
+        console.log('(empty result set)');
+        return;
+      }
+
+      const typedRows = rows as Record<string, unknown>[];
+      const totalRows = typedRows.length;
+      const truncated = rowLimit > 0 && totalRows > rowLimit;
+      const displayRows = truncated ? typedRows.slice(0, rowLimit) : typedRows;
+
+      switch (opts.format) {
+        case 'json':
+          console.log(JSON.stringify(displayRows));
+          break;
+        case 'compact':
+          console.log(formatCompact(displayRows, colWidth));
+          break;
+        case 'csv':
+          console.log(formatCSV(displayRows, colWidth));
+          break;
+        case 'table':
+        default:
+          console.log(formatTable(displayRows, colWidth));
+          break;
+      }
+
+      // Summary line
+      if (truncated) {
+        console.log(`(${rowLimit} of ${totalRows} rows shown, use --limit=0 for all)`);
+      } else {
+        console.log(`(${totalRows} rows)`);
+      }
+    } catch (err) {
+      const mysqlErr = err as Error & { code?: string; sqlState?: string };
+      console.error(`Error: ${mysqlErr.message}`);
+      if (mysqlErr.code) console.error(`Code: ${mysqlErr.code}`);
+      if (mysqlErr.sqlState) console.error(`SQL State: ${mysqlErr.sqlState}`);
+
+      if (mysqlErr.message.includes('Unknown column')) {
+        console.error(`\nHint: Run columns to see available column names:`);
+        console.error(`  node mysql.mjs columns ${connection} <table_name>`);
+      }
+
+      if (mysqlErr.code === 'ER_NO_SUCH_TABLE') {
+        // Extract table name from error message
+        const tableMatch = mysqlErr.message.match(/Table '([^']+)'/);
+        const badTable = tableMatch ? tableMatch[1].split('.').pop() : '<table>';
+        console.error(`\nHint: The table may exist in a different database. Find it with:`);
+        console.error(`  node mysql.mjs find-table ${connection} ${badTable}`);
+        console.error(`  node mysql.mjs databases ${connection}`);
+      }
+
+      process.exit(1);
+    } finally {
+      if (conn) await conn.end();
+    }
+  });
+
+// init command
+program
+  .command('init')
+  .description('Create config template at ~/.cache/apex-plugin/mysql.json')
+  .action(() => {
+    printTemplate();
+  });
+
+// list command
+program
+  .command('list')
+  .description('List available connections')
+  .action(async () => {
     await listConnections();
-    process.exit(1);
-  }
+  });
 
-  let connection: mysql.Connection | undefined;
-  try {
-    connection = await createConnection(connConfig);
+// test command
+program
+  .command('test')
+  .description('Test connection(s)')
+  .argument('[name]', 'Connection name to test (omit to test all)')
+  .action(async (name?: string) => {
+    await testConnections(name ?? null);
+  });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [rows, fields] = await connection.execute(sql, params as any);
+// columns command
+program
+  .command('columns')
+  .description('List column names of a table')
+  .argument('<connection>', 'Connection name')
+  .argument('<table>', 'Table name')
+  .action(async (connection: string, table: string) => {
+    await listColumns(connection, table);
+  });
 
-    // DDL/DML statements return OkPacket
-    if (!Array.isArray(rows)) {
-      const okPacket = rows as mysql.OkPacket;
-      console.log(JSON.stringify({
-        affectedRows: okPacket.affectedRows,
-        insertId: okPacket.insertId != null ? String(okPacket.insertId) : undefined,
-        changedRows: (okPacket as mysql.OkPacket & { changedRows?: number }).changedRows,
-        info: (okPacket as mysql.OkPacket & { info?: string }).info,
-      }));
-      return;
-    }
+// databases command
+program
+  .command('databases')
+  .description('List all databases on the connection')
+  .argument('<connection>', 'Connection name')
+  .action(async (connection: string) => {
+    await listDatabases(connection);
+  });
 
-    void fields; // fields metadata available but not used for output
+// find-table command
+program
+  .command('find-table')
+  .description('Find which database a table belongs to')
+  .argument('<connection>', 'Connection name')
+  .argument('<table>', 'Table name or pattern (e.g. %user%)')
+  .action(async (connection: string, table: string) => {
+    await findTable(connection, table);
+  });
 
-    if (rows.length === 0) {
-      console.log('(empty result set)');
-      return;
-    }
-
-    const typedRows = rows as Record<string, unknown>[];
-    const totalRows = typedRows.length;
-    const truncated = rowLimit > 0 && totalRows > rowLimit;
-    const displayRows = truncated ? typedRows.slice(0, rowLimit) : typedRows;
-
-    switch (format) {
-      case 'json':
-        console.log(JSON.stringify(displayRows));
-        break;
-      case 'compact':
-        console.log(formatCompact(displayRows, colWidth));
-        break;
-      case 'csv':
-        console.log(formatCSV(displayRows, colWidth));
-        break;
-      case 'table':
-      default:
-        console.log(formatTable(displayRows, colWidth));
-        break;
-    }
-
-    // Summary line
-    if (truncated) {
-      console.log(`(${rowLimit} of ${totalRows} rows shown, use --limit=0 for all)`);
-    } else {
-      console.log(`(${totalRows} rows)`);
-    }
-  } catch (err) {
-    const mysqlErr = err as Error & { code?: string; sqlState?: string };
-    console.error(`Error: ${mysqlErr.message}`);
-    if (mysqlErr.code) console.error(`Code: ${mysqlErr.code}`);
-    if (mysqlErr.sqlState) console.error(`SQL State: ${mysqlErr.sqlState}`);
-
-    if (mysqlErr.message.includes('Unknown column')) {
-      console.error(`\nHint: Run --columns to see available column names:`);
-      console.error(`  node mysql.mjs --columns ${connName} <table_name>`);
-    }
-
-    if (mysqlErr.code === 'ER_NO_SUCH_TABLE') {
-      // Extract table name from error message
-      const tableMatch = mysqlErr.message.match(/Table '([^']+)'/);
-      const badTable = tableMatch ? tableMatch[1].split('.').pop() : '<table>';
-      console.error(`\nHint: The table may exist in a different database. Find it with:`);
-      console.error(`  node mysql.mjs --find-table ${connName} ${badTable}`);
-      console.error(`  node mysql.mjs --databases ${connName}`);
-    }
-
-    process.exit(1);
-  } finally {
-    if (connection) await connection.end();
-  }
-}
-
-main();
+program.parseAsync();
