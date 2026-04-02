@@ -38,7 +38,7 @@ Execute SQL queries via `pg` Node.js script with multi-connection support.
 3. After the user confirms, ask: "Save this as default connection in project CLAUDE.md?"
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs --list
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --list
 ```
 
 ## MANDATORY: Check Columns Before Writing SQL
@@ -47,11 +47,11 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs --list
 
 ```bash
 # Step 1: List columns (schema defaults to 'public' if omitted)
-node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs --columns <connection> <schema> <table>
-# Example: node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs --columns prod public orders
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --columns <connection> <schema> <table>
+# Example: node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --columns prod public orders
 
 # Step 2: Only THEN write SELECT using actual column names
-node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs <conn> "SELECT col1, col2 FROM schema.table WHERE ..."
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs <conn> "SELECT col1, col2 FROM schema.table WHERE ..."
 ```
 
 ## MANDATORY: Schema Discovery Before Cross-Schema Queries
@@ -60,20 +60,20 @@ PostgreSQL uses **schemas** (not databases) to organize tables. If a table doesn
 
 ```bash
 # Step 1: Find which schema a table belongs to
-node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs --find-table <conn> <table_name>
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --find-table <conn> <table_name>
 # Example output: public.orders (~1234 rows)
 
 # Step 2: Use schema.table syntax in your query
-node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs <conn> "SELECT * FROM public.orders WHERE ..."
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs <conn> "SELECT * FROM public.orders WHERE ..."
 
 # Fuzzy search with % pattern
-node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs --find-table <conn> "%warehouse%"
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --find-table <conn> "%warehouse%"
 
 # List all schemas in the database
-node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs --schemas <conn>
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --schemas <conn>
 
 # List all non-system databases
-node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs --databases <conn>
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --databases <conn>
 ```
 
 **NEVER create additional connections for the same host.** Use `schema.table` syntax instead.
@@ -81,7 +81,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs --databases <conn>
 ## Command Reference
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/postgresql.mjs <connection> "<sql>" [options]
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs <connection> "<sql>" [options]
 ```
 
 | Option | Description |

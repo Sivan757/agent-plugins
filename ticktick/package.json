@@ -1,0 +1,13 @@
+{
+  "name": "ticktick",
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/ticktick.ts --bundle --platform=node --format=esm --outfile=dist/ticktick.mjs",
+    "dev": "tsx src/ticktick.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@apex/core": "*"
+  }
+}

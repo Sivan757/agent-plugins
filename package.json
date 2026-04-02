@@ -1,0 +1,24 @@
+{
+  "name": "apex-plugins",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "ticktick",
+    "postgresql",
+    "mysql",
+    "aliyunlog",
+    "feishu"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "create-plugin": "tsx scripts/create-plugin.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "esbuild": "^0.25",
+    "tsx": "^4",
+    "typescript": "^5.8"
+  }
+}

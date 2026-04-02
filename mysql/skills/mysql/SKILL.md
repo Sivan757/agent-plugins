@@ -34,10 +34,10 @@ A PreToolUse hook enforces this — write SQL will be **blocked** unless `--user
 
 ```bash
 # BLOCKED — will be intercepted by hook
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs prod "UPDATE users SET status = 'active' WHERE id = 1"
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs prod "UPDATE users SET status = 'active' WHERE id = 1"
 
 # ALLOWED — only after user explicitly confirms
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs prod "UPDATE users SET status = 'active' WHERE id = 1" --user-confirmed
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs prod "UPDATE users SET status = 'active' WHERE id = 1" --user-confirmed
 ```
 
 ## MANDATORY: Connection Confirmation
@@ -51,7 +51,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs prod "UPDATE users SET status = 'ac
 If the user specifies a connection name explicitly, use it directly.
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --list
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs --list
 ```
 
 ## MANDATORY: Check Columns Before Writing SQL
@@ -62,10 +62,10 @@ Before writing ANY SELECT, always run `--columns` first to see actual column nam
 
 ```bash
 # Step 1: List column names of the target table
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --columns <connection> <table>
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs --columns <connection> <table>
 
 # Step 2: Only THEN write SELECT using actual column names
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs <conn> "SELECT col1, col2 FROM table WHERE ..."
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs <conn> "SELECT col1, col2 FROM table WHERE ..."
 ```
 
 ### Common Mistakes to Avoid
@@ -83,17 +83,17 @@ Each connection has a default database. If a table doesn't exist in the default 
 
 ```bash
 # Step 1: Find which database a table belongs to
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --find-table <conn> <table_name>
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs --find-table <conn> <table_name>
 # Example output: robot_fulfillment.fulfillment_main_data (~1234 rows)
 
 # Step 2: Use database.table syntax in your query
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs <conn> "SELECT * FROM robot_fulfillment.fulfillment_main_data WHERE ..."
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs <conn> "SELECT * FROM robot_fulfillment.fulfillment_main_data WHERE ..."
 
 # Fuzzy search with % pattern
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --find-table <conn> "%warehouse%"
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs --find-table <conn> "%warehouse%"
 
 # List all databases on a connection
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --databases <conn>
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs --databases <conn>
 ```
 
 **NEVER create additional connections for the same host.** Use `database.table` syntax instead.
@@ -101,7 +101,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs --databases <conn>
 ## Command Reference
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/mysql.mjs <connection> "<sql>" [options]
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs <connection> "<sql>" [options]
 ```
 
 | Option | Description |

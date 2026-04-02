@@ -22,12 +22,12 @@ Full programmatic control of a TickTick (Dida365) account through the bundled CL
 All commands follow the pattern:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/ticktick.mjs <resource> <action> [args] [--options]
+node ${CLAUDE_PLUGIN_ROOT}/dist/ticktick.mjs <resource> <action> [args] [--options]
 ```
 
 All output is JSON. Parse it to present results to the user.
 
-**IMPORTANT**: In all examples below, `ticktick` is shorthand for `node ${CLAUDE_PLUGIN_ROOT}/scripts/ticktick.mjs`. Always use the full path when executing commands.
+**IMPORTANT**: In all examples below, `ticktick` is shorthand for `node ${CLAUDE_PLUGIN_ROOT}/dist/ticktick.mjs`. Always use the full path when executing commands.
 
 ## Tasks
 
@@ -222,7 +222,7 @@ When V2 auth fails with `username_password_not_match`, the user needs to provide
 
 ```bash
 # Parse X-Device JSON and save device_id + full header to config
-node ${CLAUDE_PLUGIN_ROOT}/scripts/ticktick.mjs setup x-device '{"platform":"web","os":"...","device":"...","version":8023,"id":"...","channel":"website"}'
+node ${CLAUDE_PLUGIN_ROOT}/dist/ticktick.mjs setup x-device '{"platform":"web","os":"...","device":"...","version":8023,"id":"...","channel":"website"}'
 ```
 
 The command extracts the `id` field as `TICKTICK_DEVICE_ID` and stores the full JSON as `TICKTICK_X_DEVICE` in the config file.

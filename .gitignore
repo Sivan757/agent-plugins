@@ -7,3 +7,7 @@ scope_version_cache.json
 user_token_cache.json
 tenant_token_cache.json
 external-resources/*
+.playwright-mcp
+.vscode/
+node_modules/
+*.tsbuildinfo

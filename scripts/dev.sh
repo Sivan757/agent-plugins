@@ -47,6 +47,11 @@ fi
 
 count=$(( ${#plugin_flags[@]} / 2 ))
 echo "Loading $count plugins from $REPO_ROOT"
+
+# Build all plugins before launching
+echo "Building plugins..."
+npm run build --workspaces --if-present 2>/dev/null || echo "Warning: some builds failed"
+
 echo "Tip: use /reload-plugins after edits"
 echo ""
 

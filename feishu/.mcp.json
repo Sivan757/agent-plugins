@@ -3,7 +3,7 @@
     "feishu": {
       "type": "stdio",
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/feishu-mcp-start.js"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/feishu-mcp-start.mjs"]
     }
   }
 }
