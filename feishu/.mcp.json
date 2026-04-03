@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "feishu": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/feishu-mcp-start.mjs"]
-    }
-  }
-}
