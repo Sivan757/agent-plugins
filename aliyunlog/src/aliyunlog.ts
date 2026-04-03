@@ -118,11 +118,12 @@ function info(msg: string): void {
 
 // ── SDK Loader ───────────────────────────────────────────────────────────────
 
-function createClient(config: AliyunLogConfig): ALYClient {
+function createClient(config: AliyunLogConfig, timeout?: number): ALYClient {
   return new ALY({
     accessKeyId: config.credentials.accessKeyId,
     accessKeySecret: config.credentials.accessKeySecret,
     endpoint: config.credentials.endpoint,
+    ...(timeout ? { timeout } : { timeout: 10000 }),
   });
 }
 
@@ -406,6 +407,17 @@ const QUERY_TEMPLATES: Record<string, (service: string, keyword?: string) => str
     `_container_name_:${service} and (timeout or "timed out" or TimeoutException)`,
   'oom': (service) =>
     `_container_name_:${service} and (OutOfMemoryError or "out of memory")`,
+};
+
+const LOGSTORE_TEMPLATES: Record<string, (keyword?: string) => string> = {
+  'recent-errors': () => 'ERROR or WARN or Exception',
+  'error-by-service': () => 'ERROR or Exception',
+  'fatal': () => 'FATAL or "Fatal error"',
+  'timeout': () => 'timeout or "timed out" or TimeoutException',
+  'oom': () => 'OutOfMemoryError or "out of memory"',
+  'npe': (keyword) => keyword
+    ? `NullPointerException and ${keyword}`
+    : 'NullPointerException',
 };
 
 function expandTemplate(templateName: string, service: string, keyword?: string): string {
@@ -1011,7 +1023,7 @@ async function progressiveSearch(
       info(`Try ${level + 1}: Broadening search...`);
     }
 
-    const results = await getLogs(client, project, logstore, fromDate, toDate, currentQuery, limit, reverse, startOffset);
+    const results = await getLogsWithRetry(client, project, logstore, fromDate, toDate, currentQuery, limit, reverse, startOffset);
 
     if (results && results.length > 0) {
       if (level > 0) {
@@ -1075,6 +1087,36 @@ async function getLogs(
   return allResults;
 }
 
+async function getLogsWithRetry(
+  client: ALYClient,
+  project: string,
+  logstore: string,
+  from: Date,
+  to: Date,
+  query: string,
+  limit: number,
+  reverse: boolean,
+  startOffset: number = 0,
+  maxRetries: number = 2
+): Promise<Array<Record<string, string | number>>> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await getLogs(client, project, logstore, from, to, query, limit, reverse, startOffset);
+    } catch (err) {
+      const msg = (err as Error).message || '';
+      const isTimeout = msg.includes('Timeout') || msg.includes('ReadTimeout') || msg.includes('ConnectTimeout');
+      if (isTimeout && attempt < maxRetries) {
+        const delay = 1000 * (attempt + 1);
+        info(`Timeout on attempt ${attempt + 1}, retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+  return [];
+}
+
 // ── Helper: load config or die ────────────────────────────────────────────────
 
 async function loadConfig(): Promise<AliyunLogConfig> {
@@ -1111,6 +1153,7 @@ async function runQuery(
     full?: boolean;
     extractErrors?: boolean;
     autoBroaden?: boolean;
+    timeout?: string;
   }
 ): Promise<void> {
   const config = await loadConfig();
@@ -1226,7 +1269,8 @@ async function runQuery(
   // ── Create SDK client ────────────────────────────────────────────────────
 
   validateCredentials(config);
-  const client = createClient(config);
+  const timeout = opts.timeout ? parseInt(opts.timeout, 10) : 10000;
+  const client = createClient(config, timeout);
 
   // ── Build query parameters ───────────────────────────────────────────────
 
@@ -1234,12 +1278,16 @@ async function runQuery(
 
   // Template expansion
   if (opts.template) {
-    if (!serviceName) {
-      die('--template requires service name. Usage: node aliyunlog.mjs <env> <service> --template=<name>');
-    }
     const keyword = opts.keyword || '';
-    query = expandTemplate(opts.template, serviceName, keyword);
-    info(`Template expanded: ${query}`);
+    if (serviceName) {
+      query = expandTemplate(opts.template, serviceName, keyword);
+      info(`Template expanded: ${query}`);
+    } else if (LOGSTORE_TEMPLATES[opts.template]) {
+      query = LOGSTORE_TEMPLATES[opts.template](keyword);
+      info(`Template expanded (logstore-wide): ${query}`);
+    } else {
+      die(`Unknown template: ${opts.template}\nAvailable: ${Object.keys(QUERY_TEMPLATES).join(', ')}`);
+    }
   }
 
   const fromDate = opts.from
@@ -1285,7 +1333,7 @@ async function runQuery(
       finalQuery = result.finalQuery;
       searchLevel = result.level;
     } else {
-      data = await getLogs(client, project, logstore, fromDate, toDate, query, limit, reverse, startOffset);
+      data = await getLogsWithRetry(client, project, logstore, fromDate, toDate, query, limit, reverse, startOffset);
     }
 
     const n = data ? data.length : 0;
@@ -1363,6 +1411,19 @@ async function runQuery(
     }
   } catch (err) {
     const msg = (err as Error).message || String(err);
+
+    // Timeout-specific guidance
+    if (msg.includes('Timeout') || msg.includes('ReadTimeout') || msg.includes('ConnectTimeout')) {
+      process.stderr.write(`ERROR: Query timed out.\n`);
+      process.stderr.write(`\nSuggestions:\n`);
+      process.stderr.write(`  • Narrow the time range: --from=-1h instead of longer ranges\n`);
+      process.stderr.write(`  • Reduce result limit: --limit 5\n`);
+      process.stderr.write(`  • Filter by service: --service <name> to reduce scan scope\n`);
+      process.stderr.write(`  • Use --count first to check data volume\n`);
+      process.stderr.write(`  • Increase timeout: --timeout 30000\n`);
+      process.exit(1);
+    }
+
     if (msg.includes('does not exist') || msg.includes('LogStoreNotExist') || msg.includes('ProjectNotExist')) {
       process.stderr.write(`ERROR: ${msg}\n`);
       if (serviceName) {
@@ -1478,6 +1539,7 @@ program
   .option('--full', 'Raw inline output (skip summarization/temp file)')
   .option('--extract-errors', 'Extract exceptions/stack traces')
   .option('--auto-broaden', 'Auto-retry with relaxed filters if 0 results')
+  .option('--timeout <ms>', 'Query timeout in milliseconds', '10000')
   .action(async (env: string | undefined, service: string | undefined, opts: {
     project?: string;
     logstore?: string;
@@ -1499,6 +1561,7 @@ program
     full?: boolean;
     extractErrors?: boolean;
     autoBroaden?: boolean;
+    timeout?: string;
   }) => {
     await runQuery(env, service, opts);
   });

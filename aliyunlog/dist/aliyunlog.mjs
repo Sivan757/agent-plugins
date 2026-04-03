@@ -10687,11 +10687,12 @@ function info(msg) {
   process.stderr.write(`[SLS] ${msg}
 `);
 }
-function createClient(config) {
+function createClient(config, timeout) {
   return new import_log.default({
     accessKeyId: config.credentials.accessKeyId,
     accessKeySecret: config.credentials.accessKeySecret,
-    endpoint: config.credentials.endpoint
+    endpoint: config.credentials.endpoint,
+    ...timeout ? { timeout } : { timeout: 1e4 }
   });
 }
 var ALIYUNLOG_CONFIG_UI_SCHEMA = {
@@ -10902,6 +10903,14 @@ var QUERY_TEMPLATES = {
   "fatal": (service) => `_container_name_:${service} and (FATAL or "Fatal error")`,
   "timeout": (service) => `_container_name_:${service} and (timeout or "timed out" or TimeoutException)`,
   "oom": (service) => `_container_name_:${service} and (OutOfMemoryError or "out of memory")`
+};
+var LOGSTORE_TEMPLATES = {
+  "recent-errors": () => "ERROR or WARN or Exception",
+  "error-by-service": () => "ERROR or Exception",
+  "fatal": () => 'FATAL or "Fatal error"',
+  "timeout": () => 'timeout or "timed out" or TimeoutException',
+  "oom": () => 'OutOfMemoryError or "out of memory"',
+  "npe": (keyword) => keyword ? `NullPointerException and ${keyword}` : "NullPointerException"
 };
 function expandTemplate(templateName, service, keyword) {
   const template = QUERY_TEMPLATES[templateName];
@@ -11362,7 +11371,7 @@ async function progressiveSearch(client, project, logstore, fromDate, toDate, qu
     if (level > 0) {
       info(`Try ${level + 1}: Broadening search...`);
     }
-    const results = await getLogs(client, project, logstore, fromDate, toDate, currentQuery, limit, reverse, startOffset);
+    const results = await getLogsWithRetry(client, project, logstore, fromDate, toDate, currentQuery, limit, reverse, startOffset);
     if (results && results.length > 0) {
       if (level > 0) {
         info(`\u2713 Found ${results.length} results with relaxed query: ${currentQuery}`);
@@ -11399,6 +11408,24 @@ async function getLogs(client, project, logstore, from, to, query, limit, revers
     if (results.length < batchSize) break;
   }
   return allResults;
+}
+async function getLogsWithRetry(client, project, logstore, from, to, query, limit, reverse, startOffset = 0, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await getLogs(client, project, logstore, from, to, query, limit, reverse, startOffset);
+    } catch (err) {
+      const msg = err.message || "";
+      const isTimeout = msg.includes("Timeout") || msg.includes("ReadTimeout") || msg.includes("ConnectTimeout");
+      if (isTimeout && attempt < maxRetries) {
+        const delay = 1e3 * (attempt + 1);
+        info(`Timeout on attempt ${attempt + 1}, retrying in ${delay}ms...`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+  return [];
 }
 async function loadConfig2() {
   return requireConfigWithSetup(
@@ -11499,15 +11526,21 @@ Try: node ${__filename} find-service ${serviceName} --project ${project}`);
     );
   }
   validateCredentials(config);
-  const client = createClient(config);
+  const timeout = opts.timeout ? parseInt(opts.timeout, 10) : 1e4;
+  const client = createClient(config, timeout);
   let query = contextOverride?.query || opts.query || "*";
   if (opts.template) {
-    if (!serviceName) {
-      die("--template requires service name. Usage: node aliyunlog.mjs <env> <service> --template=<name>");
-    }
     const keyword = opts.keyword || "";
-    query = expandTemplate(opts.template, serviceName, keyword);
-    info(`Template expanded: ${query}`);
+    if (serviceName) {
+      query = expandTemplate(opts.template, serviceName, keyword);
+      info(`Template expanded: ${query}`);
+    } else if (LOGSTORE_TEMPLATES[opts.template]) {
+      query = LOGSTORE_TEMPLATES[opts.template](keyword);
+      info(`Template expanded (logstore-wide): ${query}`);
+    } else {
+      die(`Unknown template: ${opts.template}
+Available: ${Object.keys(QUERY_TEMPLATES).join(", ")}`);
+    }
   }
   const fromDate = opts.from ? parseTime(opts.from) : contextOverride?.from ? new Date(contextOverride.from) : defaultFromDate();
   const toDate = opts.to ? parseTime(opts.to) : contextOverride?.to ? new Date(contextOverride.to) : defaultToDate();
@@ -11540,7 +11573,7 @@ Try: node ${__filename} find-service ${serviceName} --project ${project}`);
       finalQuery = result.finalQuery;
       searchLevel = result.level;
     } else {
-      data = await getLogs(client, project, logstore, fromDate, toDate, query, limit, reverse, startOffset);
+      data = await getLogsWithRetry(client, project, logstore, fromDate, toDate, query, limit, reverse, startOffset);
     }
     const n = data ? data.length : 0;
     const order = reverse ? "newest" : "oldest";
@@ -11608,6 +11641,24 @@ Try: node ${__filename} find-service ${serviceName} --project ${project}`);
     }
   } catch (err) {
     const msg = err.message || String(err);
+    if (msg.includes("Timeout") || msg.includes("ReadTimeout") || msg.includes("ConnectTimeout")) {
+      process.stderr.write(`ERROR: Query timed out.
+`);
+      process.stderr.write(`
+Suggestions:
+`);
+      process.stderr.write(`  \u2022 Narrow the time range: --from=-1h instead of longer ranges
+`);
+      process.stderr.write(`  \u2022 Reduce result limit: --limit 5
+`);
+      process.stderr.write(`  \u2022 Filter by service: --service <name> to reduce scan scope
+`);
+      process.stderr.write(`  \u2022 Use --count first to check data volume
+`);
+      process.stderr.write(`  \u2022 Increase timeout: --timeout 30000
+`);
+      process.exit(1);
+    }
     if (msg.includes("does not exist") || msg.includes("LogStoreNotExist") || msg.includes("ProjectNotExist")) {
       process.stderr.write(`ERROR: ${msg}
 `);
@@ -11666,7 +11717,7 @@ program2.command("clear-context").description("Clear saved query context").actio
   clearContext();
   console.log("Context cleared");
 });
-program2.command("query", { isDefault: true }).argument("[env]", "Environment (legacy positional)").argument("[service]", "Service name (legacy positional)").option("--project <name>", "SLS project name").option("--logstore <name>", "SLS logstore name").option("--service <name>", "Auto-discover logstore by service").option("--query <q>", "SLS query string", "*").option("--template <name>", "Query template (error-by-service, npe, recent-errors, fatal, timeout, oom)").option("--keyword <text>", "Keyword for template").option("--from <time>", 'Start time (omit = auto last 15 min). Formats: now, -24h, -2d, "2 days ago", ISO 8601').option("--to <time>", "End time (omit = now). Same formats as --from").option("--limit <n>", "Max entries", "5").option("--format <fmt>", "Output format: compact|csv|json", "compact").option("--fields <f>", "Extract specific fields (comma-separated)").option("--count", "COUNT(*) query").option("--oldest", "Show oldest first (default: newest first)").option("--summary", "Smart summary for large compact output").option("--no-context", "Disable context saving").option("--more", "Fetch next page (requires saved context)").option("--refine <filter>", "Refine previous query with additional filter").option("--full", "Raw inline output (skip summarization/temp file)").option("--extract-errors", "Extract exceptions/stack traces").option("--auto-broaden", "Auto-retry with relaxed filters if 0 results").action(async (env, service, opts) => {
+program2.command("query", { isDefault: true }).argument("[env]", "Environment (legacy positional)").argument("[service]", "Service name (legacy positional)").option("--project <name>", "SLS project name").option("--logstore <name>", "SLS logstore name").option("--service <name>", "Auto-discover logstore by service").option("--query <q>", "SLS query string", "*").option("--template <name>", "Query template (error-by-service, npe, recent-errors, fatal, timeout, oom)").option("--keyword <text>", "Keyword for template").option("--from <time>", 'Start time (omit = auto last 15 min). Formats: now, -24h, -2d, "2 days ago", ISO 8601').option("--to <time>", "End time (omit = now). Same formats as --from").option("--limit <n>", "Max entries", "5").option("--format <fmt>", "Output format: compact|csv|json", "compact").option("--fields <f>", "Extract specific fields (comma-separated)").option("--count", "COUNT(*) query").option("--oldest", "Show oldest first (default: newest first)").option("--summary", "Smart summary for large compact output").option("--no-context", "Disable context saving").option("--more", "Fetch next page (requires saved context)").option("--refine <filter>", "Refine previous query with additional filter").option("--full", "Raw inline output (skip summarization/temp file)").option("--extract-errors", "Extract exceptions/stack traces").option("--auto-broaden", "Auto-retry with relaxed filters if 0 results").option("--timeout <ms>", "Query timeout in milliseconds", "10000").action(async (env, service, opts) => {
   await runQuery(env, service, opts);
 });
 await program2.parseAsync();

@@ -71,6 +71,7 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --full --format json
 | `--fields <f1,f2,...>` | Extract specific fields as CSV |
 | `--count` | Shorthand for COUNT(*) query |
 | `--oldest` | Show oldest first (default: newest) |
+| `--timeout <ms>` | Query timeout in milliseconds (default: 10000) |
 
 ### Output Options (for `query` subcommand)
 
@@ -147,11 +148,32 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --service robot-order --proj
 ### NEVER guess project or logstore names
 - There are only **2 SLS projects**: `robot-k8s-dev` (dev/qa/uat) and `robot-k8s-prod` (prod)
 - **Do NOT invent** names like `robot-k8s-qa`, `robot-k8s-uat` — they don't exist
+- When scanning an entire environment for errors, use `--logstore` + `--template` without `--service`
 - If unsure, use `find-service` subcommand to discover automatically
 
 ## Query Templates
 
 Use templates instead of writing raw SLS queries:
+
+### Logstore-wide templates (no service filter)
+
+Templates work without `--service` — they produce broad queries across the entire logstore:
+
+```bash
+# Scan entire UAT logstore for errors
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query \
+  --project robot-k8s-dev --logstore uat1-saas \
+  --template recent-errors --from -2h --limit 10
+
+# Find all timeouts across a logstore
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query \
+  --project robot-k8s-dev --logstore uat1-saas \
+  --template timeout --from -4h --limit 10 --extract-errors
+```
+
+When `--service` is provided, templates additionally filter by `_container_name_`.
+
+### Service-scoped templates
 
 ```bash
 # Find errors for a service
@@ -207,6 +229,15 @@ When a specific query returns 0 results, use `--auto-broaden`:
 5. **Aggregate first** — use SLS aggregation queries (`COUNT`, `GROUP BY`) over raw logs
 6. **Use `--more`** to paginate instead of large `--limit` (context auto-saved)
 7. **Default compact format** — most token-efficient; JSON is compact (no pretty-print)
+
+### Timeout handling
+
+Queries on large logstores or long time ranges may time out. Strategies:
+- Start with short time ranges (`--from=-1h`) and expand if needed
+- Use `--count` first to verify data volume before fetching logs
+- Use `--service` to narrow the scan scope
+- Increase timeout for known-slow queries: `--timeout 30000`
+- The CLI automatically retries up to 2 times on timeout with exponential backoff
 
 ## IMPORTANT: Chinese Keyword Search
 
