@@ -8,7 +8,8 @@ import { createServer } from 'http';
 import { tmpdir } from 'os';
 
 import { Command } from 'commander';
-import { requireConfig, saveConfig, PluginError } from '@apex/core';
+import { requireConfig, requireConfigWithSetup, saveConfig, PluginError } from '@apex/core';
+import type { ConfigUISchema } from '@apex/core';
 
 // =============================================================================
 // Config
@@ -27,6 +28,16 @@ interface TickTickConfig extends Record<string, unknown> {
 
 const SESSION_CACHE = `${tmpdir()}/ticktick-session.json`;
 const SESSION_TTL_MS = 3600_000; // 1 hour
+
+const TICKTICK_CONFIG_UI_SCHEMA: ConfigUISchema = {
+  title: 'TickTick',
+  description: 'Enter your TickTick / Dida365 credentials',
+  fields: [
+    { key: 'host', label: 'Host', type: 'select', required: true, options: ['ticktick.com', 'dida365.com'], default: 'ticktick.com', help: 'Use dida365.com for China accounts' },
+    { key: 'username', label: 'Username / Email', type: 'text', required: true },
+    { key: 'password', label: 'Password', type: 'password', required: true },
+  ],
+};
 
 // =============================================================================
 // Auth
@@ -367,7 +378,7 @@ Examples:
         const rawOpts = rawAfterSubcmd.slice(1 + positionalArgs.length);
         const { opts } = parseRawOpts(rawOpts);
 
-        const config = await requireConfig<TickTickConfig>('ticktick');
+        const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI_SCHEMA);
         const HOST = config.host || 'ticktick.com';
         const API_V2 = `https://api.${HOST}/api/v2`;
         const API_V1 = `https://api.${HOST}/open/v1`;
@@ -412,7 +423,7 @@ Examples:
     .command('sync')
     .description('Full account sync — dump all projects, tasks, tags')
     .action(async () => {
-      const config = await requireConfig<TickTickConfig>('ticktick');
+      const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI_SCHEMA);
       const HOST = config.host || 'ticktick.com';
       const API_V2 = `https://api.${HOST}/api/v2`;
       function buildXDevice(): string {
@@ -432,7 +443,7 @@ Examples:
     .command('auth')
     .description('OAuth2 token acquisition — opens browser')
     .action(async () => {
-      const config = await requireConfig<TickTickConfig>('ticktick');
+      const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI_SCHEMA);
       const HOST = config.host || 'ticktick.com';
       await authFlow(config, HOST);
     });

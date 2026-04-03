@@ -16,7 +16,8 @@
 import pg from 'pg';
 import { Command } from 'commander';
 
-import { requireConfig, saveConfig, configPath, PluginError } from '@apex/core';
+import { requireConfigWithSetup, saveConfig, configPath } from '@apex/core';
+import type { ConfigUISchema } from '@apex/core';
 
 const { Client } = pg;
 
@@ -45,6 +46,22 @@ function die(msg: string): never {
   process.exit(1);
 }
 
+const PG_CONFIG_UI_SCHEMA: ConfigUISchema = {
+  title: 'PostgreSQL Connection',
+  description: 'Configure your first PostgreSQL database connection',
+  fields: [
+    { key: 'connections.default.host', label: 'Host', type: 'text', required: true, default: '127.0.0.1' },
+    { key: 'connections.default.port', label: 'Port', type: 'number', default: '5432' },
+    { key: 'connections.default.user', label: 'Username', type: 'text', required: true },
+    { key: 'connections.default.password', label: 'Password', type: 'password', required: true },
+    { key: 'connections.default.database', label: 'Database', type: 'text', required: true },
+  ],
+};
+
+async function loadConfig(): Promise<PostgresConfig> {
+  return requireConfigWithSetup<PostgresConfig>('postgresql', PG_CONFIG_UI_SCHEMA);
+}
+
 // ── Configuration ────────────────────────────────────────────────────────────
 
 function printTemplate(): void {
@@ -69,16 +86,7 @@ function printTemplate(): void {
 }
 
 async function listConnections(): Promise<void> {
-  let config: PostgresConfig | null;
-  try {
-    config = await requireConfig<PostgresConfig>('postgresql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      console.error(`No config found. Run --init to create ${configPath('postgresql')}`);
-      process.exit(1);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
   const names = Object.keys(config.connections || {});
   if (names.length === 0) {
     console.log('No connections defined.');
@@ -116,16 +124,7 @@ function createClient(connConfig: PostgresConnectionConfig): InstanceType<typeof
 }
 
 async function testConnections(targetName: string | null): Promise<void> {
-  let config: PostgresConfig;
-  try {
-    config = await requireConfig<PostgresConfig>('postgresql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      console.error(`No config found. Run --init to create ${configPath('postgresql')}`);
-      process.exit(1);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
 
   const entries = Object.entries(config.connections || {});
   if (entries.length === 0) {
@@ -160,15 +159,7 @@ async function testConnections(targetName: string | null): Promise<void> {
 // ── Column Listing ───────────────────────────────────────────────────────────
 
 async function listColumns(connName: string, schemaName: string, tableName: string): Promise<void> {
-  let config: PostgresConfig;
-  try {
-    config = await requireConfig<PostgresConfig>('postgresql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      die(`No config found. Run --init to create ${configPath('postgresql')}`);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
 
   const connConfig = (config.connections || {})[connName];
   if (!connConfig) {
@@ -208,15 +199,7 @@ async function listColumns(connName: string, schemaName: string, tableName: stri
 // ── Database / Schema Discovery ─────────────────────────────────────────────
 
 async function listDatabases(connName: string): Promise<void> {
-  let config: PostgresConfig;
-  try {
-    config = await requireConfig<PostgresConfig>('postgresql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      die(`No config found. Run --init to create ${configPath('postgresql')}`);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
 
   const connConfig = (config.connections || {})[connName];
   if (!connConfig) {
@@ -250,15 +233,7 @@ async function listDatabases(connName: string): Promise<void> {
 }
 
 async function listSchemas(connName: string): Promise<void> {
-  let config: PostgresConfig;
-  try {
-    config = await requireConfig<PostgresConfig>('postgresql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      die(`No config found. Run --init to create ${configPath('postgresql')}`);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
 
   const connConfig = (config.connections || {})[connName];
   if (!connConfig) {
@@ -288,15 +263,7 @@ async function listSchemas(connName: string): Promise<void> {
 }
 
 async function findTable(connName: string, tableName: string): Promise<void> {
-  let config: PostgresConfig;
-  try {
-    config = await requireConfig<PostgresConfig>('postgresql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      die(`No config found. Run --init to create ${configPath('postgresql')}`);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
 
   const connConfig = (config.connections || {})[connName];
   if (!connConfig) {
@@ -445,16 +412,7 @@ program
 
     const colWidth = parseInt(opts.colWidth, 10);
 
-    let config: PostgresConfig;
-    try {
-      config = await requireConfig<PostgresConfig>('postgresql');
-    } catch (e) {
-      if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-        console.error(`No config found. Run init to create ${configPath('postgresql')}`);
-        process.exit(1);
-      }
-      throw e;
-    }
+    const config = await loadConfig();
 
     const connConfig = (config.connections || {})[connection];
     if (!connConfig) {

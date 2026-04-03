@@ -6,11 +6,14 @@
 // to project/logstore via a configuration file.
 //
 // Usage:
-//   node aliyunlog.mjs <env> <service> [options]
-//   node aliyunlog.mjs --list-logstores <project|env>
-//   node aliyunlog.mjs --list-aliases
-//   node aliyunlog.mjs --test
-//   node aliyunlog.mjs --init
+//   node aliyunlog.mjs query [env] [service] [options]
+//   node aliyunlog.mjs list-logstores <project|env>
+//   node aliyunlog.mjs list-aliases
+//   node aliyunlog.mjs find-service <name> [--project <p>]
+//   node aliyunlog.mjs list-services <logstore> [--project <p>]
+//   node aliyunlog.mjs test
+//   node aliyunlog.mjs init
+//   node aliyunlog.mjs setup
 //   node aliyunlog.mjs --help
 //
 // Options:
@@ -37,7 +40,8 @@ import os from 'os';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { Command } from 'commander';
-import { requireConfig, configPath, PluginError } from '@apex/core';
+import { requireConfig, requireConfigWithSetup, configPath, PluginError } from '@apex/core';
+import type { ConfigUISchema } from '@apex/core';
 
 // Type declarations are in alicloud-log.d.ts
 import ALY from '@alicloud/log';
@@ -124,15 +128,37 @@ function createClient(config: AliyunLogConfig): ALYClient {
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
-function validateCredentials(config: AliyunLogConfig): void {
+const ALIYUNLOG_CONFIG_UI_SCHEMA: ConfigUISchema = {
+  title: 'Aliyun SLS Log Service',
+  description: 'Enter your Alibaba Cloud SLS credentials',
+  fields: [
+    { key: 'credentials.accessKeyId', label: 'AccessKey ID', type: 'text', required: true },
+    { key: 'credentials.accessKeySecret', label: 'AccessKey Secret', type: 'password', required: true },
+    { key: 'credentials.endpoint', label: 'Endpoint', type: 'text', required: true, default: 'cn-hangzhou.log.aliyuncs.com', help: 'SLS endpoint, e.g. cn-hangzhou.log.aliyuncs.com' },
+    { key: 'default_project', label: 'Default Project', type: 'text', placeholder: 'e.g. robot-k8s-dev' },
+  ],
+};
+
+function credentialsNeedSetup(config: AliyunLogConfig): boolean {
   const c = config.credentials;
-  if (!c) die(`Missing 'credentials' section in config. Run --init for template.`);
+  return !c
+    || !c.accessKeyId || c.accessKeyId.includes('<')
+    || !c.accessKeySecret || c.accessKeySecret.includes('<')
+    || !c.endpoint;
+}
+
+function validateCredentials(config: AliyunLogConfig): void {
+  if (!credentialsNeedSetup(config)) return;
+  // If we get here, credentials are invalid — loadConfig should have already
+  // auto-launched config UI, so this is a fallback for direct callers.
+  const c = config.credentials;
+  if (!c) die(`Missing 'credentials' section in config. Run: aliyunlog setup`);
   if (!c.accessKeyId || c.accessKeyId.includes('<'))
-    die(`Invalid accessKeyId in config. Edit ${CONFIG_PATH} with real credentials.`);
+    die(`Invalid accessKeyId in config. Run: aliyunlog setup`);
   if (!c.accessKeySecret || c.accessKeySecret.includes('<'))
-    die(`Invalid accessKeySecret in config. Edit ${CONFIG_PATH} with real credentials.`);
+    die(`Invalid accessKeySecret in config. Run: aliyunlog setup`);
   if (!c.endpoint)
-    die(`Missing endpoint in config. Edit ${CONFIG_PATH} with your SLS endpoint.`);
+    die(`Missing endpoint in config. Run: aliyunlog setup`);
 }
 
 // ── Session Context Preservation ─────────────────────────────────────────────
@@ -283,7 +309,7 @@ async function discoverServiceFast(client: ALYClient, project: string, serviceNa
 }
 
 async function cmdFindService(config: AliyunLogConfig, project: string, serviceName: string): Promise<void> {
-  if (!serviceName) die('Usage: --find-service <service_name>');
+  if (!serviceName) die('Usage: find-service <service_name>');
   validateCredentials(config);
 
   project = project || config.default_project || '';
@@ -326,7 +352,7 @@ async function cmdFindService(config: AliyunLogConfig, project: string, serviceN
 }
 
 async function cmdListServices(config: AliyunLogConfig, project: string, logstoreName: string): Promise<void> {
-  if (!logstoreName) die('Usage: --list-services <logstore> [--project=<name>]');
+  if (!logstoreName) die('Usage: list-services <logstore> [--project <name>]');
   validateCredentials(config);
 
   project = project || config.default_project || '';
@@ -841,8 +867,8 @@ async function cmdSetup(): Promise<void> {
 
   console.log(`\n\u2713 Configuration saved to: ${CONFIG_PATH}`);
   console.log('\nNext steps:');
-  console.log('  - Run \'node aliyunlog.mjs --test\' to verify setup');
-  console.log('  - Run \'node aliyunlog.mjs --list-logstores <project>\' to explore logstores');
+  console.log('  - Run \'node aliyunlog.mjs test\' to verify setup');
+  console.log('  - Run \'node aliyunlog.mjs list-logstores <project>\' to explore logstores');
   console.log('  - Edit the config file to add environment aliases and service mappings');
 }
 
@@ -873,7 +899,7 @@ function cmdInit(): void {
 }
 
 async function cmdListLogstores(config: AliyunLogConfig, project: string): Promise<void> {
-  if (!project) die('Missing project name. Usage: --list-logstores <project|env>');
+  if (!project) die('Missing project name. Usage: list-logstores <project|env>');
   validateCredentials(config);
 
   const client = createClient(config);
@@ -1052,14 +1078,11 @@ async function getLogs(
 // ── Helper: load config or die ────────────────────────────────────────────────
 
 async function loadConfig(): Promise<AliyunLogConfig> {
-  try {
-    return await requireConfig<AliyunLogConfig>('aliyunlog');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      die(`No config found. Run with --init to create ${CONFIG_PATH}`);
-    }
-    throw e;
-  }
+  return requireConfigWithSetup<AliyunLogConfig>(
+    'aliyunlog',
+    ALIYUNLOG_CONFIG_UI_SCHEMA,
+    credentialsNeedSetup,
+  );
 }
 
 // ── Query action (shared by default command) ──────────────────────────────────
@@ -1156,7 +1179,7 @@ async function runQuery(
           cache[project][serviceName] = logstore;
           saveMappingsCache(cache);
         } else {
-          die(`Service "${serviceName}" not found in any logstore in project "${project}".\nTry: node ${__filename} --find-service=${serviceName} --project=${project}`);
+          die(`Service "${serviceName}" not found in any logstore in project "${project}".\nTry: node ${__filename} find-service ${serviceName} --project ${project}`);
         }
       } else if (candidates.length === 1) {
         logstore = candidates[0];
@@ -1344,12 +1367,12 @@ async function runQuery(
       process.stderr.write(`ERROR: ${msg}\n`);
       if (serviceName) {
         process.stderr.write(`\nHint: The logstore "${logstore}" does not exist. Discover the correct one:\n`);
-        process.stderr.write(`  node ${__filename} --find-service=${serviceName} --project=${project}\n`);
+        process.stderr.write(`  node ${__filename} find-service ${serviceName} --project ${project}\n`);
       } else {
         process.stderr.write(`\nHint: List available logstores:\n`);
-        process.stderr.write(`  node ${__filename} --list-logstores ${project}\n`);
+        process.stderr.write(`  node ${__filename} list-logstores ${project}\n`);
       }
-      process.stderr.write(`  node ${__filename} --list-services=<logstore> --project=${project}\n`);
+      process.stderr.write(`  node ${__filename} list-services <logstore> --project ${project}\n`);
       process.exit(1);
     }
     die(`Query failed: ${msg}`);

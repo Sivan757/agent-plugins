@@ -4,11 +4,11 @@
  * mysql.ts - MySQL query executor for Claude Code.
  *
  * Usage:
- *   node mysql.mjs <connection-name> <sql> [--format=table|json|csv] [--params='["val1","val2"]']
- *   node mysql.mjs --columns <connection> <table>   List column names of a table
- *   node mysql.mjs --list                             List connections
- *   node mysql.mjs --test [name]                      Test connection(s)
- *   node mysql.mjs --init                             Create template config
+ *   node mysql.mjs query <connection-name> <sql> [options]
+ *   node mysql.mjs columns <connection> <table>   List column names of a table
+ *   node mysql.mjs list                             List connections
+ *   node mysql.mjs test [name]                      Test connection(s)
+ *   node mysql.mjs init                             Create template config
  *
  * Config: ~/.cache/apex-plugin/mysql.json
  */
@@ -16,7 +16,8 @@
 import mysql from 'mysql2/promise';
 import { Command } from 'commander';
 
-import { requireConfig, saveConfig, configPath, PluginError } from '@apex/core';
+import { requireConfigWithSetup, saveConfig, configPath } from '@apex/core';
+import type { ConfigUISchema } from '@apex/core';
 
 const DEFAULT_ROW_LIMIT = 1;
 const DEFAULT_COL_WIDTH = 40;
@@ -36,6 +37,22 @@ interface MySQLConfig extends Record<string, unknown> {
 
 function info(msg: string): void {
   process.stderr.write(`[mysql] ${msg}\n`);
+}
+
+const MYSQL_CONFIG_UI_SCHEMA: ConfigUISchema = {
+  title: 'MySQL Connection',
+  description: 'Configure your first MySQL database connection',
+  fields: [
+    { key: 'connections.default.host', label: 'Host', type: 'text', required: true, default: '127.0.0.1' },
+    { key: 'connections.default.port', label: 'Port', type: 'number', default: '3306' },
+    { key: 'connections.default.user', label: 'Username', type: 'text', required: true },
+    { key: 'connections.default.password', label: 'Password', type: 'password', required: true },
+    { key: 'connections.default.database', label: 'Database', type: 'text', required: true },
+  ],
+};
+
+async function loadConfig(): Promise<MySQLConfig> {
+  return requireConfigWithSetup<MySQLConfig>('mysql', MYSQL_CONFIG_UI_SCHEMA);
 }
 
 // ── Configuration ────────────────────────────────────────────────────────────
@@ -62,16 +79,7 @@ function printTemplate(): void {
 }
 
 async function listConnections(): Promise<void> {
-  let config: MySQLConfig | null;
-  try {
-    config = await requireConfig<MySQLConfig>('mysql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      console.error(`No config found. Run --init to create ${configPath('mysql')}`);
-      process.exit(1);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
   const names = Object.keys(config.connections || {});
   if (names.length === 0) {
     console.log('No connections defined.');
@@ -100,16 +108,7 @@ function createConnection(connConfig: MySQLConnectionConfig): Promise<mysql.Conn
 }
 
 async function testConnections(targetName: string | null): Promise<void> {
-  let config: MySQLConfig;
-  try {
-    config = await requireConfig<MySQLConfig>('mysql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      console.error(`No config found. Run --init to create ${configPath('mysql')}`);
-      process.exit(1);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
 
   const entries = Object.entries(config.connections || {});
   if (entries.length === 0) {
@@ -144,16 +143,7 @@ async function testConnections(targetName: string | null): Promise<void> {
 // ── Column Listing ───────────────────────────────────────────────────────────
 
 async function listColumns(connName: string, tableName: string): Promise<void> {
-  let config: MySQLConfig;
-  try {
-    config = await requireConfig<MySQLConfig>('mysql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      console.error(`No config found. Run --init to create ${configPath('mysql')}`);
-      process.exit(1);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
 
   const connConfig = (config.connections || {})[connName];
   if (!connConfig) {
@@ -189,16 +179,7 @@ async function listColumns(connName: string, tableName: string): Promise<void> {
 // ── Database Discovery ───────────────────────────────────────────────────────
 
 async function listDatabases(connName: string): Promise<void> {
-  let config: MySQLConfig;
-  try {
-    config = await requireConfig<MySQLConfig>('mysql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      console.error(`No config found. Run --init to create ${configPath('mysql')}`);
-      process.exit(1);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
 
   const connConfig = (config.connections || {})[connName];
   if (!connConfig) {
@@ -232,16 +213,7 @@ async function listDatabases(connName: string): Promise<void> {
 }
 
 async function findTable(connName: string, tableName: string): Promise<void> {
-  let config: MySQLConfig;
-  try {
-    config = await requireConfig<MySQLConfig>('mysql');
-  } catch (e) {
-    if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-      console.error(`No config found. Run --init to create ${configPath('mysql')}`);
-      process.exit(1);
-    }
-    throw e;
-  }
+  const config = await loadConfig();
 
   const connConfig = (config.connections || {})[connName];
   if (!connConfig) {
@@ -374,16 +346,7 @@ program
 
     const colWidth = parseInt(opts.colWidth, 10);
 
-    let config: MySQLConfig;
-    try {
-      config = await requireConfig<MySQLConfig>('mysql');
-    } catch (e) {
-      if (e instanceof PluginError && e.code === 'CONFIG_MISSING') {
-        console.error(`No config found. Run init to create ${configPath('mysql')}`);
-        process.exit(1);
-      }
-      throw e;
-    }
+    const config = await loadConfig();
 
     const connConfig = (config.connections || {})[connection];
     if (!connConfig) {

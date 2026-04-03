@@ -19,7 +19,7 @@ Execute SQL queries via `pg` Node.js script with multi-connection support.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `~/.cache/apex-plugin/postgresql.json` directly.** Use `--list`, `--test`, `--init` instead.
+**NEVER read, open, cat, or view `~/.cache/apex-plugin/postgresql.json` directly.** Use `list`, `test`, `init` subcommands instead.
 
 ## CRITICAL: Write Operations
 
@@ -33,22 +33,22 @@ Execute SQL queries via `pg` Node.js script with multi-connection support.
 
 **You MUST confirm the connection name with the user before querying.**
 
-1. Run `--list` to see available connections
+1. Run `list` to see available connections
 2. Use `AskUserQuestion` to confirm which connection the user wants
 3. After the user confirms, ask: "Save this as default connection in project CLAUDE.md?"
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --list
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs list
 ```
 
 ## MANDATORY: Check Columns Before Writing SQL
 
-**NEVER guess column names.** Always run `--columns` first to see actual column names and types:
+**NEVER guess column names.** Always run `columns` first to see actual column names and types:
 
 ```bash
 # Step 1: List columns (schema defaults to 'public' if omitted)
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --columns <connection> <schema> <table>
-# Example: node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --columns prod public orders
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs columns <connection> <schema> <table>
+# Example: node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs columns prod public orders
 
 # Step 2: Only THEN write SELECT using actual column names
 node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs <conn> "SELECT col1, col2 FROM schema.table WHERE ..."
@@ -60,20 +60,20 @@ PostgreSQL uses **schemas** (not databases) to organize tables. If a table doesn
 
 ```bash
 # Step 1: Find which schema a table belongs to
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --find-table <conn> <table_name>
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs find-table <conn> <table_name>
 # Example output: public.orders (~1234 rows)
 
 # Step 2: Use schema.table syntax in your query
 node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs <conn> "SELECT * FROM public.orders WHERE ..."
 
 # Fuzzy search with % pattern
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --find-table <conn> "%warehouse%"
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs find-table <conn> "%warehouse%"
 
 # List all schemas in the database
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --schemas <conn>
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs schemas <conn>
 
 # List all non-system databases
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --databases <conn>
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs databases <conn>
 ```
 
 **NEVER create additional connections for the same host.** Use `schema.table` syntax instead.
@@ -81,17 +81,17 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs --databases <conn>
 ## Command Reference
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs <connection> "<sql>" [options]
+node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs query <connection> "<sql>" [options]
 ```
 
 | Option | Description |
 |--------|-------------|
-| `--format=csv\|table\|json\|compact` | Output format (default: csv; compact = tab-delimited) |
-| `--params='["val"]'` | Parameterized query values |
-| `--limit=N` | Max rows (default: 1, 0=unlimited) |
-| `--col-width=N` | Max column width (default: 40) |
+| `--format csv\|table\|json\|compact` | Output format (default: csv; compact = tab-delimited) |
+| `--params '<json>'` | Parameterized query values |
+| `--limit <n>` | Max rows (default: 1, 0=unlimited) |
+| `--col-width <n>` | Max column width (default: 40) |
 
-Subcommands: `--init`, `--list`, `--test [name]`, `--columns <conn> [schema] <table>`, `--databases <conn>`, `--schemas <conn>`, `--find-table <conn> <table|%pat%>`, `--help`
+Subcommands: `init`, `list`, `test [name]`, `columns <conn> [schema] <table>`, `databases <conn>`, `schemas <conn>`, `find-table <conn> <table|%pat%>`, `--help`
 
 ## Token Optimization Rules
 

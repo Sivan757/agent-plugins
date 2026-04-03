@@ -253,7 +253,7 @@ Opens the browser for OAuth2 authorization. Required when `TICKTICK_ACCESS_TOKEN
 | abandoned | Abandoned   |
 
 ### Host Configuration
-The CLI reads credentials from `~/.cache/apex-plugin/ticktick.env` (global). Legacy fallback: `${CLAUDE_PLUGIN_ROOT}/scripts/.env`.
+The CLI reads credentials from `~/.cache/apex-plugin/ticktick.json` (global). When config is missing, a browser setup form opens automatically.
 
 ### API Architecture
 - **V1 (OAuth2)**: projects, task get/create/complete/delete — uses Bearer token

@@ -21,12 +21,13 @@ Query Alibaba Cloud SLS logs via `@alicloud/log` Node.js SDK.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `~/.cache/apex-plugin/.aliyun.json` directly.** Use `--test` to verify connectivity.
+**NEVER read, open, cat, or view `~/.cache/apex-plugin/aliyunlog.json` directly.** Use `test` subcommand to verify connectivity. When config is missing or credentials are invalid, the CLI auto-opens a browser setup form.
 
 ## Command Reference
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs [options]
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs <subcommand> [options]
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query [options]     # default subcommand
 ```
 
 ## Minimal Workflow (Recommended)
@@ -35,50 +36,43 @@ Use this 3-command flow by default:
 
 ```bash
 # 1) First query (context auto-saved)
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs \
-  --service=robot-order --project=robot-k8s-dev \
-  --query="<traceId|orderId|keyword>" --from=-2h --limit=20
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query \
+  --service robot-order --project robot-k8s-dev \
+  --query "<traceId|orderId|keyword>" --from -2h --limit 20
 
 # 2) View full raw logs from same query context
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --full
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --full
 
 # 3) Continue investigation with pagination or refinement
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --more
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --more
 # or
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --refine="BusinessException"
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --refine "BusinessException"
 ```
 
 For machine-readable output:
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --full --format=json
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --full --format json
 ```
 
-Compatibility fallback for older plugin versions (where standalone `--full` is not supported):
-```bash
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs \
-  --service=robot-order --project=robot-k8s-dev \
-  --query="<same query>" --from=-2h --limit=20 --full
-```
-
-### Query Options
+### Query Options (for `query` subcommand)
 
 | Option | Description |
 |--------|-------------|
-| `--project=<name>` | SLS project name |
-| `--logstore=<name>` | SLS logstore name |
-| `--service=<name>` | Auto-discover logstore by service name (cached) |
-| `--query=<sls_query>` | SLS query string (default: `*`) |
-| `--template=<name>` | Use query template: `error-by-service`, `npe`, `recent-errors`, `fatal`, `timeout`, `oom` |
-| `--keyword=<text>` | Additional keyword for templates |
-| `--from=<time>` | Start time (omit = last 15 min) |
-| `--to=<time>` | End time (omit = now) |
-| `--limit=<n>` | Max entries (default: **5**) |
-| `--format=compact\|csv\|json` | Output format (default: compact) |
-| `--fields=<f1,f2,...>` | Extract specific fields as CSV |
+| `--project <name>` | SLS project name |
+| `--logstore <name>` | SLS logstore name |
+| `--service <name>` | Auto-discover logstore by service name (cached) |
+| `--query <sls_query>` | SLS query string (default: `*`) |
+| `--template <name>` | Use query template: `error-by-service`, `npe`, `recent-errors`, `fatal`, `timeout`, `oom` |
+| `--keyword <text>` | Additional keyword for templates |
+| `--from <time>` | Start time (omit = last 15 min) |
+| `--to <time>` | End time (omit = now) |
+| `--limit <n>` | Max entries (default: **5**) |
+| `--format <fmt>` | Output format: compact\|csv\|json (default: compact) |
+| `--fields <f1,f2,...>` | Extract specific fields as CSV |
 | `--count` | Shorthand for COUNT(*) query |
 | `--oldest` | Show oldest first (default: newest) |
 
-### Output Options
+### Output Options (for `query` subcommand)
 
 | Option | Description |
 |--------|-------------|
@@ -89,30 +83,29 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs \
 
 ### Session Context Options
 
-| Option | Description |
+| Option / Subcommand | Description |
 |--------|-------------|
-| `--save-context` | Legacy option, context is auto-saved by default |
-| `--no-context` | Disable auto-saving query context |
-| `--more` | Fetch next page using saved context |
-| `--refine=<filter>` | Add filter to previous query |
-| `--clear-context` | Clear saved context |
+| `--no-context` | Disable auto-saving query context (query option) |
+| `--more` | Fetch next page using saved context (query option) |
+| `--refine <filter>` | Add filter to previous query (query option) |
+| `clear-context` | Clear saved context (standalone subcommand) |
 
 ### Discovery Subcommands
 
 | Command | Description |
 |---------|-------------|
-| `--find-service=<name>` | **Find which logstore contains a service** (auto-caches result) |
-| `--list-services=<logstore>` | List all services running in a logstore |
-| `--list-logstores <project>` | List all logstores in a project |
-| `--list-aliases` | Show configured aliases |
+| `find-service <name> [--project <p>]` | **Find which logstore contains a service** (auto-caches result) |
+| `list-services <logstore> [--project <p>]` | List all services running in a logstore |
+| `list-logstores <project>` | List all logstores in a project |
+| `list-aliases` | Show configured aliases |
 
-### Other Subcommands
+### Setup Subcommands
 
 | Command | Description |
 |---------|-------------|
-| `--init` | Create config template |
-| `--setup` | Interactive setup wizard |
-| `--test` | Test SDK connection |
+| `init` | Create config template |
+| `setup` | Interactive setup wizard |
+| `test` | Test SDK connection |
 
 ## Time Format
 
@@ -133,28 +126,28 @@ If the user says "last 2 hours", use `--from=-2h`. If `--from`/`--to` are omitte
 
 ### When you don't know the logstore
 
-**Use `--find-service` to discover where a service lives:**
+**Use `find-service` subcommand to discover where a service lives:**
 ```bash
 # Find which logstore contains robot-order
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --find-service=robot-order --project=robot-k8s-dev
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs find-service robot-order --project robot-k8s-dev
 # Output: qa1-saas (1234 logs in last 2h)
 # Auto-caches the mapping for future queries
 
 # List all services in a logstore
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --list-services=qa1-saas --project=robot-k8s-dev
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs list-services qa1-saas --project robot-k8s-dev
 ```
 
 ### Normal query flow (after discovery)
 
 `--service` auto-resolves from cache:
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --service=robot-order --project=robot-k8s-dev --query="ERROR" --from=-1h --limit=5
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --service robot-order --project robot-k8s-dev --query "ERROR" --from -1h --limit 5
 ```
 
 ### NEVER guess project or logstore names
 - There are only **2 SLS projects**: `robot-k8s-dev` (dev/qa/uat) and `robot-k8s-prod` (prod)
 - **Do NOT invent** names like `robot-k8s-qa`, `robot-k8s-uat` — they don't exist
-- If unsure, use `--find-service` to discover automatically
+- If unsure, use `find-service` subcommand to discover automatically
 
 ## Query Templates
 
@@ -162,13 +155,13 @@ Use templates instead of writing raw SLS queries:
 
 ```bash
 # Find errors for a service
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs dev robot-order --template=error-by-service --from=-2h --limit=10
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query dev robot-order --template error-by-service --from -2h --limit 10
 
 # Find NullPointerException with keyword
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs dev robot-order --template=npe --keyword=qink --from=-1h --limit=5
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query dev robot-order --template npe --keyword qink --from -1h --limit 5
 
 # Find timeout errors
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --service=robot-order --project=robot-k8s-dev --template=timeout --from=-4h --limit=10
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --service robot-order --project robot-k8s-dev --template timeout --from -4h --limit 10
 ```
 
 Available templates:
@@ -185,17 +178,17 @@ Available templates:
 
 ```bash
 # 1. Start with template + extract-errors + auto-broaden
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --service=robot-order --project=robot-k8s-dev \
-  --template=error-by-service --from=-2h --limit=10 --extract-errors --auto-broaden
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --service robot-order --project robot-k8s-dev \
+  --template error-by-service --from -2h --limit 10 --extract-errors --auto-broaden
 
 # 2. See full raw logs from same context
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --full
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --full
 
 # 3. Narrow down to specific error
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --refine="BusinessException" --extract-errors
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs query --refine "BusinessException" --extract-errors
 
 # 4. Clean up
-node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs --clear-context
+node ${CLAUDE_PLUGIN_ROOT}/dist/aliyunlog.mjs clear-context
 ```
 
 ### Progressive search
