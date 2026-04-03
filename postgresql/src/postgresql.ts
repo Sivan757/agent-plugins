@@ -17,7 +17,7 @@ import pg from 'pg';
 import { Command } from 'commander';
 
 import { requireConfigWithSetup, saveConfig, configPath } from '@apex/core';
-import type { ConfigUISchema } from '@apex/core';
+import type { ConfigUIOptions } from '@apex/core';
 
 const { Client } = pg;
 
@@ -46,20 +46,60 @@ function die(msg: string): never {
   process.exit(1);
 }
 
-const PG_CONFIG_UI_SCHEMA: ConfigUISchema = {
-  title: 'PostgreSQL Connection',
-  description: 'Configure your first PostgreSQL database connection',
-  fields: [
-    { key: 'connections.default.host', label: 'Host', type: 'text', required: true, default: '127.0.0.1' },
-    { key: 'connections.default.port', label: 'Port', type: 'number', default: '5432' },
-    { key: 'connections.default.user', label: 'Username', type: 'text', required: true },
-    { key: 'connections.default.password', label: 'Password', type: 'password', required: true },
-    { key: 'connections.default.database', label: 'Database', type: 'text', required: true },
-  ],
+const PG_CONFIG_UI: ConfigUIOptions = {
+  spec: {
+    root: 'page',
+    elements: {
+      'page': {
+        type: 'Header',
+        props: { title: 'PostgreSQL', description: { en: 'Configure your database connections', zh: '配置数据库连接' }, configPath: null },
+        children: ['connections', 'save'],
+      },
+      'connections': {
+        type: 'Collection',
+        props: { title: { en: 'Connections', zh: '连接' }, itemLabel: { en: 'Connection', zh: '连接' }, statePath: '/connections', nameEditable: true },
+        children: ['conn-host', 'conn-port', 'conn-user', 'conn-password', 'conn-database', 'conn-ssl'],
+      },
+      'conn-host': {
+        type: 'Field',
+        props: { label: { en: 'Host', zh: '主机地址' }, type: 'text', required: true, help: null, placeholder: '127.0.0.1', options: null, statePath: 'host' },
+      },
+      'conn-port': {
+        type: 'Field',
+        props: { label: { en: 'Port', zh: '端口' }, type: 'number', required: false, help: null, placeholder: '5432', options: null, statePath: 'port' },
+      },
+      'conn-user': {
+        type: 'Field',
+        props: { label: { en: 'Username', zh: '用户名' }, type: 'text', required: true, help: null, placeholder: null, options: null, statePath: 'user' },
+      },
+      'conn-password': {
+        type: 'Field',
+        props: { label: { en: 'Password', zh: '密码' }, type: 'password', required: true, help: null, placeholder: null, options: null, statePath: 'password' },
+      },
+      'conn-database': {
+        type: 'Field',
+        props: { label: { en: 'Database', zh: '数据库' }, type: 'text', required: true, help: null, placeholder: null, options: null, statePath: 'database' },
+      },
+      'conn-ssl': {
+        type: 'Field',
+        props: { label: { en: 'SSL', zh: 'SSL 加密' }, type: 'checkbox', required: false, help: { en: 'Disable for local/VPN connections', zh: '本地或 VPN 连接可关闭' }, placeholder: null, options: null, statePath: 'ssl' },
+      },
+      'save': {
+        type: 'SaveBar',
+        props: { saveLabel: null, resetLabel: null },
+      },
+    },
+    state: {
+      connections: [
+        { _name: 'default', host: '127.0.0.1', port: '5432', user: '', password: '', database: '', ssl: 'false' },
+      ],
+    },
+  },
+  collections: [{ statePath: '/connections' }],
 };
 
 async function loadConfig(): Promise<PostgresConfig> {
-  return requireConfigWithSetup<PostgresConfig>('postgresql', PG_CONFIG_UI_SCHEMA);
+  return requireConfigWithSetup<PostgresConfig>('postgresql', PG_CONFIG_UI);
 }
 
 // ── Configuration ────────────────────────────────────────────────────────────

@@ -17,7 +17,7 @@ import mysql from 'mysql2/promise';
 import { Command } from 'commander';
 
 import { requireConfigWithSetup, saveConfig, configPath } from '@apex/core';
-import type { ConfigUISchema } from '@apex/core';
+import type { ConfigUIOptions } from '@apex/core';
 
 const DEFAULT_ROW_LIMIT = 1;
 const DEFAULT_COL_WIDTH = 40;
@@ -39,20 +39,69 @@ function info(msg: string): void {
   process.stderr.write(`[mysql] ${msg}\n`);
 }
 
-const MYSQL_CONFIG_UI_SCHEMA: ConfigUISchema = {
-  title: 'MySQL Connection',
-  description: 'Configure your first MySQL database connection',
-  fields: [
-    { key: 'connections.default.host', label: 'Host', type: 'text', required: true, default: '127.0.0.1' },
-    { key: 'connections.default.port', label: 'Port', type: 'number', default: '3306' },
-    { key: 'connections.default.user', label: 'Username', type: 'text', required: true },
-    { key: 'connections.default.password', label: 'Password', type: 'password', required: true },
-    { key: 'connections.default.database', label: 'Database', type: 'text', required: true },
-  ],
+const MYSQL_CONFIG_UI: ConfigUIOptions = {
+  spec: {
+    root: 'page',
+    elements: {
+      'page': {
+        type: 'Header',
+        props: {
+          title: { en: 'MySQL', zh: 'MySQL' },
+          description: { en: 'Configure your database connections', zh: '配置数据库连接' },
+          configPath: null,
+        },
+        children: ['connections', 'save'],
+      },
+      'connections': {
+        type: 'Collection',
+        props: {
+          title: { en: 'Connections', zh: '连接' },
+          itemLabel: { en: 'Connection', zh: '连接' },
+          statePath: '/connections',
+          nameEditable: true,
+        },
+        children: ['conn-host', 'conn-port', 'conn-user', 'conn-password', 'conn-database', 'conn-ssl'],
+      },
+      'conn-host': {
+        type: 'Field',
+        props: { label: { en: 'Host', zh: '主机地址' }, type: 'text', required: true, help: null, placeholder: '127.0.0.1', options: null, statePath: 'host' },
+      },
+      'conn-port': {
+        type: 'Field',
+        props: { label: { en: 'Port', zh: '端口' }, type: 'number', required: false, help: null, placeholder: '3306', options: null, statePath: 'port' },
+      },
+      'conn-user': {
+        type: 'Field',
+        props: { label: { en: 'Username', zh: '用户名' }, type: 'text', required: true, help: null, placeholder: null, options: null, statePath: 'user' },
+      },
+      'conn-password': {
+        type: 'Field',
+        props: { label: { en: 'Password', zh: '密码' }, type: 'password', required: true, help: null, placeholder: null, options: null, statePath: 'password' },
+      },
+      'conn-database': {
+        type: 'Field',
+        props: { label: { en: 'Database', zh: '数据库' }, type: 'text', required: true, help: null, placeholder: null, options: null, statePath: 'database' },
+      },
+      'conn-ssl': {
+        type: 'Field',
+        props: { label: { en: 'SSL', zh: 'SSL 加密' }, type: 'checkbox', required: false, help: null, placeholder: null, options: null, statePath: 'ssl' },
+      },
+      'save': {
+        type: 'SaveBar',
+        props: { saveLabel: null, resetLabel: null },
+      },
+    },
+    state: {
+      connections: [
+        { _name: 'default', host: '127.0.0.1', port: '3306', user: '', password: '', database: '', ssl: 'false' },
+      ],
+    },
+  },
+  collections: [{ statePath: '/connections' }],
 };
 
 async function loadConfig(): Promise<MySQLConfig> {
-  return requireConfigWithSetup<MySQLConfig>('mysql', MYSQL_CONFIG_UI_SCHEMA);
+  return requireConfigWithSetup<MySQLConfig>('mysql', MYSQL_CONFIG_UI);
 }
 
 // ── Configuration ────────────────────────────────────────────────────────────
@@ -155,7 +204,10 @@ async function listColumns(connName: string, tableName: string): Promise<void> {
   let connection: mysql.Connection | undefined;
   try {
     connection = await createConnection(connConfig);
-    const [rows] = await connection.execute(`DESCRIBE \`${tableName}\``);
+    const qualifiedName = tableName.includes('.')
+      ? tableName.split('.').map(p => `\`${p}\``).join('.')
+      : `\`${tableName}\``;
+    const [rows] = await connection.execute(`DESCRIBE ${qualifiedName}`);
 
     if (!Array.isArray(rows) || rows.length === 0) {
       console.log(`(table "${tableName}" not found or empty)`);
@@ -249,6 +301,265 @@ async function findTable(connName: string, tableName: string): Promise<void> {
     if (tableRows.length > 0) {
       info(`  node mysql.mjs ${connName} "SELECT * FROM ${tableRows[0].TABLE_SCHEMA}.${tableRows[0].TABLE_NAME} LIMIT 1"`);
     }
+  } catch (err) {
+    const mysqlErr = err as Error & { code?: string };
+    console.error(`Error: ${mysqlErr.message}`);
+    if (mysqlErr.code) console.error(`Code: ${mysqlErr.code}`);
+    process.exit(1);
+  } finally {
+    if (connection) await connection.end();
+  }
+}
+
+// ── Column Search ───────────────────────────────────────────────────────────
+
+async function searchColumns(connName: string, pattern: string): Promise<void> {
+  const config = await loadConfig();
+
+  const connConfig = (config.connections || {})[connName];
+  if (!connConfig) {
+    console.error(`Error: Connection "${connName}" not found.`);
+    await listConnections();
+    process.exit(1);
+  }
+
+  let connection: mysql.Connection | undefined;
+  try {
+    connection = await createConnection(connConfig);
+    const sql = `SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
+      FROM information_schema.COLUMNS
+      WHERE COLUMN_NAME LIKE ?
+        AND TABLE_SCHEMA NOT IN ('information_schema','mysql','performance_schema','sys')
+      ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION`;
+    const [rows] = await connection.execute(sql, [pattern]);
+
+    const columnRows = rows as Array<{
+      TABLE_SCHEMA: string;
+      TABLE_NAME: string;
+      COLUMN_NAME: string;
+      COLUMN_TYPE: string;
+    }>;
+
+    if (columnRows.length === 0) {
+      console.error(`No columns matching "${pattern}" found in any user database.`);
+      process.exit(1);
+    }
+
+    // Group by schema.table
+    const grouped = new Map<string, string[]>();
+    for (const row of columnRows) {
+      const key = `${row.TABLE_SCHEMA}.${row.TABLE_NAME}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(`${row.COLUMN_NAME} (${row.COLUMN_TYPE})`);
+    }
+
+    for (const [table, cols] of grouped) {
+      console.log(`${table}: ${cols.join(', ')}`);
+    }
+    info(`Found ${columnRows.length} matching columns in ${grouped.size} tables`);
+  } catch (err) {
+    const mysqlErr = err as Error & { code?: string };
+    console.error(`Error: ${mysqlErr.message}`);
+    if (mysqlErr.code) console.error(`Code: ${mysqlErr.code}`);
+    process.exit(1);
+  } finally {
+    if (connection) await connection.end();
+  }
+}
+
+// ── Relationships ───────────────────────────────────────────────────────────
+
+async function showRelationships(connName: string, tableName: string): Promise<void> {
+  const config = await loadConfig();
+
+  const connConfig = (config.connections || {})[connName];
+  if (!connConfig) {
+    console.error(`Error: Connection "${connName}" not found.`);
+    await listConnections();
+    process.exit(1);
+  }
+
+  // Support database.table syntax
+  let dbName: string;
+  let bareTable: string;
+  if (tableName.includes('.')) {
+    const parts = tableName.split('.');
+    dbName = parts[0];
+    bareTable = parts[1];
+  } else {
+    dbName = connConfig.database;
+    bareTable = tableName;
+  }
+
+  let connection: mysql.Connection | undefined;
+  try {
+    connection = await createConnection(connConfig);
+
+    // 1) Foreign keys FROM this table (this table references others)
+    const fkFromSql = `
+      SELECT COLUMN_NAME, REFERENCED_TABLE_SCHEMA, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+      FROM information_schema.KEY_COLUMN_USAGE
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+        AND REFERENCED_TABLE_NAME IS NOT NULL
+      ORDER BY COLUMN_NAME`;
+    const [fkFromRows] = await connection.execute(fkFromSql, [dbName, bareTable]);
+    const fkFrom = fkFromRows as Array<{
+      COLUMN_NAME: string;
+      REFERENCED_TABLE_SCHEMA: string;
+      REFERENCED_TABLE_NAME: string;
+      REFERENCED_COLUMN_NAME: string;
+    }>;
+
+    // 2) Foreign keys TO this table (other tables reference this one)
+    const fkToSql = `
+      SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, REFERENCED_COLUMN_NAME
+      FROM information_schema.KEY_COLUMN_USAGE
+      WHERE REFERENCED_TABLE_SCHEMA = ? AND REFERENCED_TABLE_NAME = ?
+      ORDER BY TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME`;
+    const [fkToRows] = await connection.execute(fkToSql, [dbName, bareTable]);
+    const fkTo = fkToRows as Array<{
+      TABLE_SCHEMA: string;
+      TABLE_NAME: string;
+      COLUMN_NAME: string;
+      REFERENCED_COLUMN_NAME: string;
+    }>;
+
+    // 3) Potential join columns by naming convention (_id suffix, not PRI)
+    const conventionSql = `
+      SELECT COLUMN_NAME
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+        AND COLUMN_NAME LIKE '%\\_id'
+        AND COLUMN_KEY != 'PRI'
+      ORDER BY ORDINAL_POSITION`;
+    const [conventionRows] = await connection.execute(conventionSql, [dbName, bareTable]);
+    const conventionCols = (conventionRows as Array<{ COLUMN_NAME: string }>).map(r => r.COLUMN_NAME);
+
+    // Output
+    console.log(`Table: ${dbName}.${bareTable}`);
+    console.log('');
+
+    console.log(`Foreign keys FROM ${bareTable}:`);
+    if (fkFrom.length === 0) {
+      console.log('  (none)');
+    } else {
+      for (const fk of fkFrom) {
+        console.log(`  ${bareTable}.${fk.COLUMN_NAME} → ${fk.REFERENCED_TABLE_SCHEMA}.${fk.REFERENCED_TABLE_NAME}.${fk.REFERENCED_COLUMN_NAME}`);
+      }
+    }
+    console.log('');
+
+    console.log(`Foreign keys TO ${bareTable}:`);
+    if (fkTo.length === 0) {
+      console.log('  (none)');
+    } else {
+      for (const fk of fkTo) {
+        console.log(`  ${fk.TABLE_SCHEMA}.${fk.TABLE_NAME}.${fk.COLUMN_NAME} → ${bareTable}.${fk.REFERENCED_COLUMN_NAME}`);
+      }
+    }
+    console.log('');
+
+    console.log('Potential join columns (by naming convention):');
+    if (conventionCols.length === 0) {
+      console.log('  (none)');
+    } else {
+      console.log(`  ${bareTable} has: ${conventionCols.join(', ')}`);
+    }
+
+    info('Relationship scan complete');
+  } catch (err) {
+    const mysqlErr = err as Error & { code?: string };
+    console.error(`Error: ${mysqlErr.message}`);
+    if (mysqlErr.code) console.error(`Code: ${mysqlErr.code}`);
+    process.exit(1);
+  } finally {
+    if (connection) await connection.end();
+  }
+}
+
+// ── Table Profiling ─────────────────────────────────────────────────────────
+
+async function profileTable(connName: string, tableName: string): Promise<void> {
+  const config = await loadConfig();
+
+  const connConfig = (config.connections || {})[connName];
+  if (!connConfig) {
+    console.error(`Error: Connection "${connName}" not found.`);
+    await listConnections();
+    process.exit(1);
+  }
+
+  // Parse database.table syntax
+  let dbName: string;
+  let tblName: string;
+  if (tableName.includes('.')) {
+    const parts = tableName.split('.');
+    dbName = parts[0];
+    tblName = parts[1];
+  } else {
+    dbName = connConfig.database;
+    tblName = tableName;
+  }
+
+  let connection: mysql.Connection | undefined;
+  try {
+    connection = await createConnection(connConfig);
+
+    // Get row count from information_schema
+    const [tableRows] = await connection.execute(
+      'SELECT TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
+      [dbName, tblName]
+    );
+    const tableInfo = tableRows as Array<{ TABLE_ROWS: number | null }>;
+    if (tableInfo.length === 0) {
+      console.error(`Error: Table "${dbName}.${tblName}" not found.`);
+      console.error(`Hint: Try find-table ${connName} ${tblName}`);
+      process.exit(1);
+    }
+
+    const rowCount = tableInfo[0].TABLE_ROWS;
+
+    // Find datetime/timestamp columns
+    const [colRows] = await connection.execute(
+      "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND DATA_TYPE IN ('datetime', 'timestamp') ORDER BY ORDINAL_POSITION",
+      [dbName, tblName]
+    );
+    const dateColumns = (colRows as Array<{ COLUMN_NAME: string }>).map(r => r.COLUMN_NAME);
+
+    // Build output
+    console.log(`Table: ${dbName}.${tblName}`);
+    console.log(`Rows: ~${rowCount != null ? rowCount.toLocaleString() : '?'}`);
+
+    if (dateColumns.length > 0) {
+      // Build a single query for all date columns to minimize round trips
+      const selects = dateColumns.map(col => {
+        const escaped = `\`${col}\``;
+        return `MIN(${escaped}) AS \`${col}_min\`, MAX(${escaped}) AS \`${col}_max\``;
+      });
+      const qualifiedTable = `\`${dbName}\`.\`${tblName}\``;
+      const [rangeRows] = await connection.execute(
+        `SELECT ${selects.join(', ')} FROM ${qualifiedTable}`
+      );
+      const rangeData = (rangeRows as Record<string, unknown>[])[0];
+
+      console.log('Date ranges:');
+      for (const col of dateColumns) {
+        const minVal = rangeData[`${col}_min`];
+        const maxVal = rangeData[`${col}_max`];
+        if (minVal == null && maxVal == null) {
+          console.log(`  ${col}: (all NULL)`);
+        } else {
+          // Format: trim time portion if it's midnight
+          const fmt = (v: unknown): string => {
+            const s = String(v);
+            return s.replace(/ 00:00:00$/, '');
+          };
+          console.log(`  ${col}: ${fmt(minVal)} \u2192 ${fmt(maxVal)}`);
+        }
+      }
+    }
+
+    info('Profile complete');
   } catch (err) {
     const mysqlErr = err as Error & { code?: string };
     console.error(`Error: ${mysqlErr.message}`);
@@ -486,6 +797,36 @@ program
   .argument('<table>', 'Table name or pattern (e.g. %user%)')
   .action(async (connection: string, table: string) => {
     await findTable(connection, table);
+  });
+
+// search-columns command
+program
+  .command('search-columns')
+  .description('Search for columns by name pattern across all databases')
+  .argument('<connection>', 'Connection name')
+  .argument('<pattern>', 'Column name pattern (SQL LIKE, e.g. %price%)')
+  .action(async (connection: string, pattern: string) => {
+    await searchColumns(connection, pattern);
+  });
+
+// relationships command
+program
+  .command('relationships')
+  .description('Show foreign key relationships and potential join columns for a table')
+  .argument('<connection>', 'Connection name')
+  .argument('<table>', 'Table name (or database.table)')
+  .action(async (connection: string, table: string) => {
+    await showRelationships(connection, table);
+  });
+
+// profile command
+program
+  .command('profile')
+  .description('Show table profile: row count, date ranges for datetime columns')
+  .argument('<connection>', 'Connection name')
+  .argument('<table>', 'Table name (or database.table)')
+  .action(async (connection: string, table: string) => {
+    await profileTable(connection, table);
   });
 
 program.parseAsync();

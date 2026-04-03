@@ -63,6 +63,9 @@ Before writing ANY SELECT, always run `columns` first to see actual column names
 # Step 1: List column names of the target table
 node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs columns <connection> <table>
 
+# Supports database.table syntax for cross-database tables
+node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs columns <connection> <database.table>
+
 # Step 2: Only THEN write SELECT using actual column names
 node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs <conn> "SELECT col1, col2 FROM table WHERE ..."
 ```
@@ -75,6 +78,7 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs <conn> "SELECT col1, col2 FROM table W
 | `id` as primary key | Tables use `t_xxx_id` pattern | `columns` first |
 | `sub_order_code` | May be `origin_code` | `columns` first |
 | `PO-211-xxx` as `order_code` | Actually `origin_code` | `columns` first |
+| Stale table data | Table may have old data only | `profile` first |
 
 ## MANDATORY: Database Discovery Before Cross-DB Queries
 
@@ -110,7 +114,7 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs query <connection> "<sql>" [options]
 | `--limit <n>` | Max rows (default: 1, 0=unlimited) |
 | `--col-width <n>` | Max column width (default: 40) |
 
-Subcommands: `init`, `list`, `test [name]`, `columns <conn> <table>`, `databases <conn>`, `find-table <conn> <table|%pat%>`, `--help`
+Subcommands: `init`, `list`, `test [name]`, `columns <conn> <table>`, `databases <conn>`, `find-table <conn> <table|%pat%>`, `search-columns <conn> <pattern>`, `profile <conn> <table>`, `relationships <conn> <table>`, `--help`
 
 ## Token Optimization Rules
 
@@ -119,6 +123,35 @@ Subcommands: `init`, `list`, `test [name]`, `columns <conn> <table>`, `databases
 3. **Aggregate first** — `COUNT(*)`, `GROUP BY`, `SUM()` over raw rows
 4. **Filter with WHERE** — narrow server-side, not by scanning results
 5. **Default CSV** — most token-efficient format; use `--format=compact` for even less overhead
+
+## Analytical Query Workflow
+
+For multi-table analysis tasks (e.g., "total revenue last month", "order breakdown by category"):
+
+1. **Locate candidate tables** — `find-table` with pattern matching
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs find-table <conn> "%order%"
+   ```
+
+2. **Find tables with relevant metrics** — `search-columns` to find price/amount/quantity columns across all databases without checking tables one by one
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs search-columns <conn> "%price%"
+   node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs search-columns <conn> "%amount%"
+   ```
+
+3. **Check data freshness** — `profile` to verify tables have data in the target time range before writing queries against them
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs profile <conn> <table>
+   ```
+
+4. **Discover join paths** — `relationships` to find foreign keys and potential join columns instead of guessing
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs relationships <conn> <table>
+   ```
+
+5. **Write aggregate queries** — only after steps 1-4 confirm the right tables, columns, and joins
+
+This workflow prevents common pitfalls: joining on wrong keys, querying tables with stale data, and missing the table that actually has the metrics you need.
 
 ## Reference Files
 

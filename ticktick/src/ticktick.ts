@@ -9,7 +9,7 @@ import { tmpdir } from 'os';
 
 import { Command } from 'commander';
 import { requireConfig, requireConfigWithSetup, saveConfig, PluginError } from '@apex/core';
-import type { ConfigUISchema } from '@apex/core';
+import type { ConfigUIOptions } from '@apex/core';
 
 // =============================================================================
 // Config
@@ -29,14 +29,47 @@ interface TickTickConfig extends Record<string, unknown> {
 const SESSION_CACHE = `${tmpdir()}/ticktick-session.json`;
 const SESSION_TTL_MS = 3600_000; // 1 hour
 
-const TICKTICK_CONFIG_UI_SCHEMA: ConfigUISchema = {
-  title: 'TickTick',
-  description: 'Enter your TickTick / Dida365 credentials',
-  fields: [
-    { key: 'host', label: 'Host', type: 'select', required: true, options: ['ticktick.com', 'dida365.com'], default: 'ticktick.com', help: 'Use dida365.com for China accounts' },
-    { key: 'username', label: 'Username / Email', type: 'text', required: true },
-    { key: 'password', label: 'Password', type: 'password', required: true },
-  ],
+const TICKTICK_CONFIG_UI: ConfigUIOptions = {
+  spec: {
+    root: 'page',
+    elements: {
+      'page': {
+        type: 'Header',
+        props: { title: 'TickTick', description: { en: 'Enter your TickTick / Dida365 credentials', zh: '输入你的 TickTick / 滴答清单 凭证' }, configPath: null },
+        children: ['credentials'],
+      },
+      'credentials': {
+        type: 'Section',
+        props: { title: { en: 'Credentials', zh: '凭证' }, collapsible: false, defaultOpen: true, description: null },
+        children: ['host', 'username', 'password', 'save'],
+      },
+      'host': {
+        type: 'Field',
+        props: {
+          label: { en: 'Host', zh: '服务器' },
+          type: 'select',
+          required: true,
+          help: { en: 'Use dida365.com for China accounts', zh: '中国账号请使用 dida365.com' },
+          placeholder: null,
+          options: ['ticktick.com', 'dida365.com'],
+          statePath: '/host',
+        },
+      },
+      'username': {
+        type: 'Field',
+        props: { label: { en: 'Username / Email', zh: '用户名 / 邮箱' }, type: 'text', required: true, help: null, placeholder: null, options: null, statePath: '/username' },
+      },
+      'password': {
+        type: 'Field',
+        props: { label: { en: 'Password', zh: '密码' }, type: 'password', required: true, help: null, placeholder: null, options: null, statePath: '/password' },
+      },
+      'save': {
+        type: 'SaveBar',
+        props: { saveLabel: null, resetLabel: null },
+      },
+    },
+    state: { host: 'ticktick.com', username: '', password: '' },
+  },
 };
 
 // =============================================================================
@@ -378,7 +411,7 @@ Examples:
         const rawOpts = rawAfterSubcmd.slice(1 + positionalArgs.length);
         const { opts } = parseRawOpts(rawOpts);
 
-        const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI_SCHEMA);
+        const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI);
         const HOST = config.host || 'ticktick.com';
         const API_V2 = `https://api.${HOST}/api/v2`;
         const API_V1 = `https://api.${HOST}/open/v1`;
@@ -423,7 +456,7 @@ Examples:
     .command('sync')
     .description('Full account sync — dump all projects, tasks, tags')
     .action(async () => {
-      const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI_SCHEMA);
+      const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI);
       const HOST = config.host || 'ticktick.com';
       const API_V2 = `https://api.${HOST}/api/v2`;
       function buildXDevice(): string {
@@ -443,7 +476,7 @@ Examples:
     .command('auth')
     .description('OAuth2 token acquisition — opens browser')
     .action(async () => {
-      const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI_SCHEMA);
+      const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI);
       const HOST = config.host || 'ticktick.com';
       await authFlow(config, HOST);
     });

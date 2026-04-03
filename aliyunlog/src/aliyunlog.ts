@@ -41,7 +41,7 @@ import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { Command } from 'commander';
 import { requireConfig, requireConfigWithSetup, configPath, PluginError } from '@apex/core';
-import type { ConfigUISchema } from '@apex/core';
+import type { ConfigUIOptions } from '@apex/core';
 
 // Type declarations are in alicloud-log.d.ts
 import ALY from '@alicloud/log';
@@ -129,27 +129,77 @@ function createClient(config: AliyunLogConfig, timeout?: number): ALYClient {
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
-const ALIYUNLOG_CONFIG_UI_SCHEMA: ConfigUISchema = {
-  title: 'Aliyun SLS Log Service',
-  description: 'Enter your Alibaba Cloud SLS credentials',
-  fields: [
-    { key: 'credentials.accessKeyId', label: 'AccessKey ID', type: 'text', required: true },
-    { key: 'credentials.accessKeySecret', label: 'AccessKey Secret', type: 'password', required: true },
-    { key: 'credentials.endpoint', label: 'Endpoint', type: 'text', required: true, default: 'cn-hangzhou.log.aliyuncs.com', help: 'SLS endpoint, e.g. cn-hangzhou.log.aliyuncs.com' },
-    { key: 'default_project', label: 'Default Project', type: 'text', placeholder: 'e.g. robot-k8s-dev' },
-  ],
+const ALIYUNLOG_CONFIG_UI: ConfigUIOptions = {
+  spec: {
+    root: 'page',
+    elements: {
+      'page': {
+        type: 'Header',
+        props: { title: { en: 'Aliyun SLS Log Service', zh: '阿里云日志服务 SLS' }, description: { en: 'Configure your Alibaba Cloud SLS credentials', zh: '配置阿里云日志服务凭证' }, configPath: null },
+        children: ['credentials', 'settings', 'environments', 'save'],
+      },
+      'credentials': {
+        type: 'Section',
+        props: { title: { en: 'Credentials', zh: '凭证' }, description: null, collapsible: false, defaultOpen: true },
+        children: ['cred-accessKeyId', 'cred-accessKeySecret', 'cred-endpoint'],
+      },
+      'cred-accessKeyId': {
+        type: 'Field',
+        props: { label: { en: 'AccessKey ID', zh: 'AccessKey ID' }, type: 'text', required: true, help: null, placeholder: null, options: null, statePath: '/credentials/accessKeyId' },
+      },
+      'cred-accessKeySecret': {
+        type: 'Field',
+        props: { label: { en: 'AccessKey Secret', zh: 'AccessKey Secret' }, type: 'password', required: true, help: null, placeholder: null, options: null, statePath: '/credentials/accessKeySecret' },
+      },
+      'cred-endpoint': {
+        type: 'Field',
+        props: { label: { en: 'Endpoint', zh: '服务入口' }, type: 'text', required: true, help: { en: 'e.g. cn-hangzhou.log.aliyuncs.com', zh: '例如 cn-hangzhou.log.aliyuncs.com' }, placeholder: null, options: null, statePath: '/credentials/endpoint' },
+      },
+      'settings': {
+        type: 'Section',
+        props: { title: { en: 'Settings', zh: '设置' }, description: null, collapsible: true, defaultOpen: false },
+        children: ['setting-default-project'],
+      },
+      'setting-default-project': {
+        type: 'Field',
+        props: { label: { en: 'Default Project', zh: '默认项目' }, type: 'text', required: false, help: null, placeholder: { en: 'e.g. robot-k8s-dev', zh: '例如 robot-k8s-dev' }, options: null, statePath: '/default_project' },
+      },
+      'environments': {
+        type: 'Collection',
+        props: { title: { en: 'Environments', zh: '环境' }, itemLabel: { en: 'Environment', zh: '环境' }, statePath: '/environments', nameEditable: true },
+        children: ['env-project', 'env-endpoint'],
+      },
+      'env-project': {
+        type: 'Field',
+        props: { label: { en: 'SLS Project', zh: 'SLS 项目' }, type: 'text', required: false, help: null, placeholder: null, options: null, statePath: 'project' },
+      },
+      'env-endpoint': {
+        type: 'Field',
+        props: { label: { en: 'Endpoint Override', zh: '服务入口（覆盖）' }, type: 'text', required: false, help: { en: 'Leave empty to use default endpoint', zh: '留空则使用默认服务入口' }, placeholder: null, options: null, statePath: 'endpoint' },
+      },
+      'save': {
+        type: 'SaveBar',
+        props: { saveLabel: null, resetLabel: null },
+      },
+    },
+    state: {
+      credentials: { accessKeyId: '', accessKeySecret: '', endpoint: 'cn-hangzhou.log.aliyuncs.com' },
+      default_project: '',
+      environments: [],
+    },
+  },
+  collections: [{ statePath: '/environments' }],
+  validate: (config: Record<string, unknown>): boolean => {
+    const c = (config as AliyunLogConfig).credentials;
+    return !c
+      || !c.accessKeyId || c.accessKeyId.includes('<')
+      || !c.accessKeySecret || c.accessKeySecret.includes('<')
+      || !c.endpoint;
+  },
 };
 
-function credentialsNeedSetup(config: AliyunLogConfig): boolean {
-  const c = config.credentials;
-  return !c
-    || !c.accessKeyId || c.accessKeyId.includes('<')
-    || !c.accessKeySecret || c.accessKeySecret.includes('<')
-    || !c.endpoint;
-}
-
 function validateCredentials(config: AliyunLogConfig): void {
-  if (!credentialsNeedSetup(config)) return;
+  if (!ALIYUNLOG_CONFIG_UI.validate!(config as Record<string, unknown>)) return;
   // If we get here, credentials are invalid — loadConfig should have already
   // auto-launched config UI, so this is a fallback for direct callers.
   const c = config.credentials;
@@ -1122,8 +1172,7 @@ async function getLogsWithRetry(
 async function loadConfig(): Promise<AliyunLogConfig> {
   return requireConfigWithSetup<AliyunLogConfig>(
     'aliyunlog',
-    ALIYUNLOG_CONFIG_UI_SCHEMA,
-    credentialsNeedSetup,
+    ALIYUNLOG_CONFIG_UI,
   );
 }
 

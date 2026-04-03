@@ -32,9 +32,9 @@ var __toESM = (mod2, isNodeMode, target) => (target = mod2 != null ? __create(__
   mod2
 ));
 
-// node_modules/commander/lib/error.js
+// ../node_modules/commander/lib/error.js
 var require_error = __commonJS({
-  "node_modules/commander/lib/error.js"(exports2) {
+  "../node_modules/commander/lib/error.js"(exports2) {
     var CommanderError2 = class extends Error {
       /**
        * Constructs the CommanderError class
@@ -67,9 +67,9 @@ var require_error = __commonJS({
   }
 });
 
-// node_modules/commander/lib/argument.js
+// ../node_modules/commander/lib/argument.js
 var require_argument = __commonJS({
-  "node_modules/commander/lib/argument.js"(exports2) {
+  "../node_modules/commander/lib/argument.js"(exports2) {
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
     var Argument2 = class {
       /**
@@ -195,9 +195,9 @@ var require_argument = __commonJS({
   }
 });
 
-// node_modules/commander/lib/help.js
+// ../node_modules/commander/lib/help.js
 var require_help = __commonJS({
-  "node_modules/commander/lib/help.js"(exports2) {
+  "../node_modules/commander/lib/help.js"(exports2) {
     var { humanReadableArgName } = require_argument();
     var Help2 = class {
       constructor() {
@@ -797,9 +797,9 @@ ${itemIndentStr}`);
   }
 });
 
-// node_modules/commander/lib/option.js
+// ../node_modules/commander/lib/option.js
 var require_option = __commonJS({
-  "node_modules/commander/lib/option.js"(exports2) {
+  "../node_modules/commander/lib/option.js"(exports2) {
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
     var Option2 = class {
       /**
@@ -1110,9 +1110,9 @@ var require_option = __commonJS({
   }
 });
 
-// node_modules/commander/lib/suggestSimilar.js
+// ../node_modules/commander/lib/suggestSimilar.js
 var require_suggestSimilar = __commonJS({
-  "node_modules/commander/lib/suggestSimilar.js"(exports2) {
+  "../node_modules/commander/lib/suggestSimilar.js"(exports2) {
     var maxDistance = 3;
     function editDistance(a, b) {
       if (Math.abs(a.length - b.length) > maxDistance)
@@ -1190,9 +1190,9 @@ var require_suggestSimilar = __commonJS({
   }
 });
 
-// node_modules/commander/lib/command.js
+// ../node_modules/commander/lib/command.js
 var require_command = __commonJS({
-  "node_modules/commander/lib/command.js"(exports2) {
+  "../node_modules/commander/lib/command.js"(exports2) {
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
     var path2 = __require("node:path");
@@ -3436,9 +3436,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
   }
 });
 
-// node_modules/commander/index.js
+// ../node_modules/commander/index.js
 var require_commander = __commonJS({
-  "node_modules/commander/index.js"(exports2) {
+  "../node_modules/commander/index.js"(exports2) {
     var { Argument: Argument2 } = require_argument();
     var { Command: Command2 } = require_command();
     var { CommanderError: CommanderError2, InvalidArgumentError: InvalidArgumentError2 } = require_error();
@@ -3458,9 +3458,9 @@ var require_commander = __commonJS({
   }
 });
 
-// node_modules/httpx/node_modules/ms/index.js
+// ../node_modules/httpx/node_modules/ms/index.js
 var require_ms = __commonJS({
-  "node_modules/httpx/node_modules/ms/index.js"(exports2, module2) {
+  "../node_modules/httpx/node_modules/ms/index.js"(exports2, module2) {
     var s = 1e3;
     var m = s * 60;
     var h = m * 60;
@@ -3574,9 +3574,9 @@ var require_ms = __commonJS({
   }
 });
 
-// node_modules/httpx/node_modules/debug/src/common.js
+// ../node_modules/httpx/node_modules/debug/src/common.js
 var require_common = __commonJS({
-  "node_modules/httpx/node_modules/debug/src/common.js"(exports2, module2) {
+  "../node_modules/httpx/node_modules/debug/src/common.js"(exports2, module2) {
     function setup(env) {
       createDebug.debug = createDebug;
       createDebug.default = createDebug;
@@ -3751,9 +3751,9 @@ var require_common = __commonJS({
   }
 });
 
-// node_modules/httpx/node_modules/debug/src/browser.js
+// ../node_modules/httpx/node_modules/debug/src/browser.js
 var require_browser = __commonJS({
-  "node_modules/httpx/node_modules/debug/src/browser.js"(exports2, module2) {
+  "../node_modules/httpx/node_modules/debug/src/browser.js"(exports2, module2) {
     exports2.formatArgs = formatArgs;
     exports2.save = save;
     exports2.load = load;
@@ -3921,9 +3921,9 @@ var require_browser = __commonJS({
   }
 });
 
-// node_modules/httpx/node_modules/debug/src/node.js
+// ../node_modules/httpx/node_modules/debug/src/node.js
 var require_node = __commonJS({
-  "node_modules/httpx/node_modules/debug/src/node.js"(exports2, module2) {
+  "../node_modules/httpx/node_modules/debug/src/node.js"(exports2, module2) {
     var tty = __require("tty");
     var util = __require("util");
     exports2.init = init;
@@ -4095,9 +4095,9 @@ var require_node = __commonJS({
   }
 });
 
-// node_modules/httpx/node_modules/debug/src/index.js
+// ../node_modules/httpx/node_modules/debug/src/index.js
 var require_src = __commonJS({
-  "node_modules/httpx/node_modules/debug/src/index.js"(exports2, module2) {
+  "../node_modules/httpx/node_modules/debug/src/index.js"(exports2, module2) {
     if (typeof process === "undefined" || process.type === "renderer" || process.browser === true || process.__nwjs) {
       module2.exports = require_browser();
     } else {
@@ -4106,9 +4106,9 @@ var require_src = __commonJS({
   }
 });
 
-// node_modules/httpx/lib/index.js
+// ../node_modules/httpx/lib/index.js
 var require_lib = __commonJS({
-  "node_modules/httpx/lib/index.js"(exports2) {
+  "../node_modules/httpx/lib/index.js"(exports2) {
     "use strict";
     var zlib = __require("zlib");
     var http = __require("http");
@@ -4182,7 +4182,7 @@ var require_lib = __commonJS({
       if (typeof opts.beforeRequest === "function") {
         options = opts.beforeRequest(options);
       }
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve2, reject) => {
         const request = httplib.request(options);
         const body = opts.data;
         var fulfilled = (response) => {
@@ -4196,7 +4196,7 @@ var require_lib = __commonJS({
               debugHeader("< %s: %s", key, response.headers[key]);
             });
           }
-          resolve(response);
+          resolve2(response);
         };
         var rejected = (err) => {
           err.message += `${method} ${format(parsed)} failed.`;
@@ -4266,7 +4266,7 @@ var require_lib = __commonJS({
     };
     exports2.read = function(response, encoding) {
       const readable = decompress(response);
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve2, reject) => {
         const socket = response.socket || response.client;
         const makeReadTimeoutError = () => {
           const req = response.req;
@@ -4316,12 +4316,12 @@ var require_lib = __commonJS({
           if (encoding) {
             const result = buff.toString(encoding);
             debugBody(result);
-            return resolve(result);
+            return resolve2(result);
           }
           if (debugBody.enabled) {
             debugBody(buff.toString());
           }
-          resolve(buff);
+          resolve2(buff);
         };
         readable.on("error", onError);
         readable.on("data", onData);
@@ -4329,7 +4329,7 @@ var require_lib = __commonJS({
       });
     };
     function readyToRead(readable) {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve2, reject) => {
         var onReadable, onEnd, onError;
         var cleanup = function() {
           readable.removeListener("error", onError);
@@ -4338,11 +4338,11 @@ var require_lib = __commonJS({
         };
         onReadable = function() {
           cleanup();
-          resolve(false);
+          resolve2(false);
         };
         onEnd = function() {
           cleanup();
-          resolve(true);
+          resolve2(true);
         };
         onError = function(err) {
           cleanup();
@@ -4433,9 +4433,9 @@ var require_lib = __commonJS({
   }
 });
 
-// node_modules/kitx/lib/index.js
+// ../node_modules/kitx/lib/index.js
 var require_lib2 = __commonJS({
-  "node_modules/kitx/lib/index.js"(exports2) {
+  "../node_modules/kitx/lib/index.js"(exports2) {
     "use strict";
     var fs2 = __require("fs");
     var os2 = __require("os");
@@ -4514,8 +4514,8 @@ var require_lib2 = __commonJS({
       return "" + YYYY + MM + DD;
     };
     exports2.sleep = function(ms) {
-      return new Promise((resolve) => {
-        setTimeout(resolve, ms);
+      return new Promise((resolve2) => {
+        setTimeout(resolve2, ms);
       });
     };
     exports2.getIPv4 = function() {
@@ -4551,9 +4551,9 @@ var require_lib2 = __commonJS({
   }
 });
 
-// node_modules/ms/index.js
+// ../node_modules/ms/index.js
 var require_ms2 = __commonJS({
-  "node_modules/ms/index.js"(exports2, module2) {
+  "../node_modules/ms/index.js"(exports2, module2) {
     var s = 1e3;
     var m = s * 60;
     var h = m * 60;
@@ -4653,9 +4653,9 @@ var require_ms2 = __commonJS({
   }
 });
 
-// node_modules/debug/src/debug.js
+// ../node_modules/debug/src/debug.js
 var require_debug = __commonJS({
-  "node_modules/debug/src/debug.js"(exports2, module2) {
+  "../node_modules/debug/src/debug.js"(exports2, module2) {
     exports2 = module2.exports = createDebug.debug = createDebug["default"] = createDebug;
     exports2.coerce = coerce;
     exports2.disable = disable;
@@ -4758,9 +4758,9 @@ var require_debug = __commonJS({
   }
 });
 
-// node_modules/debug/src/browser.js
+// ../node_modules/debug/src/browser.js
 var require_browser2 = __commonJS({
-  "node_modules/debug/src/browser.js"(exports2, module2) {
+  "../node_modules/debug/src/browser.js"(exports2, module2) {
     exports2 = module2.exports = require_debug();
     exports2.log = log;
     exports2.formatArgs = formatArgs;
@@ -4844,9 +4844,9 @@ var require_browser2 = __commonJS({
   }
 });
 
-// node_modules/debug/src/node.js
+// ../node_modules/debug/src/node.js
 var require_node2 = __commonJS({
-  "node_modules/debug/src/node.js"(exports2, module2) {
+  "../node_modules/debug/src/node.js"(exports2, module2) {
     var tty = __require("tty");
     var util = __require("util");
     exports2 = module2.exports = require_debug();
@@ -4964,9 +4964,9 @@ var require_node2 = __commonJS({
   }
 });
 
-// node_modules/debug/src/index.js
+// ../node_modules/debug/src/index.js
 var require_src2 = __commonJS({
-  "node_modules/debug/src/index.js"(exports2, module2) {
+  "../node_modules/debug/src/index.js"(exports2, module2) {
     if (typeof process !== "undefined" && process.type === "renderer") {
       module2.exports = require_browser2();
     } else {
@@ -4975,16 +4975,16 @@ var require_src2 = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/aspromise/index.js
+// ../node_modules/@protobufjs/aspromise/index.js
 var require_aspromise = __commonJS({
-  "node_modules/@protobufjs/aspromise/index.js"(exports2, module2) {
+  "../node_modules/@protobufjs/aspromise/index.js"(exports2, module2) {
     "use strict";
     module2.exports = asPromise;
     function asPromise(fn, ctx) {
       var params = new Array(arguments.length - 1), offset = 0, index = 2, pending = true;
       while (index < arguments.length)
         params[offset++] = arguments[index++];
-      return new Promise(function executor(resolve, reject) {
+      return new Promise(function executor(resolve2, reject) {
         params[offset] = function callback(err) {
           if (pending) {
             pending = false;
@@ -4994,7 +4994,7 @@ var require_aspromise = __commonJS({
               var params2 = new Array(arguments.length - 1), offset2 = 0;
               while (offset2 < params2.length)
                 params2[offset2++] = arguments[offset2];
-              resolve.apply(null, params2);
+              resolve2.apply(null, params2);
             }
           }
         };
@@ -5011,9 +5011,9 @@ var require_aspromise = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/base64/index.js
+// ../node_modules/@protobufjs/base64/index.js
 var require_base64 = __commonJS({
-  "node_modules/@protobufjs/base64/index.js"(exports2) {
+  "../node_modules/@protobufjs/base64/index.js"(exports2) {
     "use strict";
     var base64 = exports2;
     base64.length = function length(string) {
@@ -5111,9 +5111,9 @@ var require_base64 = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/eventemitter/index.js
+// ../node_modules/@protobufjs/eventemitter/index.js
 var require_eventemitter = __commonJS({
-  "node_modules/@protobufjs/eventemitter/index.js"(exports2, module2) {
+  "../node_modules/@protobufjs/eventemitter/index.js"(exports2, module2) {
     "use strict";
     module2.exports = EventEmitter;
     function EventEmitter() {
@@ -5157,9 +5157,9 @@ var require_eventemitter = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/float/index.js
+// ../node_modules/@protobufjs/float/index.js
 var require_float = __commonJS({
-  "node_modules/@protobufjs/float/index.js"(exports2, module2) {
+  "../node_modules/@protobufjs/float/index.js"(exports2, module2) {
     "use strict";
     module2.exports = factory(factory);
     function factory(exports3) {
@@ -5351,9 +5351,9 @@ var require_float = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/inquire/index.js
+// ../node_modules/@protobufjs/inquire/index.js
 var require_inquire = __commonJS({
-  "node_modules/@protobufjs/inquire/index.js"(exports, module) {
+  "../node_modules/@protobufjs/inquire/index.js"(exports, module) {
     "use strict";
     module.exports = inquire;
     function inquire(moduleName) {
@@ -5368,9 +5368,9 @@ var require_inquire = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/utf8/index.js
+// ../node_modules/@protobufjs/utf8/index.js
 var require_utf8 = __commonJS({
-  "node_modules/@protobufjs/utf8/index.js"(exports2) {
+  "../node_modules/@protobufjs/utf8/index.js"(exports2) {
     "use strict";
     var utf8 = exports2;
     utf8.length = function utf8_length(string) {
@@ -5445,9 +5445,9 @@ var require_utf8 = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/pool/index.js
+// ../node_modules/@protobufjs/pool/index.js
 var require_pool = __commonJS({
-  "node_modules/@protobufjs/pool/index.js"(exports2, module2) {
+  "../node_modules/@protobufjs/pool/index.js"(exports2, module2) {
     "use strict";
     module2.exports = pool;
     function pool(alloc, slice, size) {
@@ -5471,9 +5471,9 @@ var require_pool = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/util/longbits.js
+// ../node_modules/protobufjs/src/util/longbits.js
 var require_longbits = __commonJS({
-  "node_modules/protobufjs/src/util/longbits.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/util/longbits.js"(exports2, module2) {
     "use strict";
     module2.exports = LongBits;
     var util = require_minimal();
@@ -5573,9 +5573,9 @@ var require_longbits = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/util/minimal.js
+// ../node_modules/protobufjs/src/util/minimal.js
 var require_minimal = __commonJS({
-  "node_modules/protobufjs/src/util/minimal.js"(exports2) {
+  "../node_modules/protobufjs/src/util/minimal.js"(exports2) {
     "use strict";
     var util = exports2;
     util.asPromise = require_aspromise();
@@ -5727,9 +5727,9 @@ var require_minimal = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/writer.js
+// ../node_modules/protobufjs/src/writer.js
 var require_writer = __commonJS({
-  "node_modules/protobufjs/src/writer.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/writer.js"(exports2, module2) {
     "use strict";
     module2.exports = Writer;
     var util = require_minimal();
@@ -5918,9 +5918,9 @@ var require_writer = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/writer_buffer.js
+// ../node_modules/protobufjs/src/writer_buffer.js
 var require_writer_buffer = __commonJS({
-  "node_modules/protobufjs/src/writer_buffer.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/writer_buffer.js"(exports2, module2) {
     "use strict";
     module2.exports = BufferWriter;
     var Writer = require_writer();
@@ -5968,9 +5968,9 @@ var require_writer_buffer = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/reader.js
+// ../node_modules/protobufjs/src/reader.js
 var require_reader = __commonJS({
-  "node_modules/protobufjs/src/reader.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/reader.js"(exports2, module2) {
     "use strict";
     module2.exports = Reader;
     var util = require_minimal();
@@ -6188,9 +6188,9 @@ var require_reader = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/reader_buffer.js
+// ../node_modules/protobufjs/src/reader_buffer.js
 var require_reader_buffer = __commonJS({
-  "node_modules/protobufjs/src/reader_buffer.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/reader_buffer.js"(exports2, module2) {
     "use strict";
     module2.exports = BufferReader;
     var Reader = require_reader();
@@ -6211,9 +6211,9 @@ var require_reader_buffer = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/rpc/service.js
+// ../node_modules/protobufjs/src/rpc/service.js
 var require_service = __commonJS({
-  "node_modules/protobufjs/src/rpc/service.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/rpc/service.js"(exports2, module2) {
     "use strict";
     module2.exports = Service;
     var util = require_minimal();
@@ -6286,26 +6286,26 @@ var require_service = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/rpc.js
+// ../node_modules/protobufjs/src/rpc.js
 var require_rpc = __commonJS({
-  "node_modules/protobufjs/src/rpc.js"(exports2) {
+  "../node_modules/protobufjs/src/rpc.js"(exports2) {
     "use strict";
     var rpc = exports2;
     rpc.Service = require_service();
   }
 });
 
-// node_modules/protobufjs/src/roots.js
+// ../node_modules/protobufjs/src/roots.js
 var require_roots = __commonJS({
-  "node_modules/protobufjs/src/roots.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/roots.js"(exports2, module2) {
     "use strict";
     module2.exports = {};
   }
 });
 
-// node_modules/protobufjs/src/index-minimal.js
+// ../node_modules/protobufjs/src/index-minimal.js
 var require_index_minimal = __commonJS({
-  "node_modules/protobufjs/src/index-minimal.js"(exports2) {
+  "../node_modules/protobufjs/src/index-minimal.js"(exports2) {
     "use strict";
     var protobuf = exports2;
     protobuf.build = "minimal";
@@ -6326,9 +6326,9 @@ var require_index_minimal = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/codegen/index.js
+// ../node_modules/@protobufjs/codegen/index.js
 var require_codegen = __commonJS({
-  "node_modules/@protobufjs/codegen/index.js"(exports2, module2) {
+  "../node_modules/@protobufjs/codegen/index.js"(exports2, module2) {
     "use strict";
     module2.exports = codegen;
     function codegen(functionParams, functionName) {
@@ -6388,9 +6388,9 @@ var require_codegen = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/fetch/index.js
+// ../node_modules/@protobufjs/fetch/index.js
 var require_fetch = __commonJS({
-  "node_modules/@protobufjs/fetch/index.js"(exports2, module2) {
+  "../node_modules/@protobufjs/fetch/index.js"(exports2, module2) {
     "use strict";
     module2.exports = fetch;
     var asPromise = require_aspromise();
@@ -6439,9 +6439,9 @@ var require_fetch = __commonJS({
   }
 });
 
-// node_modules/@protobufjs/path/index.js
+// ../node_modules/@protobufjs/path/index.js
 var require_path = __commonJS({
-  "node_modules/@protobufjs/path/index.js"(exports2) {
+  "../node_modules/@protobufjs/path/index.js"(exports2) {
     "use strict";
     var path2 = exports2;
     var isAbsolute = (
@@ -6481,7 +6481,7 @@ var require_path = __commonJS({
         return prefix + parts.join("/");
       }
     );
-    path2.resolve = function resolve(originPath, includePath, alreadyNormalized) {
+    path2.resolve = function resolve2(originPath, includePath, alreadyNormalized) {
       if (!alreadyNormalized)
         includePath = normalize(includePath);
       if (isAbsolute(includePath))
@@ -6493,9 +6493,9 @@ var require_path = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/types.js
+// ../node_modules/protobufjs/src/types.js
 var require_types = __commonJS({
-  "node_modules/protobufjs/src/types.js"(exports2) {
+  "../node_modules/protobufjs/src/types.js"(exports2) {
     "use strict";
     var types = exports2;
     var util = require_util();
@@ -6672,9 +6672,9 @@ var require_types = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/field.js
+// ../node_modules/protobufjs/src/field.js
 var require_field = __commonJS({
-  "node_modules/protobufjs/src/field.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/field.js"(exports2, module2) {
     "use strict";
     module2.exports = Field;
     var ReflectionObject = require_object();
@@ -6761,7 +6761,7 @@ var require_field = __commonJS({
         keepComments ? this.comment : void 0
       ]);
     };
-    Field.prototype.resolve = function resolve() {
+    Field.prototype.resolve = function resolve2() {
       if (this.resolved)
         return this;
       if ((this.typeDefault = types.defaults[this.type]) === void 0) {
@@ -6819,9 +6819,9 @@ var require_field = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/oneof.js
+// ../node_modules/protobufjs/src/oneof.js
 var require_oneof = __commonJS({
-  "node_modules/protobufjs/src/oneof.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/oneof.js"(exports2, module2) {
     "use strict";
     module2.exports = OneOf;
     var ReflectionObject = require_object();
@@ -6918,9 +6918,9 @@ var require_oneof = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/namespace.js
+// ../node_modules/protobufjs/src/namespace.js
 var require_namespace = __commonJS({
-  "node_modules/protobufjs/src/namespace.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/namespace.js"(exports2, module2) {
     "use strict";
     module2.exports = Namespace;
     var ReflectionObject = require_object();
@@ -7128,9 +7128,9 @@ var require_namespace = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/mapfield.js
+// ../node_modules/protobufjs/src/mapfield.js
 var require_mapfield = __commonJS({
-  "node_modules/protobufjs/src/mapfield.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/mapfield.js"(exports2, module2) {
     "use strict";
     module2.exports = MapField;
     var Field = require_field();
@@ -7165,7 +7165,7 @@ var require_mapfield = __commonJS({
         keepComments ? this.comment : void 0
       ]);
     };
-    MapField.prototype.resolve = function resolve() {
+    MapField.prototype.resolve = function resolve2() {
       if (this.resolved)
         return this;
       if (types.mapKey[this.keyType] === void 0)
@@ -7184,9 +7184,9 @@ var require_mapfield = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/method.js
+// ../node_modules/protobufjs/src/method.js
 var require_method = __commonJS({
-  "node_modules/protobufjs/src/method.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/method.js"(exports2, module2) {
     "use strict";
     module2.exports = Method;
     var ReflectionObject = require_object();
@@ -7242,7 +7242,7 @@ var require_method = __commonJS({
         this.parsedOptions
       ]);
     };
-    Method.prototype.resolve = function resolve() {
+    Method.prototype.resolve = function resolve2() {
       if (this.resolved)
         return this;
       this.resolvedRequestType = this.parent.lookupType(this.requestType);
@@ -7252,9 +7252,9 @@ var require_method = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/service.js
+// ../node_modules/protobufjs/src/service.js
 var require_service2 = __commonJS({
-  "node_modules/protobufjs/src/service.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/service.js"(exports2, module2) {
     "use strict";
     module2.exports = Service;
     var Namespace = require_namespace();
@@ -7346,9 +7346,9 @@ var require_service2 = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/message.js
+// ../node_modules/protobufjs/src/message.js
 var require_message = __commonJS({
-  "node_modules/protobufjs/src/message.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/message.js"(exports2, module2) {
     "use strict";
     module2.exports = Message;
     var util = require_minimal();
@@ -7387,9 +7387,9 @@ var require_message = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/decoder.js
+// ../node_modules/protobufjs/src/decoder.js
 var require_decoder = __commonJS({
-  "node_modules/protobufjs/src/decoder.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/decoder.js"(exports2, module2) {
     "use strict";
     module2.exports = decoder;
     var Enum = require_enum();
@@ -7440,9 +7440,9 @@ var require_decoder = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/verifier.js
+// ../node_modules/protobufjs/src/verifier.js
 var require_verifier = __commonJS({
-  "node_modules/protobufjs/src/verifier.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/verifier.js"(exports2, module2) {
     "use strict";
     module2.exports = verifier;
     var Enum = require_enum();
@@ -7545,9 +7545,9 @@ var require_verifier = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/converter.js
+// ../node_modules/protobufjs/src/converter.js
 var require_converter = __commonJS({
-  "node_modules/protobufjs/src/converter.js"(exports2) {
+  "../node_modules/protobufjs/src/converter.js"(exports2) {
     "use strict";
     var converter = exports2;
     var Enum = require_enum();
@@ -7744,9 +7744,9 @@ var require_converter = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/wrappers.js
+// ../node_modules/protobufjs/src/wrappers.js
 var require_wrappers = __commonJS({
-  "node_modules/protobufjs/src/wrappers.js"(exports2) {
+  "../node_modules/protobufjs/src/wrappers.js"(exports2) {
     "use strict";
     var wrappers = exports2;
     var Message = require_message();
@@ -7795,9 +7795,9 @@ var require_wrappers = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/type.js
+// ../node_modules/protobufjs/src/type.js
 var require_type = __commonJS({
-  "node_modules/protobufjs/src/type.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/type.js"(exports2, module2) {
     "use strict";
     module2.exports = Type;
     var Namespace = require_namespace();
@@ -8112,9 +8112,9 @@ var require_type = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/root.js
+// ../node_modules/protobufjs/src/root.js
 var require_root = __commonJS({
-  "node_modules/protobufjs/src/root.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/root.js"(exports2, module2) {
     "use strict";
     module2.exports = Root;
     var Namespace = require_namespace();
@@ -8337,9 +8337,9 @@ var require_root = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/util.js
+// ../node_modules/protobufjs/src/util.js
 var require_util = __commonJS({
-  "node_modules/protobufjs/src/util.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/util.js"(exports2, module2) {
     "use strict";
     var util = module2.exports = require_minimal();
     var roots = require_roots();
@@ -8449,9 +8449,9 @@ var require_util = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/object.js
+// ../node_modules/protobufjs/src/object.js
 var require_object = __commonJS({
-  "node_modules/protobufjs/src/object.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/object.js"(exports2, module2) {
     "use strict";
     module2.exports = ReflectionObject;
     ReflectionObject.className = "ReflectionObject";
@@ -8522,7 +8522,7 @@ var require_object = __commonJS({
       this.parent = null;
       this.resolved = false;
     };
-    ReflectionObject.prototype.resolve = function resolve() {
+    ReflectionObject.prototype.resolve = function resolve2() {
       if (this.resolved)
         return this;
       if (this.root instanceof Root)
@@ -8581,9 +8581,9 @@ var require_object = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/enum.js
+// ../node_modules/protobufjs/src/enum.js
 var require_enum = __commonJS({
-  "node_modules/protobufjs/src/enum.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/enum.js"(exports2, module2) {
     "use strict";
     module2.exports = Enum;
     var ReflectionObject = require_object();
@@ -8665,9 +8665,9 @@ var require_enum = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/encoder.js
+// ../node_modules/protobufjs/src/encoder.js
 var require_encoder = __commonJS({
-  "node_modules/protobufjs/src/encoder.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/encoder.js"(exports2, module2) {
     "use strict";
     module2.exports = encoder;
     var Enum = require_enum();
@@ -8714,9 +8714,9 @@ var require_encoder = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/index-light.js
+// ../node_modules/protobufjs/src/index-light.js
 var require_index_light = __commonJS({
-  "node_modules/protobufjs/src/index-light.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/index-light.js"(exports2, module2) {
     "use strict";
     var protobuf = module2.exports = require_index_minimal();
     protobuf.build = "light";
@@ -8760,9 +8760,9 @@ var require_index_light = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/tokenize.js
+// ../node_modules/protobufjs/src/tokenize.js
 var require_tokenize = __commonJS({
-  "node_modules/protobufjs/src/tokenize.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/tokenize.js"(exports2, module2) {
     "use strict";
     module2.exports = tokenize;
     var delimRe = /[\s{}=;:[\],'"()<>]/g;
@@ -8993,9 +8993,9 @@ var require_tokenize = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/parse.js
+// ../node_modules/protobufjs/src/parse.js
 var require_parse = __commonJS({
-  "node_modules/protobufjs/src/parse.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/parse.js"(exports2, module2) {
     "use strict";
     module2.exports = parse;
     parse.filename = null;
@@ -9591,9 +9591,9 @@ var require_parse = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/common.js
+// ../node_modules/protobufjs/src/common.js
 var require_common2 = __commonJS({
-  "node_modules/protobufjs/src/common.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/common.js"(exports2, module2) {
     "use strict";
     module2.exports = common;
     var commonRe = /\/|\./;
@@ -9923,9 +9923,9 @@ var require_common2 = __commonJS({
   }
 });
 
-// node_modules/protobufjs/src/index.js
+// ../node_modules/protobufjs/src/index.js
 var require_src3 = __commonJS({
-  "node_modules/protobufjs/src/index.js"(exports2, module2) {
+  "../node_modules/protobufjs/src/index.js"(exports2, module2) {
     "use strict";
     var protobuf = module2.exports = require_index_light();
     protobuf.build = "full";
@@ -9936,17 +9936,17 @@ var require_src3 = __commonJS({
   }
 });
 
-// node_modules/protobufjs/index.js
+// ../node_modules/protobufjs/index.js
 var require_protobufjs = __commonJS({
-  "node_modules/protobufjs/index.js"(exports2, module2) {
+  "../node_modules/protobufjs/index.js"(exports2, module2) {
     "use strict";
     module2.exports = require_src3();
   }
 });
 
-// node_modules/@alicloud/log/lib/client.js
+// ../node_modules/@alicloud/log/lib/client.js
 var require_client = __commonJS({
-  "node_modules/@alicloud/log/lib/client.js"(exports2, module2) {
+  "../node_modules/@alicloud/log/lib/client.js"(exports2, module2) {
     "use strict";
     var path2 = __require("path");
     var querystring = __require("querystring");
@@ -10277,21 +10277,21 @@ ${canonicalizedHeaders}${canonicalizedResource}`;
   }
 });
 
-// node_modules/@alicloud/log/index.js
+// ../node_modules/@alicloud/log/index.js
 var require_log = __commonJS({
-  "node_modules/@alicloud/log/index.js"(exports2, module2) {
+  "../node_modules/@alicloud/log/index.js"(exports2, module2) {
     "use strict";
     module2.exports = require_client();
   }
 });
 
-// aliyunlog/src/aliyunlog.ts
+// src/aliyunlog.ts
 import fs from "fs";
 import path from "path";
 import os from "os";
 import readline from "readline";
 
-// node_modules/commander/esm.mjs
+// ../node_modules/commander/esm.mjs
 var import_index = __toESM(require_commander(), 1);
 var {
   program,
@@ -10308,13 +10308,13 @@ var {
   Help
 } = import_index.default;
 
-// packages/core/dist/config.js
+// ../packages/core/dist/config.js
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { join, dirname } from "path";
 import { homedir } from "os";
 
-// packages/core/dist/errors.js
+// ../packages/core/dist/errors.js
 var PluginError = class extends Error {
   code;
   exitCode;
@@ -10326,7 +10326,7 @@ var PluginError = class extends Error {
   }
 };
 
-// packages/core/dist/config.js
+// ../packages/core/dist/config.js
 var CACHE_DIR = join(homedir(), ".cache", "apex-plugin");
 function configPath(pluginName) {
   return join(CACHE_DIR, `${pluginName}.json`);
@@ -10350,31 +10350,92 @@ async function requireConfig(pluginName) {
   return config;
 }
 
-// packages/core/dist/config-ui.js
+// ../packages/core/dist/config-ui.js
 import { createServer } from "http";
 import { readFileSync, writeFileSync, existsSync as existsSync2, mkdirSync } from "fs";
-import { dirname as dirname2 } from "path";
+import { dirname as dirname2, resolve } from "path";
 import { exec } from "child_process";
 import { randomBytes } from "crypto";
-function setNested(obj, dotKey, value) {
-  const parts = dotKey.split(".");
-  let cur = obj;
-  for (let i = 0; i < parts.length - 1; i++) {
-    if (!(parts[i] in cur) || typeof cur[parts[i]] !== "object")
-      cur[parts[i]] = {};
-    cur = cur[parts[i]];
-  }
-  cur[parts[parts.length - 1]] = value;
+import { fileURLToPath } from "url";
+function isPlainObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
 }
-function getNested(obj, dotKey) {
-  const parts = dotKey.split(".");
+function deepMerge(target, source) {
+  const out = { ...target };
+  for (const key of Object.keys(source)) {
+    if (isPlainObject(out[key]) && isPlainObject(source[key])) {
+      out[key] = deepMerge(out[key], source[key]);
+    } else {
+      out[key] = source[key];
+    }
+  }
+  return out;
+}
+function pointerToKeys(pointer) {
+  return pointer.replace(/^\//, "").split("/").filter(Boolean);
+}
+function getAtPath(obj, keys) {
   let cur = obj;
-  for (const p of parts) {
+  for (const k of keys) {
     if (cur == null || typeof cur !== "object")
       return void 0;
-    cur = cur[p];
+    cur = cur[k];
   }
   return cur;
+}
+function setAtPath(obj, keys, value) {
+  let cur = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (!(keys[i] in cur) || typeof cur[keys[i]] !== "object") {
+      cur[keys[i]] = {};
+    }
+    cur = cur[keys[i]];
+  }
+  cur[keys[keys.length - 1]] = value;
+}
+function configToState(config, collections) {
+  if (!collections || collections.length === 0)
+    return { ...config };
+  const state = { ...config };
+  for (const mapping of collections) {
+    const keys = pointerToKeys(mapping.statePath);
+    const nameKey = mapping.nameKey ?? "_name";
+    const obj = getAtPath(config, keys);
+    if (isPlainObject(obj)) {
+      const arr = Object.entries(obj).map(([name, value]) => {
+        if (isPlainObject(value)) {
+          return { [nameKey]: name, ...value };
+        }
+        return { [nameKey]: name, value };
+      });
+      setAtPath(state, keys, arr);
+    }
+  }
+  return state;
+}
+function stateToConfig(state, collections) {
+  if (!collections || collections.length === 0)
+    return { ...state };
+  const config = { ...state };
+  for (const mapping of collections) {
+    const keys = pointerToKeys(mapping.statePath);
+    const nameKey = mapping.nameKey ?? "_name";
+    const arr = getAtPath(state, keys);
+    if (Array.isArray(arr)) {
+      const obj = {};
+      for (const item of arr) {
+        if (isPlainObject(item)) {
+          const name = String(item[nameKey] ?? "");
+          if (!name)
+            continue;
+          const { [nameKey]: _ignored, ...rest } = item;
+          obj[name] = rest;
+        }
+      }
+      setAtPath(config, keys, obj);
+    }
+  }
+  return config;
 }
 function readConfigFile(cfgPath) {
   if (!existsSync2(cfgPath))
@@ -10390,204 +10451,59 @@ function readConfigFile(cfgPath) {
 }
 function writeConfigFile(cfgPath, data) {
   mkdirSync(dirname2(cfgPath), { recursive: true });
-  const existing = readConfigFile(cfgPath);
-  for (const [k, v] of Object.entries(data)) {
-    if (k.includes(".")) {
-      setNested(existing, k, v);
-    } else {
-      existing[k] = v;
+  writeFileSync(cfgPath, JSON.stringify(data, null, 2) + "\n");
+}
+function loadBundledHTML() {
+  const thisDir = typeof __dirname !== "undefined" ? __dirname : dirname2(fileURLToPath(import.meta.url));
+  const candidates = [
+    // From <plugin>/dist/ → ../../packages/config-ui/dist/index.html (esbuild bundle)
+    resolve(thisDir, "..", "..", "packages", "config-ui", "dist", "index.html"),
+    // From packages/core/dist/ → ../../config-ui/dist/index.html (unbundled/dev)
+    resolve(thisDir, "..", "..", "config-ui", "dist", "index.html"),
+    // From packages/core/src/ → ../../config-ui/dist/index.html (tsx dev)
+    resolve(thisDir, "..", "..", "config-ui", "dist", "index.html")
+  ];
+  for (const candidate of candidates) {
+    if (existsSync2(candidate)) {
+      return readFileSync(candidate, "utf-8");
     }
   }
-  writeFileSync(cfgPath, JSON.stringify(existing, null, 2) + "\n");
+  throw new PluginError(`Config-UI bundle not found. Searched:
+${candidates.map((c) => `  - ${c}`).join("\n")}`, "CONFIG_MISSING");
 }
-function esc(s) {
-  if (s == null)
-    return "";
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+function safeJSON(value) {
+  return JSON.stringify(value).replace(/<\//g, "<\\/").replace(/<!--/g, "<\\!--");
 }
-var i18n = {
-  en: {
-    defaultTitle: "Plugin Configuration",
-    reset: "Reset",
-    save: "Save Configuration",
-    saving: "Saving...",
-    saved: "Configuration Saved",
-    savedHint: "You can close this tab and return to your session.",
-    failedSave: "Failed to save",
-    connError: "Connection error: ",
-    togglePw: "Toggle visibility"
-  },
-  zh: {
-    defaultTitle: "\u63D2\u4EF6\u914D\u7F6E",
-    reset: "\u91CD\u7F6E",
-    save: "\u4FDD\u5B58\u914D\u7F6E",
-    saving: "\u4FDD\u5B58\u4E2D...",
-    saved: "\u914D\u7F6E\u5DF2\u4FDD\u5B58",
-    savedHint: "\u4F60\u53EF\u4EE5\u5173\u95ED\u6B64\u9875\u9762\u5E76\u8FD4\u56DE\u4F1A\u8BDD\u3002",
-    failedSave: "\u4FDD\u5B58\u5931\u8D25",
-    connError: "\u8FDE\u63A5\u9519\u8BEF\uFF1A",
-    togglePw: "\u5207\u6362\u53EF\u89C1\u6027"
-  }
-};
-function buildHTML(schema, cfgPath, existing, csrfToken) {
-  const title = schema.title ?? "__DEFAULT_TITLE__";
-  const description = schema.description ?? "";
-  const fields = schema.fields ?? [];
-  const fieldRows = fields.map((f) => {
-    const key = f.key;
-    const label = f.label ?? key;
-    const type = f.type ?? "text";
-    const required = f.required ? "required" : "";
-    const placeholder = f.placeholder ?? "";
-    const help = f.help ?? "";
-    const existingVal = (key.includes(".") ? getNested(existing, key) : existing[key]) ?? "";
-    const defaultVal = f.default ?? "";
-    const value = existingVal || defaultVal;
-    let inputHTML;
-    if (type === "select") {
-      const opts = (f.options ?? []).map((o) => {
-        const selected = value === o ? "selected" : "";
-        return `<option value="${esc(o)}" ${selected}>${esc(o)}</option>`;
-      }).join("");
-      inputHTML = `<select name="${esc(key)}" id="f-${esc(key)}" ${required} class="field-input">${opts}</select>`;
-    } else if (type === "textarea") {
-      inputHTML = `<textarea name="${esc(key)}" id="f-${esc(key)}" ${required} placeholder="${esc(placeholder)}" class="field-input" rows="3">${esc(value)}</textarea>`;
-    } else if (type === "checkbox") {
-      const checked = value === "true" || value === "1" ? "checked" : "";
-      inputHTML = `<label class="checkbox-wrap"><input type="checkbox" name="${esc(key)}" id="f-${esc(key)}" value="true" ${checked} class="field-checkbox"><span class="checkbox-label">${esc(label)}</span></label>`;
-    } else if (type === "password") {
-      const masked = existingVal ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "";
-      inputHTML = `<div class="password-wrap"><input type="password" name="${esc(key)}" id="f-${esc(key)}" ${required} placeholder="${masked || esc(placeholder)}" class="field-input" autocomplete="off"><button type="button" class="toggle-pw" onclick="togglePw(this)" tabindex="-1" aria-label="__TOGGLE_PW__"><svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>`;
-    } else {
-      inputHTML = `<input type="${esc(type)}" name="${esc(key)}" id="f-${esc(key)}" value="${esc(value)}" ${required} placeholder="${esc(placeholder)}" class="field-input" autocomplete="off">`;
-    }
-    const labelHTML = type === "checkbox" ? "" : `<label for="f-${esc(key)}" class="field-label">${esc(label)}${f.required ? '<span class="req">*</span>' : ""}</label>`;
-    const helpHTML = help ? `<span class="field-help">${esc(help)}</span>` : "";
-    const keyTag = type === "checkbox" ? "" : `<span class="field-key">${esc(key)}</span>`;
-    return `<div class="field-row" data-type="${type}">${labelHTML}${keyTag}${inputHTML}${helpHTML}</div>`;
-  }).join("\n");
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} &mdash; Configuration</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0e1117;--surface:#161b22;--surface-hover:#1c2230;--border:#2a3140;--border-focus:#3fb950;--text:#e6edf3;--text-muted:#7d8590;--text-dim:#484f58;--accent:#3fb950;--accent-dim:rgba(63,185,80,0.15);--danger:#f85149;--radius:8px;--mono:'JetBrains Mono','Fira Code','Cascadia Code','PingFang SC','Microsoft YaHei',monospace;--sans:'DM Sans',-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans SC',sans-serif}
-html{font-size:15px}
-body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:48px 20px 80px;-webkit-font-smoothing:antialiased}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(63,185,80,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(63,185,80,0.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
-.container{width:100%;max-width:520px;position:relative;z-index:1;animation:fadeUp .5s ease-out}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.header{margin-bottom:36px;padding-bottom:24px;border-bottom:1px solid var(--border)}
-.header-icon{width:36px;height:36px;border-radius:10px;background:var(--accent-dim);border:1px solid rgba(63,185,80,0.25);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
-.header-icon svg{width:18px;height:18px;color:var(--accent)}
-.header h1{font-family:var(--sans);font-size:1.5rem;font-weight:600;letter-spacing:-0.02em;margin-bottom:6px}
-.header p{color:var(--text-muted);font-size:0.9rem;line-height:1.5}
-.config-path{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:0.72rem;color:var(--text-dim);word-break:break-all}
-.config-path svg{width:12px;height:12px;color:var(--text-dim);flex-shrink:0}
-.form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px}
-.field-row{margin-bottom:22px}.field-row:last-of-type{margin-bottom:0}
-.field-label{display:block;font-size:0.85rem;font-weight:500;color:var(--text);margin-bottom:4px}
-.req{color:var(--danger);margin-left:3px}
-.field-key{display:block;font-family:var(--mono);font-size:0.68rem;color:var(--text-dim);margin-bottom:8px;letter-spacing:0.02em}
-.field-input{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:0.85rem;outline:none;transition:border-color .2s,box-shadow .2s}
-.field-input:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-dim)}
-.field-input::placeholder{color:var(--text-dim);font-family:var(--mono)}
-select.field-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237d8590' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
-textarea.field-input{resize:vertical;min-height:72px;line-height:1.5}
-.password-wrap{position:relative}.password-wrap .field-input{padding-right:42px}
-.toggle-pw{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:var(--text-dim);transition:color .2s;display:flex;align-items:center}
-.toggle-pw:hover{color:var(--text-muted)}.eye-icon{width:18px;height:18px}
-.checkbox-wrap{display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 0}
-.field-checkbox{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
-.checkbox-label{font-size:0.85rem;color:var(--text);user-select:none}
-.field-help{display:block;font-size:0.75rem;color:var(--text-dim);margin-top:6px;line-height:1.4}
-.actions{display:flex;gap:12px;margin-top:28px;padding-top:24px;border-top:1px solid var(--border)}
-.btn{flex:1;padding:11px 20px;border-radius:6px;font-family:var(--sans);font-size:0.85rem;font-weight:500;cursor:pointer;border:1px solid var(--border);transition:all .2s}
-.btn-secondary{background:var(--surface);color:var(--text-muted)}.btn-secondary:hover{background:var(--surface-hover);color:var(--text)}
-.btn-primary{background:var(--accent);color:#0e1117;border-color:var(--accent);font-weight:600}.btn-primary:hover{background:#46c358;border-color:#46c358}.btn-primary:active{transform:scale(0.98)}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
-.status{text-align:center;padding:16px;margin-top:16px;border-radius:6px;font-size:0.85rem;display:none}
-.status.error{display:block;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--danger)}
-.status.success{display:block;background:var(--accent-dim);border:1px solid rgba(63,185,80,0.3);color:var(--accent)}
-.success-overlay{position:fixed;inset:0;background:rgba(14,17,23,0.92);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;visibility:hidden;transition:all .3s}
-.success-overlay.show{opacity:1;visibility:visible}
-.success-content{text-align:center;animation:successPop .4s ease-out}
-@keyframes successPop{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
-.success-check{width:56px;height:56px;border-radius:50%;background:var(--accent-dim);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
-.success-check svg{width:28px;height:28px;color:var(--accent)}
-.success-content h2{font-size:1.2rem;font-weight:600;margin-bottom:8px}
-.success-content p{color:var(--text-muted);font-size:0.85rem}
-@media(max-width:560px){body{padding:24px 16px 60px}.form-card{padding:20px}.actions{flex-direction:column}}
-</style>
-</head>
-<body>
-<div class="container">
-  <div class="header">
-    <div class="header-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
-    <h1>${esc(title)}</h1>
-    ${description ? `<p>${esc(description)}</p>` : ""}
-    <div class="config-path"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>${esc(cfgPath)}</div>
-  </div>
-  <form id="configForm" class="form-card" autocomplete="off">
-    <input type="hidden" name="_csrf" value="${csrfToken}">
-    ${fieldRows}
-    <div class="actions">
-      <button type="button" class="btn btn-secondary" onclick="resetForm()" data-i18n="reset">Reset</button>
-      <button type="submit" class="btn btn-primary" id="saveBtn" data-i18n="save">Save Configuration</button>
-    </div>
-  </form>
-  <div id="status" class="status"></div>
-</div>
-<div id="successOverlay" class="success-overlay">
-  <div class="success-content">
-    <div class="success-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
-    <h2 data-i18n="saved">Configuration Saved</h2>
-    <p data-i18n="savedHint">You can close this tab and return to your session.</p>
-  </div>
-</div>
-<script>
-const _i18n=${JSON.stringify(i18n)};
-function _detectLang(){const n=navigator.language||'en';return n.startsWith('zh')?'zh':'en'}
-const t=_i18n[_detectLang()]||_i18n.en;
-document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(t[k])el.textContent=t[k]});
-document.querySelectorAll('[aria-label="__TOGGLE_PW__"]').forEach(el=>el.setAttribute('aria-label',t.togglePw));
-const h1=document.querySelector('.header h1');
-if(h1&&h1.textContent==='__DEFAULT_TITLE__')h1.textContent=t.defaultTitle;
-if(document.title.includes('__DEFAULT_TITLE__'))document.title=document.title.replace('__DEFAULT_TITLE__',t.defaultTitle);
-function togglePw(btn){const i=btn.parentElement.querySelector('input');i.type=i.type==='password'?'text':'password'}
-function resetForm(){document.getElementById('configForm').reset()}
-document.getElementById('configForm').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const btn=document.getElementById('saveBtn'),status=document.getElementById('status');
-  btn.disabled=true;btn.textContent=t.saving;status.className='status';status.style.display='none';
-  const fd=new FormData(e.target),data={};
-  for(const[k,v]of fd.entries()){if(k==='_csrf')continue;data[k]=v}
-  e.target.querySelectorAll('input[type="checkbox"]').forEach(cb=>{if(!cb.checked)data[cb.name]='false'});
-  e.target.querySelectorAll('input[type="password"]').forEach(pw=>{if(!pw.value)delete data[pw.name]});
-  try{
-    const resp=await fetch('/save',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':fd.get('_csrf')},body:JSON.stringify(data)});
-    const result=await resp.json();
-    if(result.ok){document.getElementById('successOverlay').classList.add('show');setTimeout(()=>window.close(),2000)}
-    else{status.className='status error';status.textContent=result.error||t.failedSave}
-  }catch(err){status.className='status error';status.textContent=t.connError+err.message}
-  finally{btn.disabled=false;btn.textContent=t.save}
-});
-</script>
-</body>
-</html>`;
+function injectGlobals(html, spec, state, cfgPath, csrfToken) {
+  const scriptTag = `<script>
+window.__CONFIG_SPEC__ = ${safeJSON(spec)};
+window.__CONFIG_STATE__ = ${safeJSON(state)};
+window.__CONFIG_PATH__ = ${safeJSON(cfgPath)};
+window.__CSRF_TOKEN__ = ${safeJSON(csrfToken)};
+</script>`;
+  return html.replace("</head>", `${scriptTag}
+</head>`);
 }
-function launchConfigUI(pluginName, schema) {
+function launchConfigUI(pluginName, options) {
   const cfgPath = configPath(pluginName);
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     const csrfToken = randomBytes(16).toString("hex");
     const existing = readConfigFile(cfgPath);
+    const defaults = options.spec.state ?? {};
+    const merged = deepMerge(defaults, existing);
+    const uiState = configToState(merged, options.collections);
+    let html;
+    try {
+      const rawHTML = loadBundledHTML();
+      html = injectGlobals(rawHTML, options.spec, uiState, cfgPath, csrfToken);
+    } catch (e) {
+      process.stderr.write(`[config-ui] ${e.message}
+`);
+      resolve2(false);
+      return;
+    }
     const server = createServer(async (req, res) => {
       if (req.method === "GET" && req.url === "/") {
-        const html = buildHTML(schema, cfgPath, existing, csrfToken);
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(html);
         return;
@@ -10604,13 +10520,15 @@ function launchConfigUI(pluginName, schema) {
             res.end(JSON.stringify({ ok: false, error: "Invalid CSRF token" }));
             return;
           }
-          const data = JSON.parse(body);
-          writeConfigFile(cfgPath, data);
+          const submittedState = JSON.parse(body);
+          const configData = stateToConfig(submittedState, options.collections);
+          const finalConfig = deepMerge(existing, configData);
+          writeConfigFile(cfgPath, finalConfig);
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: true }));
           setTimeout(() => {
             server.close();
-            resolve(true);
+            resolve2(true);
           }, 500);
         } catch (e) {
           res.writeHead(400, { "Content-Type": "application/json" });
@@ -10633,17 +10551,18 @@ function launchConfigUI(pluginName, schema) {
     });
     setTimeout(() => {
       server.close();
-      resolve(false);
+      resolve2(false);
     }, 5 * 60 * 1e3);
   });
 }
-async function requireConfigWithSetup(pluginName, schema, validate) {
+async function requireConfigWithSetup(pluginName, options) {
+  const { validate } = options;
   let config;
   try {
     config = await requireConfig(pluginName);
   } catch (e) {
     if (e instanceof PluginError && e.code === "CONFIG_MISSING") {
-      if (await launchConfigUI(pluginName, schema)) {
+      if (await launchConfigUI(pluginName, options)) {
         try {
           config = await requireConfig(pluginName);
           if (!validate || !validate(config))
@@ -10658,7 +10577,7 @@ async function requireConfigWithSetup(pluginName, schema, validate) {
   if (validate && validate(config)) {
     process.stderr.write(`[${pluginName}] Configuration is incomplete.
 `);
-    if (await launchConfigUI(pluginName, schema)) {
+    if (await launchConfigUI(pluginName, options)) {
       try {
         const newConfig = await requireConfig(pluginName);
         if (!validate(newConfig))
@@ -10671,7 +10590,7 @@ async function requireConfigWithSetup(pluginName, schema, validate) {
   return config;
 }
 
-// aliyunlog/src/aliyunlog.ts
+// src/aliyunlog.ts
 var import_log = __toESM(require_log(), 1);
 var CONFIG_PATH = configPath("aliyunlog");
 var MAPPINGS_CACHE_PATH = path.join(os.homedir(), ".cache", "apex-plugin", "aliyunlog-mappings.json");
@@ -10695,22 +10614,73 @@ function createClient(config, timeout) {
     ...timeout ? { timeout } : { timeout: 1e4 }
   });
 }
-var ALIYUNLOG_CONFIG_UI_SCHEMA = {
-  title: "Aliyun SLS Log Service",
-  description: "Enter your Alibaba Cloud SLS credentials",
-  fields: [
-    { key: "credentials.accessKeyId", label: "AccessKey ID", type: "text", required: true },
-    { key: "credentials.accessKeySecret", label: "AccessKey Secret", type: "password", required: true },
-    { key: "credentials.endpoint", label: "Endpoint", type: "text", required: true, default: "cn-hangzhou.log.aliyuncs.com", help: "SLS endpoint, e.g. cn-hangzhou.log.aliyuncs.com" },
-    { key: "default_project", label: "Default Project", type: "text", placeholder: "e.g. robot-k8s-dev" }
-  ]
+var ALIYUNLOG_CONFIG_UI = {
+  spec: {
+    root: "page",
+    elements: {
+      "page": {
+        type: "Header",
+        props: { title: { en: "Aliyun SLS Log Service", zh: "\u963F\u91CC\u4E91\u65E5\u5FD7\u670D\u52A1 SLS" }, description: { en: "Configure your Alibaba Cloud SLS credentials", zh: "\u914D\u7F6E\u963F\u91CC\u4E91\u65E5\u5FD7\u670D\u52A1\u51ED\u8BC1" }, configPath: null },
+        children: ["credentials", "settings", "environments", "save"]
+      },
+      "credentials": {
+        type: "Section",
+        props: { title: { en: "Credentials", zh: "\u51ED\u8BC1" }, description: null, collapsible: false, defaultOpen: true },
+        children: ["cred-accessKeyId", "cred-accessKeySecret", "cred-endpoint"]
+      },
+      "cred-accessKeyId": {
+        type: "Field",
+        props: { label: { en: "AccessKey ID", zh: "AccessKey ID" }, type: "text", required: true, help: null, placeholder: null, options: null, statePath: "/credentials/accessKeyId" }
+      },
+      "cred-accessKeySecret": {
+        type: "Field",
+        props: { label: { en: "AccessKey Secret", zh: "AccessKey Secret" }, type: "password", required: true, help: null, placeholder: null, options: null, statePath: "/credentials/accessKeySecret" }
+      },
+      "cred-endpoint": {
+        type: "Field",
+        props: { label: { en: "Endpoint", zh: "\u670D\u52A1\u5165\u53E3" }, type: "text", required: true, help: { en: "e.g. cn-hangzhou.log.aliyuncs.com", zh: "\u4F8B\u5982 cn-hangzhou.log.aliyuncs.com" }, placeholder: null, options: null, statePath: "/credentials/endpoint" }
+      },
+      "settings": {
+        type: "Section",
+        props: { title: { en: "Settings", zh: "\u8BBE\u7F6E" }, description: null, collapsible: true, defaultOpen: false },
+        children: ["setting-default-project"]
+      },
+      "setting-default-project": {
+        type: "Field",
+        props: { label: { en: "Default Project", zh: "\u9ED8\u8BA4\u9879\u76EE" }, type: "text", required: false, help: null, placeholder: { en: "e.g. robot-k8s-dev", zh: "\u4F8B\u5982 robot-k8s-dev" }, options: null, statePath: "/default_project" }
+      },
+      "environments": {
+        type: "Collection",
+        props: { title: { en: "Environments", zh: "\u73AF\u5883" }, itemLabel: { en: "Environment", zh: "\u73AF\u5883" }, statePath: "/environments", nameEditable: true },
+        children: ["env-project", "env-endpoint"]
+      },
+      "env-project": {
+        type: "Field",
+        props: { label: { en: "SLS Project", zh: "SLS \u9879\u76EE" }, type: "text", required: false, help: null, placeholder: null, options: null, statePath: "project" }
+      },
+      "env-endpoint": {
+        type: "Field",
+        props: { label: { en: "Endpoint Override", zh: "\u670D\u52A1\u5165\u53E3\uFF08\u8986\u76D6\uFF09" }, type: "text", required: false, help: { en: "Leave empty to use default endpoint", zh: "\u7559\u7A7A\u5219\u4F7F\u7528\u9ED8\u8BA4\u670D\u52A1\u5165\u53E3" }, placeholder: null, options: null, statePath: "endpoint" }
+      },
+      "save": {
+        type: "SaveBar",
+        props: { saveLabel: null, resetLabel: null }
+      }
+    },
+    state: {
+      credentials: { accessKeyId: "", accessKeySecret: "", endpoint: "cn-hangzhou.log.aliyuncs.com" },
+      default_project: "",
+      environments: []
+    }
+  },
+  collections: [{ statePath: "/environments" }],
+  validate: (config) => {
+    const c = config.credentials;
+    return !c || !c.accessKeyId || c.accessKeyId.includes("<") || !c.accessKeySecret || c.accessKeySecret.includes("<") || !c.endpoint;
+  }
 };
-function credentialsNeedSetup(config) {
-  const c = config.credentials;
-  return !c || !c.accessKeyId || c.accessKeyId.includes("<") || !c.accessKeySecret || c.accessKeySecret.includes("<") || !c.endpoint;
-}
 function validateCredentials(config) {
-  if (!credentialsNeedSetup(config)) return;
+  if (!ALIYUNLOG_CONFIG_UI.validate(config)) return;
   const c = config.credentials;
   if (!c) die(`Missing 'credentials' section in config. Run: aliyunlog setup`);
   if (!c.accessKeyId || c.accessKeyId.includes("<"))
@@ -11212,10 +11182,10 @@ function prompt(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     rl.question(question, (answer) => {
       rl.close();
-      resolve(answer.trim());
+      resolve2(answer.trim());
     });
   });
 }
@@ -11430,8 +11400,7 @@ async function getLogsWithRetry(client, project, logstore, from, to, query, limi
 async function loadConfig2() {
   return requireConfigWithSetup(
     "aliyunlog",
-    ALIYUNLOG_CONFIG_UI_SCHEMA,
-    credentialsNeedSetup
+    ALIYUNLOG_CONFIG_UI
   );
 }
 async function runQuery(env, service, opts) {
