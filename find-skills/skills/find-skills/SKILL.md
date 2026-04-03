@@ -11,7 +11,6 @@ description: >-
   "what skills do I have installed", "update skills".
   It should NOT be used when the user simply asks for help with a task —
   only when they explicitly want to discover, install, remove, or manage agent skills.
-model: sonnet
 allowed-tools: Bash(npx:*)
 ---
 

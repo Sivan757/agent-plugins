@@ -9,7 +9,6 @@ description: >-
   "productivity stats", "plan my day", "what did I complete",
   or mentions TickTick, Dida365, todo lists, task management, habit tracking,
   Pomodoro, or productivity tracking.
-model: sonnet
 allowed-tools: Bash(node:*)
 ---
 

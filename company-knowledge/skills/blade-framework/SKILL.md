@@ -9,7 +9,6 @@ description: >-
   involving the Aikero Blade framework, its starters, response protocol,
   authentication annotations, or user context management.
 version: 0.2.0
-model: sonnet
 ---
 
 # Blade Framework

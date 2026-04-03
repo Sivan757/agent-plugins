@@ -32,9 +32,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/commander/lib/error.js
+// ../node_modules/commander/lib/error.js
 var require_error = __commonJS({
-  "node_modules/commander/lib/error.js"(exports) {
+  "../node_modules/commander/lib/error.js"(exports) {
     var CommanderError2 = class extends Error {
       /**
        * Constructs the CommanderError class
@@ -67,9 +67,9 @@ var require_error = __commonJS({
   }
 });
 
-// node_modules/commander/lib/argument.js
+// ../node_modules/commander/lib/argument.js
 var require_argument = __commonJS({
-  "node_modules/commander/lib/argument.js"(exports) {
+  "../node_modules/commander/lib/argument.js"(exports) {
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
     var Argument2 = class {
       /**
@@ -195,9 +195,9 @@ var require_argument = __commonJS({
   }
 });
 
-// node_modules/commander/lib/help.js
+// ../node_modules/commander/lib/help.js
 var require_help = __commonJS({
-  "node_modules/commander/lib/help.js"(exports) {
+  "../node_modules/commander/lib/help.js"(exports) {
     var { humanReadableArgName } = require_argument();
     var Help2 = class {
       constructor() {
@@ -797,9 +797,9 @@ ${itemIndentStr}`);
   }
 });
 
-// node_modules/commander/lib/option.js
+// ../node_modules/commander/lib/option.js
 var require_option = __commonJS({
-  "node_modules/commander/lib/option.js"(exports) {
+  "../node_modules/commander/lib/option.js"(exports) {
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
     var Option2 = class {
       /**
@@ -1110,9 +1110,9 @@ var require_option = __commonJS({
   }
 });
 
-// node_modules/commander/lib/suggestSimilar.js
+// ../node_modules/commander/lib/suggestSimilar.js
 var require_suggestSimilar = __commonJS({
-  "node_modules/commander/lib/suggestSimilar.js"(exports) {
+  "../node_modules/commander/lib/suggestSimilar.js"(exports) {
     var maxDistance = 3;
     function editDistance(a, b) {
       if (Math.abs(a.length - b.length) > maxDistance)
@@ -1190,9 +1190,9 @@ var require_suggestSimilar = __commonJS({
   }
 });
 
-// node_modules/commander/lib/command.js
+// ../node_modules/commander/lib/command.js
 var require_command = __commonJS({
-  "node_modules/commander/lib/command.js"(exports) {
+  "../node_modules/commander/lib/command.js"(exports) {
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
     var path = __require("node:path");
@@ -3436,9 +3436,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
   }
 });
 
-// node_modules/commander/index.js
+// ../node_modules/commander/index.js
 var require_commander = __commonJS({
-  "node_modules/commander/index.js"(exports) {
+  "../node_modules/commander/index.js"(exports) {
     var { Argument: Argument2 } = require_argument();
     var { Command: Command2 } = require_command();
     var { CommanderError: CommanderError2, InvalidArgumentError: InvalidArgumentError2 } = require_error();
@@ -3458,13 +3458,13 @@ var require_commander = __commonJS({
   }
 });
 
-// ticktick/src/ticktick.ts
+// src/ticktick.ts
 import { readFileSync as readFileSync2, writeFileSync as writeFileSync2, existsSync as existsSync3 } from "fs";
 import { randomBytes as randomBytes2 } from "crypto";
 import { createServer as createServer2 } from "http";
 import { tmpdir } from "os";
 
-// node_modules/commander/esm.mjs
+// ../node_modules/commander/esm.mjs
 var import_index = __toESM(require_commander(), 1);
 var {
   program,
@@ -3481,13 +3481,13 @@ var {
   Help
 } = import_index.default;
 
-// packages/core/dist/config.js
+// ../packages/core/dist/config.js
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { join, dirname } from "path";
 import { homedir } from "os";
 
-// packages/core/dist/errors.js
+// ../packages/core/dist/errors.js
 var PluginError = class extends Error {
   code;
   exitCode;
@@ -3499,7 +3499,7 @@ var PluginError = class extends Error {
   }
 };
 
-// packages/core/dist/config.js
+// ../packages/core/dist/config.js
 var CACHE_DIR = join(homedir(), ".cache", "apex-plugin");
 function configPath(pluginName) {
   return join(CACHE_DIR, `${pluginName}.json`);
@@ -3535,7 +3535,7 @@ async function requireConfig(pluginName) {
   return config;
 }
 
-// packages/core/dist/config-ui.js
+// ../packages/core/dist/config-ui.js
 import { createServer } from "http";
 import { readFileSync, writeFileSync, existsSync as existsSync2, mkdirSync } from "fs";
 import { dirname as dirname2 } from "path";
@@ -3856,7 +3856,7 @@ async function requireConfigWithSetup(pluginName, schema, validate) {
   return config;
 }
 
-// ticktick/src/ticktick.ts
+// src/ticktick.ts
 var SESSION_CACHE = `${tmpdir()}/ticktick-session.json`;
 var SESSION_TTL_MS = 36e5;
 var TICKTICK_CONFIG_UI_SCHEMA = {

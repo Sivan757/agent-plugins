@@ -8,7 +8,6 @@ description: >-
   "use gradle.properties", "configure Gradle wrapper", "set up CI build",
   or works on any Gradle build configuration for Aikero/Blade framework projects.
 version: 0.2.0
-model: sonnet
 ---
 
 # Aikero Gradle Build System

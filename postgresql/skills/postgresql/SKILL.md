@@ -9,7 +9,6 @@ description: >-
   Provides the ability to execute SQL queries against PostgreSQL databases via a
   Node.js script with multi-connection support, including schema inspection,
   parameterized queries, and multiple output formats.
-model: sonnet
 allowed-tools: Bash(node:*), Read, AskUserQuestion
 ---
 

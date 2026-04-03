@@ -9,7 +9,6 @@ description: >-
   involving Jimmer ORM, `@Entity` interfaces, `newFetcher`, `KRepository`,
   or Jimmer's type-safe SQL DSL.
 version: 0.2.0
-model: sonnet
 ---
 
 # Jimmer ORM

@@ -9,7 +9,6 @@ description: >-
   "create version catalog", "convert build.gradle to Kotlin DSL",
   or works on any Gradle build configuration for Kotlin Spring Boot projects.
 version: 0.2.0
-model: sonnet
 ---
 
 # Gradle Kotlin DSL

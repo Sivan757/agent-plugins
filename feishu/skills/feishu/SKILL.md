@@ -14,7 +14,6 @@ description: >-
   Provides Feishu/Lark document operations via feishu-mcp server,
   including document search, reading, creation, block-level editing,
   folder management, and Wiki browsing.
-model: sonnet
 ---
 
 # Feishu Document Operations

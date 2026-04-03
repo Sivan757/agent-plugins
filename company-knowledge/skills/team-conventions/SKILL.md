@@ -8,7 +8,6 @@ description: >-
   "RabbitMQ naming", "deployment process", "Spring Boot 3 upgrade",
   or works on any code that should follow Aikero team development standards.
 version: 0.2.0
-model: sonnet
 ---
 
 # Aikero Team Conventions

@@ -9,7 +9,6 @@ description: >-
   any Kotlin + Spring Boot backend code. Provides opinionated, architect-level
   guidance for idiomatic Kotlin Spring Boot applications.
 version: 0.2.0
-model: sonnet
 ---
 
 # Kotlin Spring Boot Architecture

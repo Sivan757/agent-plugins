@@ -11,7 +11,7 @@ description: >-
   "查看生产日志", "查看开发日志", or "排查问题".
   Provides the ability to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log
   Node.js SDK with environment/service alias resolution and SLS query syntax support.
-model: sonnet
+
 allowed-tools: Bash(node:*), Read, AskUserQuestion
 ---
 

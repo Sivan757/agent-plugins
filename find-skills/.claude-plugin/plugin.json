@@ -1,6 +1,6 @@
 {
   "name": "find-skills",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Discover and install agent skills from the skills.sh ecosystem when users ask about extending capabilities or finding tools for specific tasks.",
   "author": {
     "name": "Robotees"

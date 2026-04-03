@@ -8,7 +8,6 @@ description: >-
   "convert callbacks to suspend functions", "modernize Java code",
   or works on migrating any Java codebase to Kotlin.
 version: 0.2.0
-model: sonnet
 ---
 
 # Java to Kotlin Migration

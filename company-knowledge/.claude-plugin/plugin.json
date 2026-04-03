@@ -1,6 +1,6 @@
 {
   "name": "company-knowledge",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Aikero company knowledge base — Blade framework, team conventions, Gradle ecosystem, Kotlin/Spring Boot/Jimmer architecture, and Java-to-Kotlin migration",
   "author": {
     "name": "robotees"

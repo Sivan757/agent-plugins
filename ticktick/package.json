@@ -1,6 +1,6 @@
 {
   "name": "ticktick",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "scripts": {
     "build": "bash ../scripts/build-plugin.sh src/ticktick.ts dist/ticktick.mjs",
