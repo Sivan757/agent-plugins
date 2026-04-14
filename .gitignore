@@ -11,3 +11,12 @@ external-resources/*
 .vscode/
 node_modules/
 *.tsbuildinfo
+bun.lock
+
+# Workspace / scratch directories
+*-workspace/
+
+# Scraper scripts (development artifacts)
+scripts/scrape-*.mjs
+scripts/scrape-*.js
+scripts/generate-*-refs.py

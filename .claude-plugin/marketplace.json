@@ -1,26 +1,44 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "apex-plugins",
-  "description": "Coding standards, patterns, and best practices enforcement for multi-language projects",
+  "description": "Aikero's curated Claude Code plugin directory — internal tools and recommended external plugins, all installable via /plugin install <name>@apex-plugins",
   "owner": {
     "name": "Robotees"
   },
   "metadata": {
-    "description": "Coding standards, patterns, and best practices enforcement for multi-language projects",
+    "description": "Aikero's curated Claude Code plugin directory — internal tools and recommended external plugins",
     "version": "1.0.0"
   },
   "plugins": [
     {
-      "name": "jetbrains-mcp",
-      "version": "0.1.0",
-      "source": "./jetbrains",
-      "description": "Configures JetBrains MCP server integration for Claude Code, enabling IDE-level file operations, refactoring, terminal execution, and code navigation."
+      "name": "aliyunlog",
+      "version": "1.6.0",
+      "source": "./aliyunlog",
+      "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
     },
     {
       "name": "augment-mcp",
       "version": "0.1.1",
       "source": "./augment",
       "description": "Integrates Augment Context Engine MCP server for semantic codebase search and retrieval across repositories."
+    },
+    {
+      "name": "company-knowledge",
+      "version": "0.2.1",
+      "source": "./company-knowledge",
+      "description": "Aikero company knowledge base — Blade framework, team conventions, Gradle ecosystem, Kotlin/Spring Boot/Jimmer architecture, and Java-to-Kotlin migration"
+    },
+    {
+      "name": "ecommerce-expert",
+      "version": "1.0.0",
+      "source": "./ecommerce-expert",
+      "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu (124 endpoints) with full parameter specs, signing algorithms, and integration patterns"
+    },
+    {
+      "name": "find-skills",
+      "version": "0.1.1",
+      "source": "./find-skills",
+      "description": "Discover and install agent skills from the skills.sh ecosystem when users ask about extending capabilities or finding tools for specific tasks."
     },
     {
       "name": "mysql",
@@ -35,16 +53,13 @@
       "description": "Enables AI to execute SQL queries against PostgreSQL databases via Node.js with multi-connection support for schema inspection and discovery."
     },
     {
-      "name": "aliyunlog",
-      "version": "1.6.0",
-      "source": "./aliyunlog",
-      "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
-    },
-    {
-      "name": "p3c",
-      "version": "0.1.0",
-      "source": "./p3c",
-      "description": "Alibaba P3C Java coding guidelines as Claude Code rules — auto-installs into .claude/rules/p3c/"
+      "name": "shopify-ai-toolkit",
+      "description": "Shopify development toolkit — themes, apps, Storefront API, Hydrogen, checkout extensions, Polaris, POS, and Liquid templating",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/Shopify/Shopify-AI-Toolkit.git"
+      },
+      "homepage": "https://github.com/Shopify/Shopify-AI-Toolkit"
     },
     {
       "name": "ticktick",
@@ -53,16 +68,13 @@
       "description": "Manage TickTick (Dida365) tasks, projects, tags, habits, kanban columns, folders, focus sessions, and productivity statistics via the bundled CLI."
     },
     {
-      "name": "find-skills",
-      "version": "0.1.1",
-      "source": "./find-skills",
-      "description": "Discover and install agent skills from the skills.sh ecosystem when users ask about extending capabilities or finding tools for specific tasks."
-    },
-    {
-      "name": "company-knowledge",
-      "version": "0.2.1",
-      "source": "./company-knowledge",
-      "description": "Aikero company knowledge base — Blade framework, team conventions, Gradle ecosystem, Kotlin/Spring Boot/Jimmer architecture, and Java-to-Kotlin migration"
+      "name": "understand-anything",
+      "description": "Transform codebases into interactive knowledge graphs with multi-agent analysis, visualization dashboards, and Q&A",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/Lum1104/Understand-Anything.git"
+      },
+      "homepage": "https://github.com/Lum1104/Understand-Anything"
     }
   ]
 }

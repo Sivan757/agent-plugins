@@ -1,0 +1,47 @@
+{
+  "skill_name": "shein-api-expert",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm getting a signature error when calling the SHEIN product publish API. I'm using MD5 to sign my requests. What am I doing wrong?",
+      "expected_output": "Should explain that SHEIN uses HMAC-SHA256 (not MD5) with Base64 encoding, and that the signature must be prepended with a 5-digit random key. Should provide the full signing algorithm steps.",
+      "files": [],
+      "assertions": [
+        {"id": "correct-algorithm", "text": "Response correctly identifies HMAC-SHA256 as the signing algorithm"},
+        {"id": "base64-encoding", "text": "Response mentions Base64 encoding"},
+        {"id": "random-key-prepend", "text": "Response explains the 5-digit random key prepended to signature"},
+        {"id": "signature-steps", "text": "Response provides complete step-by-step signing algorithm"},
+        {"id": "correct-headers", "text": "Response mentions x-lt-signature header"},
+        {"id": "no-hallucinated-algorithm", "text": "Response does NOT claim SHEIN uses MD5 or SHA1"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need to build an integration that syncs product inventory from our ERP to SHEIN. Which APIs should I use and what's the flow?",
+      "expected_output": "Should reference real SHEIN inventory APIs, distinguish between merchant modes, mention warehouse management, and provide a structured workflow.",
+      "files": [],
+      "assertions": [
+        {"id": "correct-stock-api", "text": "References a real SHEIN stock/inventory endpoint path"},
+        {"id": "merchant-mode-distinction", "text": "Distinguishes between Self-operated/Semi-managed vs Fully-managed"},
+        {"id": "warehouse-mention", "text": "Mentions warehouse queries as part of the flow"},
+        {"id": "auth-prerequisite", "text": "Mentions authentication as a prerequisite"},
+        {"id": "structured-workflow", "text": "Provides a numbered/ordered workflow"},
+        {"id": "no-hallucinated-endpoints", "text": "All mentioned API paths actually exist"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "How do I handle customer order fulfillment on SHEIN? I need to get orders, check shipping channels, and upload tracking info.",
+      "expected_output": "Should guide through order fulfillment: query orders via /order/order-list, get channels via /order/express-channel, upload tracking via /order/import-batch-multiple-express.",
+      "files": [],
+      "assertions": [
+        {"id": "order-list-api", "text": "References /order/order-list"},
+        {"id": "express-channel-api", "text": "References /order/express-channel"},
+        {"id": "tracking-upload-api", "text": "References /order/import-batch-multiple-express"},
+        {"id": "request-params", "text": "Includes specific request parameter names"},
+        {"id": "step-by-step-flow", "text": "Provides a clear step-by-step fulfillment workflow"},
+        {"id": "no-hallucinated-endpoints", "text": "All mentioned API paths actually exist"}
+      ]
+    }
+  ]
+}

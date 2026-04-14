@@ -20,25 +20,38 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 **Plugin types** (see `.claude-plugin/marketplace.json` for the full list):
 - **CLI-based**: Bundled Node.js scripts in `scripts/`, skills in `skills/`
 - **MCP-based**: `.mcp.json` configures external MCP servers
-- **Policy/rules**: Hooks-only, no scripts or MCP
-- **Meta/tooling**: Workflows, templates, and agent orchestration (no runtime scripts)
+- **Knowledge-base**: Skills with reference docs, no scripts (e.g., `ecommerce-expert` with separate shein/temu skills)
+- **External (URL source)**: References to external repos via URL/git-subdir in marketplace.json
 
 **Marketplace registry:** `.claude-plugin/marketplace.json` — all plugins must be listed here
+- Local plugins: `"source": "./dir"` with `version` field
+- External plugins: `"source": { "source": "url", "url": "https://..." }` or `"source": { "source": "git-subdir", "url": "...", "path": "..." }` — no version field
 
 ## Development
 - `bash scripts/dev.sh` — launch Claude Code with all local plugins loaded
-- `bash scripts/dev.sh mysql feishu` — load specific plugins only
+- `bash scripts/dev.sh mysql ticktick` — load specific plugins only
 - `bash scripts/dev.sh --list` — list available plugins with versions
 - Changes are picked up with `/reload-plugins` inside the session (no restart needed)
 
 ## Config UI
-- `node scripts/config-ui.mjs --config <path> --schema '<json>'` — launch browser-based config form
-- Schema fields: `text`, `password`, `select`, `number`, `textarea`, `checkbox`
+- Architecture: `packages/config-ui/` — json-render React app bundled as single HTML via Vite + vite-plugin-singlefile
+- Server: `packages/core/src/config-ui.ts` — injects spec/state as `window.__CONFIG_SPEC__` / `window.__CONFIG_STATE__`, serves `/save` endpoint
+- Plugins define declarative specs (e.g., `MYSQL_CONFIG_UI`) with components: Header, Section, Collection, Field, SaveBar
+- Field types: `text`, `password`, `select`, `number`, `textarea`, `checkbox`
+- Collections: object↔array conversion — config files use object keys (`{default: {...}}`), UI state uses arrays with `_name` field
+- i18n: `LocalizedString` type (`{ en: "...", zh: "..." }` or plain string), auto-detects browser language, toggle button in Header
 - Credentials go browser → file, never through the LLM
 - Use in setup hooks when config is missing (see `ticktick/hooks/ticktick-setup.sh` for example)
-- `.json` configs auto-detected; dot-notation keys (`a.b.c`) write nested objects
-- i18n: `--lang zh` or `schema.lang`; auto-detects from browser; translations in `i18n` object inside script
-- All 5 credential plugins integrated: ticktick, mysql, postgresql, aliyunlog, feishu
+- Build: `cd packages/config-ui && npm run build` — outputs `dist/index.html`
+- All 4 credential plugins integrated: ticktick, mysql, postgresql, aliyunlog
+
+## CI Validation
+- GitHub Actions workflow (`.github/workflows/validate-plugins.yml`) runs on PRs:
+  - **validate-marketplace**: required fields, no duplicates, alphabetical sort
+  - **validate-frontmatter**: skills need `description`/`when_to_use`, agents need `name`+`description`
+  - **validate-versions**: cross-file version consistency for local plugins
+- Validation scripts in `.github/scripts/` — run locally with `bun run .github/scripts/<script>.ts`
+- `check-marketplace-sorted.ts --fix` auto-sorts marketplace.json
 
 ## Conventions
 - Installed marketplace (`~/.claude/plugins/marketplaces/apex-plugins/`) is a separate copy — edit workspace, then sync with `cp` or `scripts/dev.sh` for testing
@@ -51,6 +64,8 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 - Version bumps: use `bump-plugin-version.sh` instead of editing 3 files manually — avoids version-check hook firing mid-edit
 - AI-facing help text (--help, SKILL.md): avoid fuzzy natural language for defaults — say "omit = auto" not "default: 15 min ago"
 - Commits: stage plugin files by name (`git add <plugin>/... marketplace.json`) — don't use `git add -A` since unrelated plugin work may be in-tree
+- Multi-skill plugins: group related API knowledge bases under one plugin with separate skills (e.g., `ecommerce-expert/skills/shein-api-expert/` + `ecommerce-expert/skills/temu-api-expert/`)
+- Adding external plugins: add URL source entry to marketplace.json — do NOT add plugins the user didn't ask for
 - CJK font fallback: always include `PingFang SC`, `Noto Sans SC`, `Microsoft YaHei` in font stacks for Chinese support
 
 ## SOP: Plugin Development & Optimization

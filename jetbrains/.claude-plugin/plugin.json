@@ -1,9 +1,0 @@
-{
-  "name": "jetbrains-mcp",
-  "version": "0.1.0",
-  "description": "Configures JetBrains MCP server integration for Claude Code, enabling IDE-level file operations, refactoring, terminal execution, and code navigation.",
-  "author": {
-    "name": "Robotees"
-  },
-  "keywords": ["jetbrains", "mcp", "ide", "intellij", "webstorm", "pycharm"]
-}

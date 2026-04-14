@@ -1,9 +1,0 @@
-{
-  "name": "p3c",
-  "version": "0.1.0",
-  "description": "Alibaba P3C Java coding guidelines as Claude Code rules — auto-installs into .claude/rules/p3c/",
-  "author": {
-    "name": "Robotees"
-  },
-  "keywords": ["java", "p3c", "alibaba", "code-quality", "rules"]
-}
