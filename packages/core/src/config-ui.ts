@@ -188,21 +188,25 @@ function writeConfigFile(cfgPath: string, data: Record<string, unknown>): void {
 
 /**
  * Locate and read the pre-bundled React app HTML. Searches relative to this
- * module file: `../../config-ui/dist/index.html` (when running from
- * packages/core/dist/) or `../../config-ui/dist/index.html` (source layout).
+ * module file: `../../../packages/config-ui/dist/index.html` (when running
+ * from a bundled plugin under `plugin/<name>/dist/`) or
+ * `../../config-ui/dist/index.html` (source layout).
  */
 function loadBundledHTML(): string {
   // __dirname is shimmed by esbuild banner to the bundled file's directory.
-  // When a plugin runs from <repo>/ticktick/dist/, __dirname = <repo>/ticktick/dist/
-  // When a plugin runs from ~/.claude/plugins/marketplaces/apex-plugins/ticktick/dist/,
-  //   __dirname = ~/.claude/plugins/marketplaces/apex-plugins/ticktick/dist/
-  // In both cases, going up 2 levels reaches the repo root, then into packages/config-ui/dist/.
+  // When a plugin runs from <repo>/plugin/ticktick/dist/,
+  //   __dirname = <repo>/plugin/ticktick/dist/
+  // When a plugin runs from ~/.claude/plugins/marketplaces/agent-plugins/plugin/ticktick/dist/,
+  //   __dirname = ~/.claude/plugins/marketplaces/agent-plugins/plugin/ticktick/dist/
+  // In both cases, going up 3 levels reaches the repo root, then into packages/config-ui/dist/.
   const thisDir = typeof __dirname !== 'undefined'
     ? __dirname
     : dirname(fileURLToPath(import.meta.url));
 
   const candidates = [
-    // From <plugin>/dist/ → ../../packages/config-ui/dist/index.html (esbuild bundle)
+    // From plugin/<name>/dist/ → ../../../packages/config-ui/dist/index.html
+    resolve(thisDir, '..', '..', '..', 'packages', 'config-ui', 'dist', 'index.html'),
+    // Legacy root-level plugin layout → ../../packages/config-ui/dist/index.html
     resolve(thisDir, '..', '..', 'packages', 'config-ui', 'dist', 'index.html'),
     // From packages/core/dist/ → ../../config-ui/dist/index.html (unbundled/dev)
     resolve(thisDir, '..', '..', 'config-ui', 'dist', 'index.html'),

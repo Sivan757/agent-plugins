@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useStateStore } from '@json-render/react';
 import type { BaseComponentProps } from '@json-render/react';
 import { Field } from './Field';
-import { useI18n, type LocalizedString } from '../i18n';
+import { useI18n, type LocalizedString } from '@shared/i18n';
 
 interface CollectionProps {
   title: LocalizedString;

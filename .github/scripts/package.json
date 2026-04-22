@@ -1,5 +1,5 @@
 {
-  "name": "apex-plugins-ci-scripts",
+  "name": "agent-plugins-ci-scripts",
   "private": true,
   "dependencies": {
     "yaml": "^2.7.0"

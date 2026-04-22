@@ -1,37 +1,35 @@
-# Apex Plugins
+# Agent Plugins
 
-Aikero's curated Claude Code plugin directory -- internal tools and recommended external plugins, **all installable from one marketplace**.
+Curated Claude Code plugin directory -- local tools and recommended external plugins, **all installable from one marketplace**.
+
+Local plugin implementations and scaffolding live under `plugin/`. Shared runtime packages stay in `packages/`.
 
 ## Quick Start
 
 ```bash
 # Add this marketplace (one-time)
-/plugin marketplace add apex-plugins
+/plugin marketplace add agent-plugins
 
-# Install any plugin -- internal or external
-/plugin install <plugin-name>@apex-plugins
+# Install any plugin -- local or external
+/plugin install <plugin-name>@agent-plugins
 ```
 
 ## Plugin Directory
 
-### Internal Plugins (built by us)
+### Local Plugins
 
 | Plugin | Version | Description |
 |--------|---------|-------------|
-| [aliyunlog](./aliyunlog) | 1.6.0 | Query Alibaba Cloud SLS logs with environment and service-based quick lookup |
-| [augment-mcp](./augment) | 0.1.1 | Augment Context Engine MCP for semantic codebase search across repositories |
-| [company-knowledge](./company-knowledge) | 0.2.1 | Aikero knowledge base -- Blade, team conventions, Gradle, Kotlin/Spring Boot/Jimmer |
-| [find-skills](./find-skills) | 0.1.1 | Discover and install agent skills from the skills.sh ecosystem |
-| [jetbrains-mcp](./jetbrains) | 0.1.0 | JetBrains MCP for IDE-level file operations, refactoring, and code navigation |
-| [mysql](./mysql) | 0.11.0 | SQL queries against MySQL databases with multi-connection support |
-| [p3c](./p3c) | 0.1.0 | Alibaba P3C Java coding guidelines as Claude Code rules |
-| [postgresql](./postgresql) | 0.5.0 | SQL queries against PostgreSQL databases with schema inspection |
-| [ecommerce-expert](./ecommerce-expert) | 1.0.0 | SHEIN (173 endpoints) + Temu (124 endpoints) API knowledge base -- two independent skills, one plugin |
-| [ticktick](./ticktick) | 0.6.0 | TickTick (Dida365) task management, habits, focus sessions, and stats |
+| [aliyunlog](./plugin/aliyunlog) | 1.6.0 | Query Alibaba Cloud SLS logs with environment and service-based quick lookup |
+| [augment-mcp](./plugin/augment) | 0.1.1 | Augment Context Engine MCP for semantic codebase search across repositories |
+| [ecommerce-expert](./plugin/ecommerce-expert) | 1.0.0 | SHEIN (173 endpoints) + Temu (124 endpoints) API knowledge base -- two independent skills, one plugin |
+| [mysql](./plugin/mysql) | 0.11.0 | SQL queries against MySQL databases with multi-connection support |
+| [postgresql](./plugin/postgresql) | 0.5.0 | SQL queries against PostgreSQL databases with schema inspection |
+| [ticktick](./plugin/ticktick) | 0.6.0 | TickTick (Dida365) task management, habits, focus sessions, and stats |
 
 ### External Plugins (curated from other repos)
 
-External plugins are referenced by URL in our marketplace -- install them the same way: `/plugin install <name>@apex-plugins`
+External plugins are referenced by URL in our marketplace -- install them the same way: `/plugin install <name>@agent-plugins`
 
 | Plugin | Origin | Description |
 |--------|--------|-------------|
@@ -100,4 +98,4 @@ See the [Plugin Development Guide](CLAUDE.md) and the [plugin-dev skill](https:/
 
 ## License
 
-Internal use -- Aikero team.
+Internal use.

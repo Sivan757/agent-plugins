@@ -1,5 +1,5 @@
 import type { BaseComponentProps } from '@json-render/react';
-import { useI18n, type LocalizedString } from '../i18n';
+import { useI18n, type LocalizedString } from '@shared/i18n';
 
 interface HeaderProps {
   title: LocalizedString;

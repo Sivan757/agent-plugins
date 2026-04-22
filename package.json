@@ -1,14 +1,15 @@
 {
-  "name": "apex-plugins",
+  "name": "agent-plugins",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/*",
-    "ticktick",
-    "postgresql",
-    "mysql",
-    "aliyunlog",
-    "feishu"
+    "plugin/ticktick",
+    "plugin/postgresql",
+    "plugin/mysql",
+    "plugin/aliyunlog",
+    "plugin/ecommerce-expert",
+    "plugin/feishu"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

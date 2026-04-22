@@ -1,0 +1,13 @@
+{
+  "name": "__PLUGIN__",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/__PLUGIN__.ts --bundle --platform=node --format=esm --outfile=dist/__PLUGIN__.mjs",
+    "dev": "tsx src/__PLUGIN__.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agent-plugins/core": "*"
+  }
+}

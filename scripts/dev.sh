@@ -15,7 +15,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 if [ "${1:-}" = "--list" ]; then
   echo "Available plugins:"
-  for dir in "$REPO_ROOT"/*/; do
+  for dir in "$REPO_ROOT"/plugin/*/; do
     [ -f "$dir/.claude-plugin/plugin.json" ] || continue
     name=$(basename "$dir")
     version=$(python3 -c "import json; print(json.load(open('$dir/.claude-plugin/plugin.json'))['version'])")
@@ -30,7 +30,7 @@ plugin_flags=()
 if [ $# -gt 0 ]; then
   # Load only specified plugins
   for name in "$@"; do
-    dir="$REPO_ROOT/$name"
+    dir="$REPO_ROOT/plugin/$name"
     if [ ! -f "$dir/.claude-plugin/plugin.json" ]; then
       echo "Error: plugin '$name' not found" >&2
       exit 1
@@ -39,7 +39,7 @@ if [ $# -gt 0 ]; then
   done
 else
   # Load all plugins
-  for dir in "$REPO_ROOT"/*/; do
+  for dir in "$REPO_ROOT"/plugin/*/; do
     [ -f "$dir/.claude-plugin/plugin.json" ] || continue
     plugin_flags+=(--plugin-dir "$dir")
   done

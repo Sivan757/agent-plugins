@@ -1,7 +1,7 @@
 import { useState, useCallback, useId } from 'react';
 import { useStateStore } from '@json-render/react';
 import type { BaseComponentProps } from '@json-render/react';
-import { useI18n, type LocalizedString } from '../i18n';
+import { useI18n, type LocalizedString } from '@shared/i18n';
 
 interface FieldProps {
   label: LocalizedString;

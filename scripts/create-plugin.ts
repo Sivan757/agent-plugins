@@ -107,7 +107,7 @@ function addToMarketplace(name: string, description: string): void {
   mp.plugins.push({
     name,
     version: '0.1.0',
-    source: `./${name}`,
+    source: `./plugin/${name}`,
     description
   });
   writeFileSync(mpPath, JSON.stringify(mp, null, 4) + '\n');
@@ -116,22 +116,23 @@ function addToMarketplace(name: string, description: string): void {
 function addToWorkspaces(name: string): void {
   const pkgPath = join(ROOT, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-  if (!pkg.workspaces.includes(name)) {
-    pkg.workspaces.push(name);
+  const workspacePath = `plugin/${name}`;
+  if (!pkg.workspaces.includes(workspacePath)) {
+    pkg.workspaces.push(workspacePath);
   }
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 }
 
 function main(): void {
   const { name, type, description } = parseArgs();
-  const targetDir = join(ROOT, name);
+  const targetDir = join(ROOT, 'plugin', name);
 
   if (existsSync(targetDir)) {
     console.error(`Error: Directory '${name}' already exists.`);
     process.exit(1);
   }
 
-  const templateDir = join(ROOT, 'templates', type);
+  const templateDir = join(ROOT, 'plugin', 'templates', type);
   const replacements: Record<string, string> = {
     '__PLUGIN__': name,
     '__PLUGIN_PASCAL__': toPascalCase(name),
@@ -154,10 +155,10 @@ function main(): void {
 Plugin '${name}' created successfully!
 
 Next steps:
-  1. Edit ${name}/skills/${name}/SKILL.md — add trigger patterns and usage docs
-  2. ${type === 'rules' ? `Add rules to ${name}/skills/${name}/SKILL.md` : `Implement CLI logic in ${name}/src/${name}.ts`}
-  ${type !== 'rules' ? `3. Build: npm run build --workspace=${name}` : ''}
-  ${type !== 'rules' ? `4. Test: node ${name}/dist/${name}.mjs --help` : ''}
+  1. Edit plugin/${name}/skills/${name}/SKILL.md — add trigger patterns and usage docs
+  2. ${type === 'rules' ? `Add rules to plugin/${name}/skills/${name}/SKILL.md` : `Implement CLI logic in plugin/${name}/src/${name}.ts`}
+  ${type !== 'rules' ? `3. Build: npm run build --workspace=plugin/${name}` : ''}
+  ${type !== 'rules' ? `4. Test: node plugin/${name}/dist/${name}.mjs --help` : ''}
   5. Bump version: bash scripts/bump-plugin-version.sh ${name} 0.1.0
 `);
 }

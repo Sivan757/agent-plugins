@@ -6,10 +6,10 @@
 #   bash scripts/bump-plugin-version.sh <plugin-name> <new-version>
 #
 # Updates version in:
-#   - <plugin>/.claude-plugin/plugin.json
-#   - <plugin>/package.json (if exists)
+#   - plugin/<plugin>/.claude-plugin/plugin.json
+#   - plugin/<plugin>/package.json (if exists)
 #   - .claude-plugin/marketplace.json
-#   - <plugin>/package-lock.json (via npm install, if package.json exists)
+#   - plugin/<plugin>/package-lock.json (via npm install, if package.json exists)
 #
 # Then runs check-plugin-versions.sh to verify consistency.
 #
@@ -26,7 +26,7 @@ usage() {
   echo "  bash scripts/bump-plugin-version.sh mysql 0.5.0"
   echo ""
   echo "Available plugins:"
-  for d in "$REPO_ROOT"/*/; do
+  for d in "$REPO_ROOT"/plugin/*/; do
     [ -f "$d.claude-plugin/plugin.json" ] || continue
     name=$(basename "$d")
     ver=$(node -e "console.log(JSON.parse(require('fs').readFileSync('${d}.claude-plugin/plugin.json','utf8')).version)" 2>/dev/null || echo "?")
@@ -41,7 +41,7 @@ fi
 
 PLUGIN="$1"
 NEW_VER="$2"
-PLUGIN_DIR="$REPO_ROOT/$PLUGIN"
+PLUGIN_DIR="$REPO_ROOT/plugin/$PLUGIN"
 PLUGIN_JSON="$PLUGIN_DIR/.claude-plugin/plugin.json"
 PACKAGE_JSON="$PLUGIN_DIR/package.json"
 MARKETPLACE="$REPO_ROOT/.claude-plugin/marketplace.json"
@@ -88,7 +88,7 @@ node -e "
   const fs = require('fs');
   const p = '$MARKETPLACE';
   const d = JSON.parse(fs.readFileSync(p, 'utf8'));
-  const plugin = (d.plugins || []).find(x => x.source === './$PLUGIN');
+  const plugin = (d.plugins || []).find(x => x.source === './plugin/$PLUGIN');
   if (plugin) {
     plugin.version = '$NEW_VER';
     fs.writeFileSync(p, JSON.stringify(d, null, 2) + '\n');

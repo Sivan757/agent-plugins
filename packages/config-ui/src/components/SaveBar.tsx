@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { BaseComponentProps } from '@json-render/react';
-import { useConfig } from '../ConfigContext';
-import { useI18n } from '../i18n';
+import { useConfig } from '@shared/ConfigContext';
+import { useI18n } from '@shared/i18n';
 
 interface SaveBarProps {
   saveLabel: string | null;

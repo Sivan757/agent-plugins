@@ -33,7 +33,7 @@ fi
 
 WARNINGS=""
 
-for plugin_dir in "$REPO_ROOT"/*/; do
+for plugin_dir in "$REPO_ROOT"/plugin/*/; do
   [ -d "$plugin_dir" ] || continue
   plugin_json="$plugin_dir.claude-plugin/plugin.json"
   [ -f "$plugin_json" ] || continue
@@ -41,7 +41,7 @@ for plugin_dir in "$REPO_ROOT"/*/; do
   plugin_name=$(basename "$plugin_dir")
 
   # Check if any file in this plugin was modified
-  if ! echo "$MODIFIED" | grep -q "^${plugin_name}/"; then
+  if ! echo "$MODIFIED" | grep -q "^plugin/${plugin_name}/"; then
     continue
   fi
 
@@ -60,7 +60,7 @@ for plugin_dir in "$REPO_ROOT"/*/; do
   # Extract marketplace.json version
   market_ver=$(node -e "
     const m=JSON.parse(require('fs').readFileSync('$MARKETPLACE','utf8'));
-    const p=(m.plugins||[]).find(x=>x.source==='./${plugin_name}');
+    const p=(m.plugins||[]).find(x=>x.source==='./plugin/${plugin_name}');
     console.log(p?p.version:'NOT_REGISTERED');
   " 2>/dev/null || echo "?")
 

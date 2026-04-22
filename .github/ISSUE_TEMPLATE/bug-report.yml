@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug in an Apex plugin
+description: Report a bug in an agent plugin
 title: "[Bug]: "
 labels: ["bug"]
 body:
@@ -9,17 +9,12 @@ body:
       label: Plugin name
       description: Which plugin is affected?
       options:
+        - aliyunlog
+        - augment-mcp
+        - ecommerce-expert
         - mysql
         - postgresql
-        - aliyunlog
         - ticktick
-        - company-knowledge
-        - temu-api-expert
-        - shein-api-expert
-        - find-skills
-        - p3c
-        - jetbrains-mcp
-        - augment-mcp
         - other
     validations:
       required: true

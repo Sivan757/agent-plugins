@@ -1,9 +1,9 @@
-# Apex Plugins
+# Agent Plugins
 
 IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the 'plugin-dev' skill.
 
 ## Plugin Design Principles
-1. Configuration stored globally in `~/.cache/apex-plugin` — never in project directories
+1. Configuration stored globally in `~/.cache/agent-plugins` — never in project directories
 2. Use playground and frontend-design create initial configuration page, guided through a visual interface with unified style — accept credentials via UI, not session input
 3. Every plugin must include: initialization/setup guidance, usage documentation, and troubleshooting
 4. Primary goal: serve users. Secondary: optimize interaction frequency and reduce token usage
@@ -22,6 +22,7 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 - **MCP-based**: `.mcp.json` configures external MCP servers
 - **Knowledge-base**: Skills with reference docs, no scripts (e.g., `ecommerce-expert` with separate shein/temu skills)
 - **External (URL source)**: References to external repos via URL/git-subdir in marketplace.json
+- **Location**: local plugin implementations and templates live under `plugin/`, shared runtime packages under `packages/`
 
 **Marketplace registry:** `.claude-plugin/marketplace.json` — all plugins must be listed here
 - Local plugins: `"source": "./dir"` with `version` field
@@ -41,7 +42,7 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 - Collections: object↔array conversion — config files use object keys (`{default: {...}}`), UI state uses arrays with `_name` field
 - i18n: `LocalizedString` type (`{ en: "...", zh: "..." }` or plain string), auto-detects browser language, toggle button in Header
 - Credentials go browser → file, never through the LLM
-- Use in setup hooks when config is missing (see `ticktick/hooks/ticktick-setup.sh` for example)
+- Use in setup hooks when config is missing (see `plugin/ticktick/hooks/ticktick-setup.sh` for example)
 - Build: `cd packages/config-ui && npm run build` — outputs `dist/index.html`
 - All 4 credential plugins integrated: ticktick, mysql, postgresql, aliyunlog
 
@@ -54,17 +55,17 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 - `check-marketplace-sorted.ts --fix` auto-sorts marketplace.json
 
 ## Conventions
-- Installed marketplace (`~/.claude/plugins/marketplaces/apex-plugins/`) is a separate copy — edit workspace, then sync with `cp` or `scripts/dev.sh` for testing
+- Installed marketplace (`~/.claude/plugins/marketplaces/agent-plugins/`) is a separate copy — edit workspace, then sync with `cp` or `scripts/dev.sh` for testing
 - `${CLAUDE_PLUGIN_ROOT}` resolves to plugin install path at runtime — use in SKILL.md and hooks
 - SessionStart hooks exit 0 (success) always — log warnings but never block
 - PreToolUse hooks exit 2 to block, exit 0 to allow; support `permissionDecision: "ask"` for soft blocks
 - SKILL.md frontmatter: `model: sonnet`, `allowed-tools: Bash(node:*)` for CLI plugins
 - Token-saving mode: enforce limits (default limit=1-10), prefer CSV over JSON, aggregate before detail, server-side filtering
-- Credentials: store in `~/.cache/apex-plugin/<plugin>.json` (global), never read directly in sessions
+- Credentials: store in `~/.cache/agent-plugins/<plugin>.json` (global), never read directly in sessions
 - Version bumps: use `bump-plugin-version.sh` instead of editing 3 files manually — avoids version-check hook firing mid-edit
 - AI-facing help text (--help, SKILL.md): avoid fuzzy natural language for defaults — say "omit = auto" not "default: 15 min ago"
 - Commits: stage plugin files by name (`git add <plugin>/... marketplace.json`) — don't use `git add -A` since unrelated plugin work may be in-tree
-- Multi-skill plugins: group related API knowledge bases under one plugin with separate skills (e.g., `ecommerce-expert/skills/shein-api-expert/` + `ecommerce-expert/skills/temu-api-expert/`)
+- Multi-skill plugins: group related API knowledge bases under one plugin with separate skills (e.g., `plugin/ecommerce-expert/skills/shein-api-expert/` + `plugin/ecommerce-expert/skills/temu-api-expert/`)
 - Adding external plugins: add URL source entry to marketplace.json — do NOT add plugins the user didn't ask for
 - CJK font fallback: always include `PingFang SC`, `Noto Sans SC`, `Microsoft YaHei` in font stacks for Chinese support
 
@@ -74,7 +75,7 @@ IMPORTANT: Always use the 'plugin-dev' skill to develop plugins. Always load the
 
 1. **Structure check**: verify all files exist per standard directory layout above
 2. **Naming check**: `<plugin>.mjs`, `<plugin>-setup.sh`, not `query.js`/`setup.sh`
-3. **Config check**: credentials at `~/.cache/apex-plugin/<plugin>.json`, not project-local
+3. **Config check**: credentials at `~/.cache/agent-plugins/<plugin>.json`, not project-local
 4. **Version check**: `bash scripts/check-plugin-versions.sh` — all 3 files in sync
 5. **Hook check**: `set -euo pipefail`, silent when deps exist, only print on first install
 6. **SKILL.md check**: has frontmatter (`name`, `description`, `model`, `allowed-tools`), `AskUserQuestion` if interactive confirmation needed

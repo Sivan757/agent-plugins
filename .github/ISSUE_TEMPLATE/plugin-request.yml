@@ -1,5 +1,5 @@
 name: Plugin Request
-description: Request a new plugin for the Apex marketplace
+description: Request a new plugin for the agent marketplace
 title: "[Plugin Request]: "
 labels: ["enhancement", "plugin-request"]
 body:
