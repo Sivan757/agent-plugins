@@ -20,3 +20,4 @@ bun.lock
 scripts/scrape-*.mjs
 scripts/scrape-*.js
 scripts/generate-*-refs.py
+.env

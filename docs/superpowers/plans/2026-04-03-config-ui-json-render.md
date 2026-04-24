@@ -261,7 +261,7 @@ In `package.json`, add `"packages/config-ui"` to the `workspaces` array (it's al
 
 Run:
 ```bash
-cd /home/coder/workspace/aikero/apex-plugins && npm install
+cd <repo-root> && npm install
 cd packages/config-ui && npx vite build
 ```
 Expected: `dist/index.html` exists as a single self-contained HTML file.

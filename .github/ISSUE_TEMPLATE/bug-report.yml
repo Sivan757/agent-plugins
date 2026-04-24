@@ -32,7 +32,7 @@ body:
       label: Steps to reproduce
       description: Steps to reproduce the behavior.
       placeholder: |
-        1. Run `bash scripts/dev.sh <plugin>`
+        1. Run `bash scripts/dev.sh --target codex <plugin>` or `bash scripts/dev.sh --target claude <plugin>`
         2. Use skill '...'
         3. See error
     validations:
@@ -48,10 +48,10 @@ body:
     validations:
       required: false
   - type: input
-    id: claude-code-version
+    id: client-version
     attributes:
-      label: Claude Code version
-      description: Output of `claude --version`.
-      placeholder: e.g. 1.0.16
+      label: Client version
+      description: Output of `codex --version` or `claude --version`.
+      placeholder: e.g. codex 1.0.16 / claude 1.0.16
     validations:
       required: false

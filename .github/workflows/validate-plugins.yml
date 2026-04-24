@@ -3,14 +3,39 @@ name: Validate Plugins
 on:
   pull_request:
     paths:
+      - '.github/scripts/*.ts'
+      - '.github/scripts/tests/*.ts'
+      - '.github/workflows/validate-plugins.yml'
       - '.claude-plugin/marketplace.json'
-      - '**/plugin.json'
+      - '.agents/plugins/marketplace.json'
+      - '**/.claude-plugin/plugin.json'
+      - '**/.codex-plugin/plugin.json'
+      - '**/.mcp.json'
+      - '**/.app.json'
+      - '**/hooks.json'
+      - '**/hooks/hooks.json'
       - '**/package.json'
       - '**/SKILL.md'
       - '**/agents/*.md'
+      - '**/agents/openai.yaml'
       - '**/commands/*.md'
+      - '**/assets/**'
 
 jobs:
+  validate-script-tests:
+    name: Validate Script Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: cd .github/scripts && bun install
+
+      - name: Run validator tests
+        run: bun test ./.github/scripts/tests
+
   validate-marketplace:
     name: Validate Marketplace
     runs-on: ubuntu-latest
@@ -64,6 +89,34 @@ jobs:
         if: steps.changed-files.outputs.files != ''
         run: |
           bun run .github/scripts/validate-frontmatter.ts ${{ steps.changed-files.outputs.files }}
+
+  validate-codex-layout:
+    name: Validate Codex Layout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: cd .github/scripts && bun install
+
+      - name: Validate Codex plugin layout
+        run: bun run .github/scripts/validate-codex-plugin-layout.ts
+
+  validate-claude-layout:
+    name: Validate Claude Layout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: cd .github/scripts && bun install
+
+      - name: Validate Claude plugin layout
+        run: bun run .github/scripts/validate-claude-plugin-layout.ts
 
   validate-versions:
     name: Validate Versions

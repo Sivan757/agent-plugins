@@ -66,7 +66,7 @@ company-knowledge/                          # renamed from kotlin-architect
 - [ ] **Step 1: Rename the plugin directory**
 
 ```bash
-cd /home/coder/workspace/aikero/apex-plugins
+cd <repo-root>
 mv kotlin-architect company-knowledge
 ```
 

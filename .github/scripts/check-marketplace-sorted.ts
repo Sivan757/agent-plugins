@@ -1,71 +1,72 @@
 #!/usr/bin/env bun
 /**
- * Checks that plugins in marketplace.json are sorted alphabetically by name
- * (case-insensitive).
+ * Checks that both marketplace files are sorted alphabetically by plugin name.
  *
  * Usage:
- *   bun run check-marketplace-sorted.ts          # check only, exit 1 if unsorted
- *   bun run check-marketplace-sorted.ts --fix     # auto-sort and rewrite file
+ *   bun run check-marketplace-sorted.ts
+ *   bun run check-marketplace-sorted.ts --fix
  */
 
 import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
-const MARKETPLACE_PATH = resolve(
-  import.meta.dir,
-  "../../.claude-plugin/marketplace.json"
-);
-
+const ROOT = resolve(import.meta.dir, "../..");
+const CODEX_MARKETPLACE_PATH = resolve(ROOT, ".agents/plugins/marketplace.json");
+const CLAUDE_MARKETPLACE_PATH = resolve(ROOT, ".claude-plugin/marketplace.json");
 const shouldFix = process.argv.includes("--fix");
 
-function main(): void {
-  const raw = readFileSync(MARKETPLACE_PATH, "utf-8");
+function checkSorted(filePath: string, label: string): string[] {
+  const raw = readFileSync(filePath, "utf-8");
   const data = JSON.parse(raw);
 
   if (!Array.isArray(data.plugins)) {
-    console.error("ERROR: marketplace.json has no plugins array");
-    process.exit(1);
+    return [`${label}: marketplace has no plugins array`];
   }
 
   const plugins = data.plugins as Array<{ name: string; [k: string]: unknown }>;
-
-  // Build sorted copy for comparison
   const sorted = [...plugins].sort((a, b) =>
     a.name.toLowerCase().localeCompare(b.name.toLowerCase())
   );
 
-  // Find first out-of-order entry
-  const unsortedIndices: number[] = [];
-  for (let i = 0; i < plugins.length; i++) {
-    if (plugins[i].name !== sorted[i].name) {
-      unsortedIndices.push(i);
-    }
-  }
-
-  if (unsortedIndices.length === 0) {
-    console.log("Plugins are sorted alphabetically.");
-    return;
+  const isSorted = plugins.every((plugin, index) => plugin.name === sorted[index]?.name);
+  if (isSorted) {
+    return [];
   }
 
   if (shouldFix) {
     data.plugins = sorted;
-    writeFileSync(MARKETPLACE_PATH, JSON.stringify(data, null, 2) + "\n", "utf-8");
-    console.log("Fixed: plugins sorted alphabetically by name.");
+    writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n", "utf-8");
+    return [];
+  }
+
+  return [
+    `${label}: plugins are not sorted alphabetically`,
+    `${label}: current order = ${plugins.map((plugin) => plugin.name).join(", ")}`,
+    `${label}: expected order = ${sorted.map((plugin) => plugin.name).join(", ")}`,
+  ];
+}
+
+function main(): void {
+  const errors = [
+    ...checkSorted(CODEX_MARKETPLACE_PATH, "Codex marketplace"),
+    ...checkSorted(CLAUDE_MARKETPLACE_PATH, "Claude marketplace"),
+  ];
+
+  if (errors.length > 0) {
+    console.error("Marketplace ordering failed:\n");
+    for (const err of errors) {
+      console.error(`  - ${err}`);
+    }
+    console.error('\nRun with --fix to auto-sort both marketplace files.');
+    process.exit(1);
+  }
+
+  if (shouldFix) {
+    console.log("Both marketplace files are sorted alphabetically.");
     return;
   }
 
-  // Report the issue
-  console.error("Plugins are NOT sorted alphabetically by name.\n");
-  console.error("Current order:");
-  for (const p of plugins) {
-    console.error(`  - ${p.name}`);
-  }
-  console.error("\nExpected order:");
-  for (const p of sorted) {
-    console.error(`  - ${p.name}`);
-  }
-  console.error('\nRun with --fix to auto-sort, or reorder manually.');
-  process.exit(1);
+  console.log("Both marketplace files are sorted alphabetically.");
 }
 
 main();

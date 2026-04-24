@@ -6,7 +6,7 @@
  *  - Extracts YAML frontmatter between --- delimiters
  *  - Parses it with the `yaml` package
  *  - Validates required fields based on file type:
- *    - Skills  (skills/SKILL.md):  must have "description" or "when_to_use"
+ *    - Skills  (skills/SKILL.md):  must have "name" and "description"
  *    - Agents  (agents/*.md):      must have "name" and "description"
  *    - Commands (commands/*.md):    must have "description"
  *
@@ -70,15 +70,11 @@ function validateFile(filePath: string): string[] {
 
   switch (fileType) {
     case "skill": {
-      // Skills must have `description` or `when_to_use`
-      const hasDescription =
-        typeof fm.description === "string" && fm.description.trim() !== "";
-      const hasWhenToUse =
-        typeof fm.when_to_use === "string" && fm.when_to_use.trim() !== "";
-      if (!hasDescription && !hasWhenToUse) {
-        errors.push(
-          `${filePath}: skill frontmatter must have "description" or "when_to_use"`
-        );
+      if (typeof fm.name !== "string" || fm.name.trim() === "") {
+        errors.push(`${filePath}: skill frontmatter must have "name"`);
+      }
+      if (typeof fm.description !== "string" || fm.description.trim() === "") {
+        errors.push(`${filePath}: skill frontmatter must have "description"`);
       }
       break;
     }

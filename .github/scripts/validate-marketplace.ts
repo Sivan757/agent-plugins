@@ -1,119 +1,214 @@
 #!/usr/bin/env bun
 /**
- * Validates .claude-plugin/marketplace.json structure and content.
- *
- * Checks:
- *  - File is valid JSON with a root object
- *  - Has a `plugins` array
- *  - Each plugin has required fields: name (string), description (string),
- *    source (string), version (string)
- *  - No duplicate plugin names
+ * Validates both marketplace files:
+ *   - .agents/plugins/marketplace.json
+ *   - .claude-plugin/marketplace.json
  *
  * Exit 0 on success, exit 1 on any validation error.
  */
 
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 
-const MARKETPLACE_PATH = resolve(
-  import.meta.dir,
-  "../../.claude-plugin/marketplace.json"
-);
+const ROOT = resolve(import.meta.dir, "../..");
+const CODEX_MARKETPLACE_PATH = resolve(ROOT, ".agents/plugins/marketplace.json");
+const CLAUDE_MARKETPLACE_PATH = resolve(ROOT, ".claude-plugin/marketplace.json");
+const VALID_INSTALL_POLICIES = new Set(["NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"]);
+const VALID_AUTH_POLICIES = new Set(["ON_INSTALL", "ON_USE"]);
 
-// "version" is only required for local plugins; external URL plugins omit it
-const REQUIRED_FIELDS = ["name", "description", "source"] as const;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-function main(): void {
+function readJson(filePath: string): unknown {
+  try {
+    return JSON.parse(readFileSync(filePath, "utf-8"));
+  } catch (err) {
+    console.error(`ERROR: Cannot read or parse ${filePath}: ${err}`);
+    process.exit(1);
+  }
+}
+
+function validateCodexMarketplace(data: unknown): { errors: string[]; count: number } {
   const errors: string[] = [];
 
-  // --- Read and parse JSON ---
-  let raw: string;
-  try {
-    raw = readFileSync(MARKETPLACE_PATH, "utf-8");
-  } catch (err) {
-    console.error(`ERROR: Cannot read ${MARKETPLACE_PATH}: ${err}`);
-    process.exit(1);
+  if (!isRecord(data)) {
+    return { errors: ["Root of Codex marketplace must be a JSON object"], count: 0 };
   }
 
-  let data: unknown;
-  try {
-    data = JSON.parse(raw);
-  } catch (err) {
-    console.error(`ERROR: Invalid JSON in marketplace.json: ${err}`);
-    process.exit(1);
+  const root = data;
+  if (typeof root.name !== "string" || root.name.trim() === "") {
+    errors.push('Codex marketplace: top-level "name" must be a non-empty string');
   }
-
-  // --- Root must be an object ---
-  if (typeof data !== "object" || data === null || Array.isArray(data)) {
-    console.error("ERROR: Root of marketplace.json must be a JSON object");
-    process.exit(1);
+  if (
+    !isRecord(root.interface) ||
+    typeof root.interface.displayName !== "string" ||
+    root.interface.displayName.toString().trim() === ""
+  ) {
+    errors.push('Codex marketplace: top-level "interface.displayName" must be a non-empty string');
   }
-
-  const root = data as Record<string, unknown>;
-
-  // --- Must have a plugins array ---
   if (!Array.isArray(root.plugins)) {
-    errors.push('"plugins" must be an array');
-  } else {
-    const plugins = root.plugins as unknown[];
-    const seenNames = new Map<string, number>(); // name -> first index
+    return { errors: ['Codex marketplace: "plugins" must be an array'], count: 0 };
+  }
 
-    for (let i = 0; i < plugins.length; i++) {
-      const plugin = plugins[i];
-      const prefix = `plugins[${i}]`;
+  const plugins = root.plugins as unknown[];
+  const seenNames = new Map<string, number>();
 
-      if (typeof plugin !== "object" || plugin === null || Array.isArray(plugin)) {
-        errors.push(`${prefix}: must be an object`);
-        continue;
+  for (let i = 0; i < plugins.length; i++) {
+    const plugin = plugins[i];
+    const prefix = `Codex plugins[${i}]`;
+
+    if (!isRecord(plugin)) {
+      errors.push(`${prefix}: must be an object`);
+      continue;
+    }
+
+    const obj = plugin;
+    if (typeof obj.name !== "string" || obj.name.trim() === "") {
+      errors.push(`${prefix}: "name" must be a non-empty string`);
+    }
+
+    const expectedPath = typeof obj.name === "string" && obj.name.trim() !== "" ? `./plugins/${obj.name}` : undefined;
+    const source = obj.source;
+    if (!isRecord(source)) {
+      errors.push(`${prefix}: "source" must be a local source object`);
+    } else {
+      if (source.source !== "local") {
+        errors.push(`${prefix}: "source.source" must be "local"`);
       }
-
-      const obj = plugin as Record<string, unknown>;
-
-      // Check required fields
-      for (const field of REQUIRED_FIELDS) {
-        const val = obj[field];
-        if (field === "source") {
-          // source can be a string (local path) or object (url/git-subdir)
-          const isLocalSource = typeof val === "string" && val.trim() !== "";
-          const isRemoteSource =
-            typeof val === "object" &&
-            val !== null &&
-            !Array.isArray(val) &&
-            typeof (val as Record<string, unknown>).source === "string";
-          if (!isLocalSource && !isRemoteSource) {
-            errors.push(
-              `${prefix}: "source" must be a string (local path) or object with { source, url } (got ${typeof val})`
-            );
-          }
-        } else if (typeof val !== "string") {
-          errors.push(
-            `${prefix}: "${field}" must be a string (got ${typeof val})`
-          );
-        } else if ((val as string).trim() === "") {
-          errors.push(`${prefix}: "${field}" must not be empty`);
+      if (typeof source.path !== "string" || source.path.trim() === "") {
+        errors.push(`${prefix}: local "source.path" must be a non-empty string`);
+      } else if (!source.path.startsWith("./")) {
+        errors.push(`${prefix}: local "source.path" must start with "./"`);
+      } else {
+        if (expectedPath && source.path !== expectedPath) {
+          errors.push(`${prefix}: local "source.path" must be ${expectedPath}`);
+        }
+        const target = resolve(ROOT, source.path);
+        if (!existsSync(target)) {
+          errors.push(`${prefix}: local "source.path" target does not exist (${source.path})`);
         }
       }
+    }
 
-      // Local plugins (string source) must have a version
-      if (typeof obj.source === "string" && typeof obj.version !== "string") {
-        errors.push(`${prefix}: local plugin must have a "version" string`);
+    const policy = obj.policy;
+    if (!isRecord(policy)) {
+      errors.push(`${prefix}: "policy" must be an object`);
+    } else {
+      if (typeof policy.installation !== "string" || policy.installation.trim() === "") {
+        errors.push(`${prefix}: "policy.installation" must be a non-empty string`);
+      } else if (!VALID_INSTALL_POLICIES.has(policy.installation)) {
+        errors.push(
+          `${prefix}: "policy.installation" must be one of ${[...VALID_INSTALL_POLICIES].join(", ")}`
+        );
       }
+      if (typeof policy.authentication !== "string" || policy.authentication.trim() === "") {
+        errors.push(`${prefix}: "policy.authentication" must be a non-empty string`);
+      } else if (!VALID_AUTH_POLICIES.has(policy.authentication)) {
+        errors.push(
+          `${prefix}: "policy.authentication" must be one of ${[...VALID_AUTH_POLICIES].join(", ")}`
+        );
+      }
+      if (
+        "products" in policy &&
+        policy.products !== undefined &&
+        (!Array.isArray(policy.products) || !policy.products.every(item => typeof item === "string" && item.trim() !== ""))
+      ) {
+        errors.push(`${prefix}: optional "policy.products" must be an array of non-empty strings`);
+      }
+    }
 
-      // Check for duplicate names
-      if (typeof obj.name === "string") {
-        const name = obj.name as string;
-        if (seenNames.has(name)) {
-          errors.push(
-            `${prefix}: duplicate plugin name "${name}" (first seen at plugins[${seenNames.get(name)}])`
-          );
-        } else {
-          seenNames.set(name, i);
-        }
+    if (typeof obj.category !== "string" || obj.category.trim() === "") {
+      errors.push(`${prefix}: "category" must be a non-empty string`);
+    }
+
+    if (typeof obj.name === "string") {
+      if (seenNames.has(obj.name)) {
+        errors.push(`${prefix}: duplicate plugin name "${obj.name}"`);
+      } else {
+        seenNames.set(obj.name, i);
       }
     }
   }
 
-  // --- Report results ---
+  return { errors, count: plugins.length };
+}
+
+function validateClaudeMarketplace(data: unknown): { errors: string[]; count: number } {
+  const errors: string[] = [];
+
+  if (!isRecord(data)) {
+    return { errors: ["Root of Claude marketplace must be a JSON object"], count: 0 };
+  }
+
+  const root = data;
+  if (typeof root.name !== "string" || root.name.trim() === "") {
+    errors.push('Claude marketplace: top-level "name" must be a non-empty string');
+  }
+  if (!Array.isArray(root.plugins)) {
+    return { errors: ['Claude marketplace: "plugins" must be an array'], count: 0 };
+  }
+
+  const plugins = root.plugins as unknown[];
+  const seenNames = new Map<string, number>();
+
+  for (let i = 0; i < plugins.length; i++) {
+    const plugin = plugins[i];
+    const prefix = `Claude plugins[${i}]`;
+
+    if (!isRecord(plugin)) {
+      errors.push(`${prefix}: must be an object`);
+      continue;
+    }
+
+    const obj = plugin;
+    if (typeof obj.name !== "string" || obj.name.trim() === "") {
+      errors.push(`${prefix}: "name" must be a non-empty string`);
+    }
+    if (typeof obj.description !== "string" || obj.description.trim() === "") {
+      errors.push(`${prefix}: "description" must be a non-empty string`);
+    }
+
+    const expectedPath = typeof obj.name === "string" && obj.name.trim() !== "" ? `./plugins/${obj.name}` : undefined;
+    const source = obj.source;
+    const isLocalSource = typeof source === "string" && source.trim() !== "";
+    const isRemoteSource = isRecord(source) && typeof source.source === "string";
+    if (!isLocalSource && !isRemoteSource) {
+      errors.push(`${prefix}: "source" must be a local path string or remote source object`);
+    }
+
+    if (isLocalSource) {
+      if (expectedPath && source !== expectedPath) {
+        errors.push(`${prefix}: local "source" must be ${expectedPath}`);
+      } else {
+        const target = resolve(ROOT, source);
+        if (!existsSync(target)) {
+          errors.push(`${prefix}: local "source" target does not exist (${source})`);
+        }
+      }
+
+      if (typeof obj.version !== "string" || obj.version.trim() === "") {
+        errors.push(`${prefix}: local plugin must have a non-empty "version" string`);
+      }
+    }
+
+    if (typeof obj.name === "string") {
+      if (seenNames.has(obj.name)) {
+        errors.push(`${prefix}: duplicate plugin name "${obj.name}"`);
+      } else {
+        seenNames.set(obj.name, i);
+      }
+    }
+  }
+
+  return { errors, count: plugins.length };
+}
+
+function main(): void {
+  const codexResult = validateCodexMarketplace(readJson(CODEX_MARKETPLACE_PATH));
+  const claudeResult = validateClaudeMarketplace(readJson(CLAUDE_MARKETPLACE_PATH));
+  const errors = [...codexResult.errors, ...claudeResult.errors];
+
   if (errors.length > 0) {
     console.error("Marketplace validation failed:\n");
     for (const err of errors) {
@@ -123,8 +218,9 @@ function main(): void {
     process.exit(1);
   }
 
-  const count = (root.plugins as unknown[]).length;
-  console.log(`Marketplace validation passed: ${count} plugin(s) valid.`);
+  console.log(
+    `Marketplace validation passed: codex=${codexResult.count} plugin(s), claude=${claudeResult.count} plugin(s).`
+  );
 }
 
 main();

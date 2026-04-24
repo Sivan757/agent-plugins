@@ -1,49 +1,43 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "agent-plugins",
-  "description": "Curated Claude Code plugin directory — local tools and recommended external plugins, all installable via /plugin install <name>@agent-plugins",
+  "description": "Curated Claude Code plugin directory backed by the shared plugins/ source tree.",
   "owner": {
     "name": "Agent Plugins"
   },
   "metadata": {
-    "description": "Curated Claude Code plugin directory — local tools and recommended external plugins",
+    "description": "Curated Claude Code plugin directory backed by the shared plugins/ source tree.",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "aliyunlog",
       "version": "1.6.0",
-      "source": "./plugin/aliyunlog",
+      "source": "./plugins/aliyunlog",
       "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
     },
     {
       "name": "augment-mcp",
       "version": "0.1.1",
-      "source": "./plugin/augment",
+      "source": "./plugins/augment-mcp",
       "description": "Integrates Augment Context Engine MCP server for semantic codebase search and retrieval across repositories."
     },
     {
       "name": "ecommerce-expert",
       "version": "1.0.0",
-      "source": "./plugin/ecommerce-expert",
+      "source": "./plugins/ecommerce-expert",
       "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu (124 endpoints) with full parameter specs, signing algorithms, and integration patterns"
-    },
-    {
-      "name": "find-skills",
-      "version": "0.1.1",
-      "source": "./plugin/find-skills",
-      "description": "Discover and install agent skills from the skills.sh ecosystem when users ask about extending capabilities or finding tools for specific tasks."
     },
     {
       "name": "mysql",
       "version": "0.11.0",
-      "source": "./plugin/mysql",
+      "source": "./plugins/mysql",
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     },
     {
       "name": "postgresql",
       "version": "0.5.0",
-      "source": "./plugin/postgresql",
+      "source": "./plugins/postgresql",
       "description": "Enables AI to execute SQL queries against PostgreSQL databases via Node.js with multi-connection support for schema inspection and discovery."
     },
     {
@@ -58,7 +52,7 @@
     {
       "name": "ticktick",
       "version": "0.6.0",
-      "source": "./plugin/ticktick",
+      "source": "./plugins/ticktick",
       "description": "Manage TickTick (Dida365) tasks, projects, tags, habits, kanban columns, folders, focus sessions, and productivity statistics via the bundled CLI."
     },
     {

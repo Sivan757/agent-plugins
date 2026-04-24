@@ -11,6 +11,6 @@
 - [ ] Version bumped via `bash scripts/bump-plugin-version.sh <plugin> <version>`
 - [ ] `bash scripts/check-plugin-versions.sh` passes
 - [ ] SKILL.md frontmatter has required fields (`description` or `when_to_use`)
-- [ ] Plugin listed in `marketplace.json` (alphabetical order)
+- [ ] Plugin listed in both `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` (alphabetical order)
 - [ ] README.md updated if behavior changed
-- [ ] Tested with `bash scripts/dev.sh <plugin>` locally
+- [ ] Tested with `bash scripts/dev.sh --target codex <plugin>` or `bash scripts/dev.sh --target claude <plugin>` locally

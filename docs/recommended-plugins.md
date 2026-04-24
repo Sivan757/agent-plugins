@@ -1,8 +1,8 @@
 # Recommended External Plugins
 
-Curated plugins from [claude-plugins-official](https://github.com/anthropics/claude-plugins-official) and other sources that complement our internal tools.
+Reference list for external plugins that complement this shared Codex + Claude Code repository.
 
-To add any of these to our marketplace (so colleagues install via `@apex-plugins`), add a URL source entry to `.claude-plugin/marketplace.json`. See the README for the source format.
+Local plugins in this repository are shared under `plugins/`. The install commands below are primarily Claude Code-oriented references for third-party plugin ecosystems.
 
 To install directly from their origin:
 
@@ -86,7 +86,7 @@ To install directly from their origin:
 Plugins from independent repositories, referenced in our marketplace via URL source. Install the same way:
 
 ```
-/plugin install <plugin-name>@apex-plugins
+/plugin install <plugin-name>@agent-plugins
 ```
 
 | Plugin | Origin | Description |
@@ -103,7 +103,7 @@ Plugins we evaluated but don't recommend for our workflow:
 | Plugin | Reason |
 |--------|--------|
 | hookify | We manage hooks directly in our plugins — avoids conflicts |
-| commit-commands | We use our own git workflow conventions via company-knowledge |
+| commit-commands | We keep git workflow conventions in repo docs and scripts instead of a dedicated plugin |
 
 ---
 

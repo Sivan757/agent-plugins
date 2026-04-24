@@ -140,21 +140,22 @@ function writeConfigFile(cfgPath, data) {
 /**
  * Locate and read the pre-bundled React app HTML. Searches relative to this
  * module file: `../../../packages/config-ui/dist/index.html` (when running
- * from a bundled plugin under `plugin/<name>/dist/`) or
+ * from a bundled plugin under `plugins/<name>/dist/`) or
  * `../../config-ui/dist/index.html` (source layout).
  */
 function loadBundledHTML() {
     // __dirname is shimmed by esbuild banner to the bundled file's directory.
-    // When a plugin runs from <repo>/plugin/ticktick/dist/,
-    //   __dirname = <repo>/plugin/ticktick/dist/
-    // When a plugin runs from ~/.claude/plugins/marketplaces/agent-plugins/plugin/ticktick/dist/,
-    //   __dirname = ~/.claude/plugins/marketplaces/agent-plugins/plugin/ticktick/dist/
-    // In both cases, going up 3 levels reaches the repo root, then into packages/config-ui/dist/.
+    // When a plugin runs from <repo>/plugins/ticktick/dist/,
+    //   __dirname = <repo>/plugins/ticktick/dist/
+    // When a plugin runs from an installed marketplace copy, the plugin still
+    // ends in plugins/<name>/dist/.
+    // In both cases, going up 3 levels reaches the marketplace or repo root,
+    // then into packages/config-ui/dist/.
     const thisDir = typeof __dirname !== 'undefined'
         ? __dirname
         : dirname(fileURLToPath(import.meta.url));
     const candidates = [
-        // From plugin/<name>/dist/ → ../../../packages/config-ui/dist/index.html
+        // From plugins/<name>/dist/ → ../../../packages/config-ui/dist/index.html
         resolve(thisDir, '..', '..', '..', 'packages', 'config-ui', 'dist', 'index.html'),
         // Legacy root-level plugin layout → ../../packages/config-ui/dist/index.html
         resolve(thisDir, '..', '..', 'packages', 'config-ui', 'dist', 'index.html'),
