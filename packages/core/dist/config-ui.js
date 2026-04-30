@@ -155,6 +155,8 @@ function loadBundledHTML() {
         ? __dirname
         : dirname(fileURLToPath(import.meta.url));
     const candidates = [
+        // From plugins/<name>/dist/ → config-ui bundle shipped alongside the .mjs
+        resolve(thisDir, 'config-ui', 'dist', 'index.html'),
         // From plugins/<name>/dist/ → ../../../packages/config-ui/dist/index.html
         resolve(thisDir, '..', '..', '..', 'packages', 'config-ui', 'dist', 'index.html'),
         // Legacy root-level plugin layout → ../../packages/config-ui/dist/index.html
