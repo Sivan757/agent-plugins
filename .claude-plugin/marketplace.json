@@ -12,7 +12,7 @@
   "plugins": [
     {
       "name": "aliyunlog",
-      "version": "1.6.0",
+      "version": "1.6.1",
       "source": "./plugins/aliyunlog",
       "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
     },
@@ -30,13 +30,13 @@
     },
     {
       "name": "mysql",
-      "version": "0.11.0",
+      "version": "0.11.1",
       "source": "./plugins/mysql",
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     },
     {
       "name": "postgresql",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "source": "./plugins/postgresql",
       "description": "Enables AI to execute SQL queries against PostgreSQL databases via Node.js with multi-connection support for schema inspection and discovery."
     },
@@ -51,7 +51,7 @@
     },
     {
       "name": "ticktick",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "source": "./plugins/ticktick",
       "description": "Manage TickTick (Dida365) tasks, projects, tags, habits, kanban columns, folders, focus sessions, and productivity statistics via the bundled CLI."
     },
