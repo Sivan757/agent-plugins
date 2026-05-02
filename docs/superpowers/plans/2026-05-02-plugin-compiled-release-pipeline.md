@@ -90,7 +90,7 @@ export async function validatePluginMetadata(root: string, options?: { packsRoot
 export async function packPlugins(root: string, options?: { outDir?: string; clean?: boolean }): Promise<void>
 ```
 
-Validation returns all metadata drift and artifact layout errors. Packing writes `.build/plugins/<name>` by default, copies native runtime surfaces, copies `skills/`, copies declared static files, and excludes source-only files.
+Validation returns all metadata drift and artifact layout errors. Packing writes `plugins/<name>` by default, copies native runtime surfaces, copies `skills/`, copies declared static files, and excludes source-only files.
 
 - [ ] **Step 3: Run targeted tests**
 
@@ -159,7 +159,7 @@ Expected: pass.
 ### Task 5: Pack Artifacts And Validate Full Repo
 
 **Files:**
-- Generated: `.build/plugins/**`
+- Generated: `plugins/**`
 - Modify: docs if command docs need updating
 
 - [ ] **Step 1: Build runtime bundles**
@@ -172,7 +172,7 @@ Expected: workspace builds complete or existing build warnings are identified be
 
 Run: `npm run pack:plugins`
 
-Expected: `.build/plugins/<name>` exists and excludes `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `plugin.config.ts`, and `node_modules/`.
+Expected: `plugins/<name>` exists and excludes `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `plugin.config.ts`, and `node_modules/`.
 
 - [ ] **Step 3: Validate generated packs**
 

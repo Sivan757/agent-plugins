@@ -23,6 +23,7 @@ CONFIG_UI_DST="$(dirname "$OUTFILE")/config-ui/dist"
 if [ -f "$CONFIG_UI_SRC" ]; then
   mkdir -p "$CONFIG_UI_DST"
   cp "$CONFIG_UI_SRC" "$CONFIG_UI_DST/index.html"
+  perl -0pi -e 's/[ \t]+$//mg' "$CONFIG_UI_DST/index.html"
 fi
 
 # Copy plugin-local runtime assets beside the bundled entrypoint. This keeps

@@ -3,7 +3,7 @@
   "version": "1.6.2",
   "type": "module",
   "scripts": {
-    "build": "bash ../../scripts/build-plugin.sh src/aliyunlog.ts dist/aliyunlog.mjs",
+    "build": "bash ../../scripts/build-plugin.sh src/aliyunlog.ts ../../.build/plugin-dist/aliyunlog/dist/aliyunlog.mjs",
     "dev": "tsx src/aliyunlog.ts",
     "typecheck": "tsc --noEmit"
   },

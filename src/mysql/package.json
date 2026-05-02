@@ -3,7 +3,7 @@
   "version": "0.11.2",
   "type": "module",
   "scripts": {
-    "build": "bash ../../scripts/build-plugin.sh src/mysql.ts dist/mysql.mjs",
+    "build": "bash ../../scripts/build-plugin.sh src/mysql.ts ../../.build/plugin-dist/mysql/dist/mysql.mjs",
     "dev": "tsx src/mysql.ts",
     "typecheck": "tsc --noEmit"
   },

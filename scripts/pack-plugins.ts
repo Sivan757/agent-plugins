@@ -17,7 +17,7 @@ function optionValue(name: string): string | undefined {
 }
 
 async function main(): Promise<void> {
-  const outDir = optionValue("--out-dir") ?? ".build/plugins";
+  const outDir = optionValue("--out-dir") ?? "plugins";
   const clean = !process.argv.includes("--no-clean");
   await packPlugins(process.cwd(), { outDir, clean });
   console.log(`Packed plugins to ${outDir}.`);

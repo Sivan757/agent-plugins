@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'set +e; for root in \"${CLAUDE_PLUGIN_ROOT:-}\" \"${CODEX_PLUGIN_ROOT:-}\" \"${PLUGIN_ROOT:-}\" \"$(git rev-parse --show-toplevel 2>/dev/null)/plugins/notebook\"; do if [ -f \"$root/hooks/notebook-context.sh\" ]; then exec bash \"$root/hooks/notebook-context.sh\"; fi; done; shopt -s nullglob; for script in \"$HOME\"/.codex/plugins/cache/*/notebook/*/hooks/notebook-context.sh \"$HOME\"/.codex/plugins/cache/*/notebook/hooks/notebook-context.sh \"$HOME\"/.claude/plugins/marketplaces/*/notebook/hooks/notebook-context.sh \"$HOME\"/.claude/plugins/marketplaces/*/*/hooks/notebook-context.sh; do if [ -f \"$script\" ]; then exec bash \"$script\"; fi; done; exit 0'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

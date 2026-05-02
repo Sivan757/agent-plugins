@@ -66,10 +66,12 @@ export interface ValidateOptions {
   packsRoot?: string;
 }
 
-const PLUGINS_DIR = "plugins";
+const SOURCE_PLUGINS_DIR = "src";
+const RELEASE_PLUGINS_DIR = "plugins";
+const BUILD_STAGING_DIR = ".build/plugin-dist";
 const CODEX_MARKETPLACE_PATH = ".agents/plugins/marketplace.json";
 const CLAUDE_MARKETPLACE_PATH = ".claude-plugin/marketplace.json";
-const DEFAULT_PACK_ROOT = ".build/plugins";
+const DEFAULT_PACK_ROOT = RELEASE_PLUGINS_DIR;
 const SOURCE_ONLY_ARTIFACT_ENTRIES = [
   "src",
   "package.json",
@@ -147,7 +149,7 @@ async function readMarketplace(filePath: string, fallback: MarketplaceFile): Pro
 }
 
 async function listPluginDirectories(root: string): Promise<string[]> {
-  const pluginsRoot = join(root, PLUGINS_DIR);
+  const pluginsRoot = join(root, SOURCE_PLUGINS_DIR);
   if (!existsSync(pluginsRoot)) {
     return [];
   }
@@ -185,7 +187,7 @@ async function loadPluginConfigs(root: string): Promise<LoadedPluginConfig[]> {
     }
 
     const config = await loadConfigFile(configPath);
-    const expectedRoot = join(root, PLUGINS_DIR, config.name);
+    const expectedRoot = join(root, SOURCE_PLUGINS_DIR, config.name);
     if (resolve(pluginRoot) !== resolve(expectedRoot)) {
       throw new Error(`${relative(root, configPath)}: config.name must match plugin directory name`);
     }
@@ -258,7 +260,7 @@ function codexMarketplaceEntry(config: PluginConfig): JsonObject {
     name: config.name,
     source: {
       source: "local",
-      path: `./plugins/${config.name}`,
+      path: `./${RELEASE_PLUGINS_DIR}/${config.name}`,
     },
     policy,
     category: config.category,
@@ -269,7 +271,7 @@ function claudeMarketplaceEntry(config: PluginConfig): JsonObject {
   return {
     name: config.name,
     version: config.version,
-    source: `./plugins/${config.name}`,
+    source: `./${RELEASE_PLUGINS_DIR}/${config.name}`,
     description: config.marketplace?.claude?.description ?? config.description,
   };
 }
@@ -283,7 +285,7 @@ function isCodexLocalPluginEntry(entry: unknown): boolean {
 }
 
 function isClaudeLocalPluginEntry(entry: unknown): boolean {
-  return isRecord(entry) && isNonEmptyString(entry.source) && entry.source.startsWith("./plugins/");
+  return isRecord(entry) && isNonEmptyString(entry.source) && entry.source.startsWith(`./${RELEASE_PLUGINS_DIR}/`);
 }
 
 function sortMarketplacePlugins(plugins: unknown[]): unknown[] {
@@ -330,11 +332,6 @@ export async function generatePluginFiles(root = process.cwd()): Promise<void> {
   const loaded = await loadPluginConfigs(repoRoot);
   const configs = loaded.map((entry) => entry.config);
 
-  for (const { config, pluginRoot } of loaded) {
-    await writeJsonFile(join(pluginRoot, ".codex-plugin", "plugin.json"), renderCodexManifest(config));
-    await writeJsonFile(join(pluginRoot, ".claude-plugin", "plugin.json"), renderClaudeManifest(config));
-  }
-
   await writeJsonFile(join(repoRoot, CODEX_MARKETPLACE_PATH), await renderCodexMarketplace(repoRoot, configs));
   await writeJsonFile(join(repoRoot, CLAUDE_MARKETPLACE_PATH), await renderClaudeMarketplace(repoRoot, configs));
 }
@@ -365,24 +362,28 @@ async function validateSourceTree(root: string, loaded: LoadedPluginConfig[], er
       existsSync(join(pluginRoot, ".codex-plugin", "plugin.json")) ||
       existsSync(join(pluginRoot, ".claude-plugin", "plugin.json"));
     const hasConfig = existsSync(join(pluginRoot, "plugin.config.ts")) || existsSync(join(pluginRoot, "plugin.config.json"));
-    if (hasManifest && !hasConfig) {
+    if (!hasConfig) {
       errors.push(`${relative(root, pluginRoot)}: missing plugin.config.ts or plugin.config.json`);
+    }
+    if (hasManifest) {
+      errors.push(`${relative(root, pluginRoot)}: source tree must not contain generated plugin manifests`);
     }
   }
 
   for (const { config, pluginRoot } of loaded) {
-    await compareJsonFile(
-      join(pluginRoot, ".codex-plugin", "plugin.json"),
-      renderCodexManifest(config),
-      errors,
-      `${relative(root, pluginRoot)}/.codex-plugin/plugin.json`
-    );
-    await compareJsonFile(
-      join(pluginRoot, ".claude-plugin", "plugin.json"),
-      renderClaudeManifest(config),
-      errors,
-      `${relative(root, pluginRoot)}/.claude-plugin/plugin.json`
-    );
+    const packageJsonPath = join(pluginRoot, "package.json");
+    if (existsSync(packageJsonPath)) {
+      try {
+        const packageJson = await readJsonFile(packageJsonPath);
+        if (isRecord(packageJson) && packageJson.version !== config.version) {
+          errors.push(
+            `${relative(root, packageJsonPath)}: package.json version ${String(packageJson.version)} does not match plugin.config version ${config.version}`
+          );
+        }
+      } catch (err) {
+        errors.push(`${relative(root, packageJsonPath)}: invalid JSON: ${(err as Error).message}`);
+      }
+    }
 
     if (config.surfaces?.skills && !existsSync(join(pluginRoot, "skills"))) {
       errors.push(`${relative(root, pluginRoot)}: metadata declares skills but skills/ is missing`);
@@ -488,14 +489,20 @@ export async function packPlugins(root = process.cwd(), options: PackOptions = {
       }
     }
 
-    if (existsSync(join(pluginRoot, "dist"))) {
+    const stagedPluginRoot = join(repoRoot, BUILD_STAGING_DIR, config.name);
+    if (existsSync(join(stagedPluginRoot, "dist"))) {
+      await copyRelativePath(stagedPluginRoot, packedRoot, "dist");
+    } else if (existsSync(join(pluginRoot, "dist"))) {
       await copyRelativePath(pluginRoot, packedRoot, "dist");
     } else if (config.build?.output) {
-      throw new Error(`${relative(repoRoot, pluginRoot)}: build output directory is missing`);
+      throw new Error(
+        `${relative(repoRoot, pluginRoot)}: build output directory is missing; run npm run build before npm run pack:plugins`
+      );
     }
 
     for (const includePath of config.artifact?.include ?? []) {
-      await copyRelativePath(pluginRoot, packedRoot, includePath);
+      const includeRoot = existsSync(join(stagedPluginRoot, includePath)) ? stagedPluginRoot : pluginRoot;
+      await copyRelativePath(includeRoot, packedRoot, includePath);
     }
   }
 }

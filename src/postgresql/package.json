@@ -3,7 +3,7 @@
   "version": "0.5.2",
   "type": "module",
   "scripts": {
-    "build": "bash ../../scripts/build-plugin.sh src/postgresql.ts dist/postgresql.mjs",
+    "build": "bash ../../scripts/build-plugin.sh src/postgresql.ts ../../.build/plugin-dist/postgresql/dist/postgresql.mjs",
     "dev": "tsx src/postgresql.ts",
     "typecheck": "tsc --noEmit"
   },

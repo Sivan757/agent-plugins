@@ -3,7 +3,7 @@
   "version": "0.6.4",
   "type": "module",
   "scripts": {
-    "build": "bash ../../scripts/build-plugin.sh src/ticktick.ts dist/ticktick.mjs",
+    "build": "bash ../../scripts/build-plugin.sh src/ticktick.ts ../../.build/plugin-dist/ticktick/dist/ticktick.mjs",
     "dev": "tsx src/ticktick.ts",
     "typecheck": "tsc --noEmit"
   },

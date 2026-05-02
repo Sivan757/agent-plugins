@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "type": "module",
   "scripts": {
-    "build": "bash ../../scripts/build-plugin.sh src/notebook.ts dist/notebook.mjs",
+    "build": "bash ../../scripts/build-plugin.sh src/notebook.ts ../../.build/plugin-dist/notebook/dist/notebook.mjs",
     "dev": "tsx src/notebook.ts",
     "test": "tsx --test src/notebook.test.ts",
     "typecheck": "tsc --noEmit"

@@ -1,13 +1,14 @@
 # Agent Plugins
 
-General repository guidelines for maintaining the shared `plugins/` source tree.
+General repository guidelines for maintaining the shared plugin source and release trees.
 
 ## Source of Truth
 
-- Local plugin implementations live under `plugins/`
+- Local plugin implementations live under `src/`
+- Generated, installable plugin artifacts live under `plugins/`
 - Shared runtime packages live under `packages/`
 - Do not keep a parallel local `plugin/` tree
-- `plugins/<name>/plugin.config.ts` is the source of truth for plugin metadata
+- `src/<name>/plugin.config.ts` is the source of truth for plugin metadata
 - `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and local marketplace entries are generated metadata; do not hand-edit them
 - Hooks, MCP configs, app configs, skills, commands, agents, and assets remain native runtime files; do not hide them behind generated cross-agent abstractions
 - `CLAUDE.md` is a symlink to this file; keep broad repository guidance here
@@ -15,8 +16,8 @@ General repository guidelines for maintaining the shared `plugins/` source tree.
 ## Required Plugin Shape
 
 - Every local plugin must carry `plugin.config.ts`
-- Source-tree manifests are kept for local compatibility and generated from `plugin.config.ts`
-- Keep both manifest directories minimal: `.codex-plugin/` and `.claude-plugin/` should contain only `plugin.json`
+- Source-tree plugins must not carry generated `.codex-plugin/` or `.claude-plugin/` manifests
+- Release-tree manifest directories are generated and must stay minimal: `.codex-plugin/` and `.claude-plugin/` should contain only `plugin.json`
 - Codex bundle content belongs at plugin root: `skills/`, `hooks.json`, `.mcp.json`, `.app.json`, and `assets/` when present
 - Codex manifest paths must use the root-standard locations: `./skills/`, `./hooks.json`, `./.mcp.json`, `./.app.json`, and `./assets/...`
 - Claude auto-discovery content belongs at plugin root, not under `.claude-plugin/`: `commands/`, `agents/`, `skills/`, `hooks/`, and `.mcp.json`
@@ -41,10 +42,11 @@ General repository guidelines for maintaining the shared `plugins/` source tree.
 ## Repository Rules
 
 - Store credentials in `~/.cache/agent-plugins/<plugin>.json`, never in project-local files
-- Version bumps must update `plugin.config.ts` and `package.json` when the plugin has a buildable workspace, then regenerate metadata
+- Version bumps must update `src/<name>/plugin.config.ts` and `src/<name>/package.json` when the plugin has a buildable workspace, then regenerate metadata and release artifacts
 - Run `npm run generate:plugins` after plugin metadata changes
+- Run `npm run build` before refreshing release artifacts for buildable plugins; runtime bundles are staged under `.build/plugin-dist/`
 - Run `npm run validate:plugins` before submitting changes that affect manifests, marketplaces, or skill metadata
-- Run `npm run pack:plugins` and `npm run validate:plugin-packs` before publishing or testing clean installable artifacts
+- Run `npm run pack:plugins` and `npm run validate:plugin-packs` before publishing or testing clean installable artifacts under `plugins/`
 - When changing validator scripts, run `bun test ./.github/scripts/tests`
 - Stage plugin changes explicitly by path; do not use `git add -A` in this repo
 

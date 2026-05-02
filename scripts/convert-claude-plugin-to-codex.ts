@@ -123,11 +123,11 @@ interface FrontmatterInfo {
 function printHelp(): void {
   console.log(`Usage: tsx scripts/convert-claude-plugin-to-codex.ts --source <dir> [options]
 
-Convert a Claude plugin directory into the shared plugins/ layout used by this repo.
+Convert a Claude plugin directory into the shared src/ layout used by this repo.
 
 Options:
   --source <dir>              Source Claude plugin directory (required)
-  --output <dir>              Output plugin directory (default: plugins/<name>)
+  --output <dir>              Output plugin source directory (default: src/<name>)
   --marketplace-root <dir>    Create/update marketplace files under <dir>
   --marketplace-name <name>   Marketplace name when creating a new file (default: codex-local-plugins)
   --marketplace-version <v>   Marketplace version when creating a new file (default: 1.0.0)
@@ -140,7 +140,7 @@ Options:
 
 Examples:
   tsx scripts/convert-claude-plugin-to-codex.ts --source /path/to/claude-plugin/mysql --marketplace-root .
-  tsx scripts/convert-claude-plugin-to-codex.ts --source /path/to/claude-plugin/augment --output plugins/augment-mcp --category Productivity
+  tsx scripts/convert-claude-plugin-to-codex.ts --source /path/to/claude-plugin/augment --output src/augment-mcp --category Productivity
 `);
 }
 
@@ -201,7 +201,7 @@ function parseArgs(): Options {
   const sourceManifest = readJson<ClaudePluginManifest>(sourceManifestPath);
   const resolvedOutput = output
     ? absolutePath(output)
-    : join(REPO_ROOT, 'plugins', sourceManifest.name);
+    : join(REPO_ROOT, 'src', sourceManifest.name);
 
   return {
     source: resolvedSource,
@@ -334,6 +334,51 @@ function buildClaudeCompatManifest(sourceManifest: ClaudePluginManifest): Claude
     ...(sourceManifest.license ? { license: sourceManifest.license } : {}),
     ...(sourceManifest.keywords ? { keywords: sourceManifest.keywords } : {}),
   };
+}
+
+function toImportPath(fromFile: string, toFileWithoutExtension: string): string {
+  let importPath = relative(dirname(fromFile), toFileWithoutExtension).split(sep).join('/');
+  if (!importPath.startsWith('.')) {
+    importPath = `./${importPath}`;
+  }
+  return importPath;
+}
+
+function buildPluginConfigSource(
+  codexManifest: CodexPluginManifest,
+  claudeManifest: ClaudePluginManifest,
+  options: Options,
+  hasHooks: boolean,
+  outputDir: string
+): string {
+  const configPath = join(outputDir, 'plugin.config.ts');
+  const typeImportPath = toImportPath(configPath, join(REPO_ROOT, 'scripts', 'plugin-config'));
+  const config = {
+    name: codexManifest.name,
+    version: codexManifest.version,
+    description: codexManifest.description,
+    ...(codexManifest.author ? { author: codexManifest.author } : {}),
+    ...(codexManifest.keywords ? { keywords: codexManifest.keywords } : {}),
+    category: options.category,
+    ...(codexManifest.interface ? { interface: codexManifest.interface } : {}),
+    surfaces: {
+      ...(codexManifest.skills ? { skills: true } : {}),
+      ...(hasHooks ? { hooks: 'native', claudeManifestHooks: true } : {}),
+      ...(codexManifest.mcpServers ? { mcp: true } : {}),
+      ...(codexManifest.apps ? { app: true } : {}),
+    },
+    marketplace: {
+      codex: {
+        installation: options.installationPolicy,
+        authentication: options.authenticationPolicy,
+      },
+      claude: {
+        description: claudeManifest.description,
+      },
+    },
+  };
+
+  return `import type { PluginConfig } from "${typeImportPath}";\n\nexport default ${JSON.stringify(config, null, 2)} satisfies PluginConfig;\n`;
 }
 
 function getHookConfigSource(sourceDir: string): string | undefined {
@@ -566,12 +611,12 @@ function loadClaudeMarketplace(filePath: string, options: Options): ClaudeMarket
     return {
       $schema: 'https://anthropic.com/claude-code/marketplace.schema.json',
       name: options.marketplaceName,
-      description: 'Curated Claude Code plugin directory backed by the shared plugins/ source tree.',
+      description: 'Curated Claude Code plugin directory backed by generated plugin artifacts.',
       owner: {
         name: 'Agent Plugins',
       },
       metadata: {
-        description: 'Curated Claude Code plugin directory backed by the shared plugins/ source tree.',
+        description: 'Curated Claude Code plugin directory backed by generated plugin artifacts.',
         version: options.marketplaceVersion,
       },
       plugins: [],
@@ -596,13 +641,9 @@ function upsertMarketplaceEntry(
     return;
   }
 
-  const pluginPath = relative(options.marketplaceRoot, outputDir).split(sep).join('/');
-  const normalizedPath = pluginPath.startsWith('.') ? pluginPath : `./${pluginPath}`;
-  if (normalizedPath.startsWith('../')) {
-    warnings.push(
-      `Marketplace entry for ${manifest.name} points outside the marketplace root (${normalizedPath}). Use --marketplace-root <repo-root> to match the official ./plugins/<name> layout.`
-    );
-  }
+  void outputDir;
+  void warnings;
+  const normalizedPath = `./plugins/${manifest.name}`;
   const entry: MarketplacePluginEntry = {
     name: manifest.name,
     source: {
@@ -633,13 +674,9 @@ function upsertClaudeMarketplaceEntry(
     return;
   }
 
-  const pluginPath = relative(options.marketplaceRoot, outputDir).split(sep).join('/');
-  const normalizedPath = pluginPath.startsWith('.') ? pluginPath : `./${pluginPath}`;
-  if (normalizedPath.startsWith('../')) {
-    warnings.push(
-      `Claude marketplace entry for ${manifest.name} points outside the marketplace root (${normalizedPath}).`
-    );
-  }
+  void outputDir;
+  void warnings;
+  const normalizedPath = `./plugins/${manifest.name}`;
 
   const entry: ClaudeMarketplacePluginEntry = {
     name: manifest.name,
@@ -731,12 +768,10 @@ function main(): void {
 
     const codexManifest = buildCodexManifest(sourceManifest, options, options.output);
     const claudeManifest = buildClaudeCompatManifest(sourceManifest);
-    const codexManifestDir = join(options.output, '.codex-plugin');
-    const claudeManifestDir = join(options.output, '.claude-plugin');
-    ensureDir(codexManifestDir);
-    ensureDir(claudeManifestDir);
-    writeJson(join(codexManifestDir, 'plugin.json'), codexManifest);
-    writeJson(join(claudeManifestDir, 'plugin.json'), claudeManifest);
+    writeFileSync(
+      join(options.output, 'plugin.config.ts'),
+      buildPluginConfigSource(codexManifest, claudeManifest, options, Boolean(hookSource), options.output)
+    );
 
     convertSkillFiles(options.output, warnings);
 

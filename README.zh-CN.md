@@ -116,7 +116,8 @@
 ## 仓库结构
 
 ```text
-plugins/   本地插件实现
+src/       本地插件源码与元数据
+plugins/   生成后的可安装插件产物
 packages/  共享运行时代码和辅助模块
 docs/      开发说明与参考资料
 scripts/   元数据生成、打包、校验与迁移脚本
@@ -126,10 +127,11 @@ scripts/   元数据生成、打包、校验与迁移脚本
 
 如果你想贡献插件或改进共享工具：
 
-- 在 [`plugins/`](plugins/) 中新增或修改插件
-- 在 `plugins/<name>/plugin.config.ts` 中维护共享元数据
+- 在 [`src/`](src/) 中新增或修改插件源码
+- 在 `src/<name>/plugin.config.ts` 中维护共享元数据
 - 元数据变化后运行 `npm run generate:plugins`
-- 使用 `npm run pack:plugins` 在 `.build/plugins/` 下生成干净的可安装产物
+- 对可构建插件运行 `npm run build`
+- 使用 `npm run pack:plugins` 刷新 [`plugins/`](plugins/) 下干净的可安装产物
 - 提交前先运行校验
 
 常用命令：

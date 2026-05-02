@@ -18,9 +18,10 @@ Relevant upstream docs:
 
 ## What We Standardized In This Repo
 
-- `plugins/` is the only local source tree for active plugins
+- `src/` is the only local source tree for active plugins
+- `plugins/` is the generated release tree referenced by local marketplace entries
 - Every local plugin keeps `plugin.config.ts` as generated metadata source of truth
-- Generated Codex and Claude manifests remain in the source tree for local compatibility
+- Generated Codex and Claude manifests are emitted into the release tree
 - Codex hooks live at plugin-root `hooks.json`
 - Codex marketplace lives in `.agents/plugins/marketplace.json`
 - Local Codex marketplace entries use `{ "source": "local", "path": "./plugins/<name>" }`
@@ -29,7 +30,7 @@ Relevant upstream docs:
 ## Manifest Conventions
 
 - Keep `.codex-plugin/` minimal: only generated `plugin.json`
-- Do not hand-edit `.codex-plugin/plugin.json`; edit `plugin.config.ts` and run `npm run generate:plugins`
+- Do not hand-edit `.codex-plugin/plugin.json`; edit `src/<name>/plugin.config.ts`, then regenerate and repack
 - Use stable kebab-case plugin names
 - Prefer explicit canonical root paths: `./skills/`, `./hooks.json`, `./.mcp.json`, `./.app.json`
 - Keep Codex paths rooted in the plugin directory, never pointing outside the plugin root
@@ -40,9 +41,10 @@ Relevant upstream docs:
 
 ## Release Artifacts
 
-- Development source stays under `plugins/<name>`
-- Clean installable artifacts are generated under `.build/plugins/<name>`
-- `.build/` is ignored and should not be committed
+- Development source stays under `src/<name>`
+- Buildable plugins emit runtime bundles under `.build/plugin-dist/<name>/`
+- Clean installable artifacts are generated and committed under `plugins/<name>`
+- Source-tree plugins must not contain `.codex-plugin/` or `.claude-plugin/`
 - Packed artifacts include generated manifests plus native runtime surfaces such as `skills/`, `hooks.json`, `hooks/`, `.mcp.json`, `.app.json`, `assets/`, and `dist/`
 - Packed artifacts exclude source-only files such as `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `plugin.config.ts`, and `node_modules/`
 - Plugin-specific runtime files that are not copied by default must be declared through `artifact.include` in `plugin.config.ts`

@@ -1,13 +1,14 @@
 # Claude Code Plugin Development Notes
 
-Repository-specific knowledge for keeping the shared `plugins/` tree compatible with Claude Code.
+Repository-specific knowledge for keeping the shared plugin source compatible with Claude Code.
 
 ## Current Repo Model
 
-- Claude Code compatibility is maintained from the same `plugins/` source tree used by Codex
+- Claude Code compatibility is maintained from the same `src/` source tree used by Codex
+- `plugins/` is the generated release tree referenced by local marketplace entries
 - Every local plugin keeps `plugin.config.ts` as generated metadata source of truth
-- Every local plugin includes a generated Claude manifest at `.claude-plugin/plugin.json`
-- `.claude-plugin/` stays manifest-only: keep only generated `plugin.json` there
+- Release artifacts include a generated Claude manifest at `.claude-plugin/plugin.json`
+- `.claude-plugin/` stays manifest-only in release artifacts: keep only generated `plugin.json` there
 - Claude marketplace lives at `.claude-plugin/marketplace.json`
 - Local Claude marketplace entries point at `./plugins/<name>` and are generated from `plugin.config.ts`
 - Claude-compatible hook config is mirrored at `hooks/hooks.json`
@@ -15,7 +16,7 @@ Repository-specific knowledge for keeping the shared `plugins/` tree compatible 
 
 ## Manifest And Component Conventions
 
-- Do not hand-edit `.claude-plugin/plugin.json`; edit `plugin.config.ts` and run `npm run generate:plugins`
+- Do not hand-edit `.claude-plugin/plugin.json`; edit `src/<name>/plugin.config.ts`, then regenerate and repack
 - Keep Claude components at plugin root, not under `.claude-plugin/`: `commands/`, `agents/`, `skills/`, `hooks/`, and `.mcp.json`
 - Prefer Claude default auto-discovery over explicit manifest paths
 - If `.claude-plugin/plugin.json` declares hooks, it must be generated from `surfaces.claudeManifestHooks` and use `./hooks/hooks.json`
@@ -25,9 +26,10 @@ Repository-specific knowledge for keeping the shared `plugins/` tree compatible 
 
 ## Release Artifacts
 
-- Development source stays under `plugins/<name>`
-- Clean installable artifacts are generated under `.build/plugins/<name>`
-- `.build/` is ignored and should not be committed
+- Development source stays under `src/<name>`
+- Buildable plugins emit runtime bundles under `.build/plugin-dist/<name>/`
+- Clean installable artifacts are generated and committed under `plugins/<name>`
+- Source-tree plugins must not contain `.codex-plugin/` or `.claude-plugin/`
 - Packed artifacts include generated manifests plus native runtime surfaces such as `skills/`, `hooks.json`, `hooks/`, `.mcp.json`, `.app.json`, `assets/`, and `dist/`
 - Packed artifacts exclude source-only files such as `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `plugin.config.ts`, and `node_modules/`
 - Hooks stay native to the host agent; the pack pipeline copies and validates hook files but does not translate hook semantics

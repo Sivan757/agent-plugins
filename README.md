@@ -116,7 +116,8 @@ The shared source tree matters because it keeps the plugins easier to maintain, 
 ## Repository Layout
 
 ```text
-plugins/   local plugin implementations
+src/       local plugin source and metadata
+plugins/   generated installable plugin artifacts
 packages/  shared runtime code and helpers
 docs/      development notes and references
 scripts/   metadata generation, packaging, validation, and migration helpers
@@ -126,10 +127,11 @@ scripts/   metadata generation, packaging, validation, and migration helpers
 
 If you want to contribute plugins or improve the shared tooling:
 
-- Add or update plugins in [`plugins/`](plugins/)
-- Keep shared metadata in `plugins/<name>/plugin.config.ts`
+- Add or update plugin source in [`src/`](src/)
+- Keep shared metadata in `src/<name>/plugin.config.ts`
 - Run `npm run generate:plugins` after metadata changes
-- Use `npm run pack:plugins` to create clean installable artifacts under `.build/plugins/`
+- Run `npm run build` for buildable plugins
+- Use `npm run pack:plugins` to refresh clean installable artifacts under [`plugins/`](plugins/)
 - Run validation before submitting changes
 
 Useful commands:

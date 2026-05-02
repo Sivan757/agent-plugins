@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# dev.sh - Build local plugins, then launch Codex or Claude Code
+# dev.sh - Build source plugins, refresh release artifacts, then launch Codex or Claude Code
 #
 # Usage:
 #   ./scripts/dev.sh --target codex                  # Build all plugins, then launch Codex
@@ -14,6 +14,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SOURCE_ROOT="$REPO_ROOT/src"
+RELEASE_ROOT="$REPO_ROOT/plugins"
 TARGET="codex"
 LIST_ONLY=false
 PLUGIN_NAMES=()
@@ -70,33 +72,33 @@ fi
 
 if [ "$LIST_ONLY" = true ]; then
   echo "Available plugins:"
-  for dir in "$REPO_ROOT"/plugins/*/; do
-    manifest="$dir/.codex-plugin/plugin.json"
-    [ -f "$manifest" ] || manifest="$dir/.claude-plugin/plugin.json"
+  for dir in "$SOURCE_ROOT"/*/; do
+    manifest="$dir/plugin.config.ts"
+    [ -f "$manifest" ] || manifest="$dir/plugin.config.json"
     [ -f "$manifest" ] || continue
     name=$(basename "$dir")
-    version=$(python3 -c "import json; print(json.load(open('$manifest'))['version'])")
-    echo "  $name  v$version"
+    echo "  $name"
   done
   exit 0
 fi
 
 if [ "${#PLUGIN_NAMES[@]}" -gt 0 ]; then
-  echo "Building selected plugins..."
+  echo "Checking selected plugins..."
   for name in "${PLUGIN_NAMES[@]}"; do
-    dir="$REPO_ROOT/plugins/$name"
-    if [ ! -f "$dir/.codex-plugin/plugin.json" ] && [ ! -f "$dir/.claude-plugin/plugin.json" ]; then
+    dir="$SOURCE_ROOT/$name"
+    if [ ! -f "$dir/plugin.config.ts" ] && [ ! -f "$dir/plugin.config.json" ]; then
       echo "Error: plugin '$name' not found" >&2
       exit 1
     fi
-    if [ -f "$dir/package.json" ]; then
-      npm run build --workspace="plugins/$name" --if-present
-    fi
   done
-else
-  echo "Building all plugin workspaces..."
-  npm run build --workspaces --if-present 2>/dev/null || echo "Warning: some builds failed"
 fi
+
+echo "Building plugin workspaces..."
+npm run build --workspaces --if-present
+
+echo "Refreshing plugin release artifacts..."
+npm run generate:plugins
+npm run pack:plugins
 
 if [ "$TARGET" = "claude" ]; then
   MARKETPLACE="$REPO_ROOT/.claude-plugin/marketplace.json"
@@ -104,7 +106,7 @@ if [ "$TARGET" = "claude" ]; then
 
   if [ "${#PLUGIN_NAMES[@]}" -gt 0 ]; then
     for name in "${PLUGIN_NAMES[@]}"; do
-      dir="$REPO_ROOT/plugins/$name"
+      dir="$RELEASE_ROOT/$name"
       [ -f "$dir/.claude-plugin/plugin.json" ] || {
         echo "Error: Claude manifest missing for '$name'" >&2
         exit 1
@@ -112,7 +114,7 @@ if [ "$TARGET" = "claude" ]; then
       plugin_flags+=(--plugin-dir "$dir")
     done
   else
-    for dir in "$REPO_ROOT"/plugins/*/; do
+    for dir in "$RELEASE_ROOT"/*/; do
       [ -f "$dir/.claude-plugin/plugin.json" ] || continue
       plugin_flags+=(--plugin-dir "$dir")
     done

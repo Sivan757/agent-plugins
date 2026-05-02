@@ -4,12 +4,12 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "plugins/ticktick",
-    "plugins/postgresql",
-    "plugins/mysql",
-    "plugins/aliyunlog",
-    "plugins/ecommerce-expert",
-    "plugins/notebook"
+    "src/ticktick",
+    "src/postgresql",
+    "src/mysql",
+    "src/aliyunlog",
+    "src/ecommerce-expert",
+    "src/notebook"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

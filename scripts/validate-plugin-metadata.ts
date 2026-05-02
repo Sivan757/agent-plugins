@@ -18,7 +18,7 @@ function optionValue(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const shouldValidatePacks = process.argv.includes("--packs");
-  const packsRoot = shouldValidatePacks ? optionValue("--packs-root") ?? ".build/plugins" : undefined;
+  const packsRoot = shouldValidatePacks ? optionValue("--packs-root") ?? "plugins" : undefined;
   const errors = await validatePluginMetadata(process.cwd(), { packsRoot });
 
   if (errors.length > 0) {

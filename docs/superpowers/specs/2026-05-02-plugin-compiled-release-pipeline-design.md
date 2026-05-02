@@ -100,14 +100,14 @@ plugins/<name>/.claude-plugin/plugin.json
 
 The generator should mark these files as generated with a stable top-level convention only if the host clients tolerate the extra field. If not, generated status should live in comments outside JSON, documentation, or validation output rather than inside the manifests.
 
-Source-tree generation is a compatibility bridge. The long-term cleaner path is to rely on generated release artifacts for installation.
+Generated release artifacts are the installation surface; source-tree manifests are no longer kept.
 
 ## Release Artifact Layout
 
-The pack stage writes installable plugin directories to a generated output root, for example `.build/plugins/<name>`:
+The pack stage writes installable plugin directories to the generated release tree, `plugins/<name>`:
 
 ```text
-.build/plugins/mysql/
+plugins/mysql/
   .codex-plugin/plugin.json
   .claude-plugin/plugin.json
   dist/mysql.mjs
@@ -183,7 +183,7 @@ Existing validation rules still apply: manifest directories stay minimal, Codex 
 5. Extend to `postgresql`, `aliyunlog`, `ticktick`, and `notebook`.
 6. Extend to metadata-only or MCP-only plugins.
 7. Update marketplace generation once plugin metadata coverage is complete.
-8. Decide whether generated source-tree manifests stay committed or become build-only artifacts.
+8. Remove generated source-tree manifests once release artifacts become the installation surface.
 
 ## Risks
 
@@ -199,6 +199,6 @@ Mitigation: keep hooks as copied and validated native files only.
 **Client compatibility break:** Codex or Claude may reject generated manifests if fields are added incorrectly.
 Mitigation: generate only known accepted fields and keep existing validators as the compatibility contract.
 
-## Open Decision
+## Resolved Decision
 
-The remaining policy decision is whether generated source-tree manifests should stay committed after the transition. The safer first version keeps them committed and validates them. A later cleanup can move installation entirely to generated release artifacts once local dev and marketplace flows support that cleanly.
+Generated source-tree manifests are not committed. `src/<name>/plugin.config.ts` is the metadata source, and `plugins/<name>` is the generated installable artifact referenced by marketplace files.

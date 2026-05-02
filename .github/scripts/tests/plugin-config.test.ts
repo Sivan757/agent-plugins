@@ -27,7 +27,7 @@ function readJson<T>(filePath: string): T {
 function createRepo(): string {
   const root = mkdtempSync(join(tmpdir(), "agent-plugins-metadata-"));
   tempRoots.push(root);
-  mkdirSync(join(root, "plugins"), { recursive: true });
+  mkdirSync(join(root, "src"), { recursive: true });
   writeJson(join(root, ".agents/plugins/marketplace.json"), {
     name: "agent-plugins",
     interface: { displayName: "Agent Plugins" },
@@ -54,15 +54,15 @@ function createRepo(): string {
 }
 
 function createRuntimePlugin(root: string, name = "sample-plugin"): string {
-  const pluginRoot = join(root, "plugins", name);
+  const pluginRoot = join(root, "src", name);
   writeText(join(pluginRoot, "skills", name, "SKILL.md"), "---\nname: sample\ndescription: Sample skill\n---\n");
   writeJson(join(pluginRoot, "hooks.json"), { hooks: { SessionStart: [] } });
   writeJson(join(pluginRoot, "hooks", "hooks.json"), { hooks: { SessionStart: [] } });
   writeJson(join(pluginRoot, ".mcp.json"), { mcpServers: { sample: { command: "node", args: ["dist/sample.mjs"] } } });
   writeText(join(pluginRoot, "src", "sample.ts"), "console.log('source');\n");
   writeJson(join(pluginRoot, "package.json"), { name, version: "1.2.3", type: "module" });
-  writeText(join(pluginRoot, "dist", "sample.mjs"), "console.log('dist');\n");
-  writeText(join(pluginRoot, "dist", "extra.dat"), "runtime data\n");
+  writeText(join(root, ".build", "plugin-dist", name, "dist", "sample.mjs"), "console.log('dist');\n");
+  writeText(join(root, ".build", "plugin-dist", name, "dist", "extra.dat"), "runtime data\n");
   writeText(join(pluginRoot, "plugin.config.ts"), `
 export default {
   name: "${name}",
@@ -104,7 +104,7 @@ afterEach(() => {
 });
 
 describe("plugin metadata pipeline", () => {
-  test("generates Codex and Claude manifests and preserves native hook files", async () => {
+  test("generates marketplace metadata without writing manifests into source", async () => {
     const root = createRepo();
     const pluginRoot = createRuntimePlugin(root);
     const originalCodexHooks = readFileSync(join(pluginRoot, "hooks.json"), "utf-8");
@@ -112,23 +112,8 @@ describe("plugin metadata pipeline", () => {
 
     await generatePluginFiles(root);
 
-    const codexManifest = readJson<Record<string, unknown>>(join(pluginRoot, ".codex-plugin", "plugin.json"));
-    expect(codexManifest).toMatchObject({
-      name: "sample-plugin",
-      version: "1.2.3",
-      description: "Sample generated plugin.",
-      skills: "./skills/",
-      hooks: "./hooks.json",
-      mcpServers: "./.mcp.json",
-    });
-
-    const claudeManifest = readJson<Record<string, unknown>>(join(pluginRoot, ".claude-plugin", "plugin.json"));
-    expect(claudeManifest).toMatchObject({
-      name: "sample-plugin",
-      version: "1.2.3",
-      description: "Sample generated plugin.",
-      hooks: "./hooks/hooks.json",
-    });
+    expect(existsSync(join(pluginRoot, ".codex-plugin", "plugin.json"))).toBe(false);
+    expect(existsSync(join(pluginRoot, ".claude-plugin", "plugin.json"))).toBe(false);
 
     expect(readFileSync(join(pluginRoot, "hooks.json"), "utf-8")).toBe(originalCodexHooks);
     expect(readFileSync(join(pluginRoot, "hooks", "hooks.json"), "utf-8")).toBe(originalClaudeHooks);
@@ -173,6 +158,7 @@ describe("plugin metadata pipeline", () => {
     expect(existsSync(join(packedRoot, "dist", "extra.dat"))).toBe(true);
 
     expect(existsSync(join(packedRoot, "src"))).toBe(false);
+    expect(existsSync(join(root, "src", "sample-plugin", "dist"))).toBe(false);
     expect(existsSync(join(packedRoot, "package.json"))).toBe(false);
     expect(existsSync(join(packedRoot, "package-lock.json"))).toBe(false);
     expect(existsSync(join(packedRoot, "tsconfig.json"))).toBe(false);
@@ -182,15 +168,16 @@ describe("plugin metadata pipeline", () => {
 
   test("validation reports drift when generated manifests are edited directly", async () => {
     const root = createRepo();
-    const pluginRoot = createRuntimePlugin(root);
+    createRuntimePlugin(root);
     await generatePluginFiles(root);
+    await packPlugins(root, { outDir: "plugins" });
 
-    const manifestPath = join(pluginRoot, ".codex-plugin", "plugin.json");
+    const manifestPath = join(root, "plugins", "sample-plugin", ".codex-plugin", "plugin.json");
     const manifest = readJson<Record<string, unknown>>(manifestPath);
     manifest.version = "9.9.9";
     writeJson(manifestPath, manifest);
 
-    const errors = await validatePluginMetadata(root);
+    const errors = await validatePluginMetadata(root, { packsRoot: "plugins" });
 
     expect(errors.some((error) => error.includes("sample-plugin") && error.includes(".codex-plugin/plugin.json"))).toBe(
       true
