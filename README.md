@@ -13,6 +13,7 @@ Works with Codex and Claude Code.
 - Search unfamiliar codebases semantically through MCP
 - Manage TickTick tasks, habits, and focus workflows
 - Get structured guidance for SHEIN and Temu platform APIs
+- Turn vague prompts into clear, actionable development requests
 
 ## Example Workflows
 
@@ -24,6 +25,7 @@ These are the kinds of jobs this collection is built for:
 - "Find where this service builds auth headers"
 - "Create a TickTick task for today's release checklist"
 - "Explain the Temu order and webhook flow"
+- "Rewrite this rough feature request into a precise coding prompt"
 
 ## Browse The Collection
 
@@ -45,6 +47,12 @@ These are the kinds of jobs this collection is built for:
 | Plugin | What it does |
 | --- | --- |
 | [augment-mcp](plugins/augment-mcp) | Connect Augment Context Engine as an MCP server for semantic codebase search |
+
+### Shape requests
+
+| Plugin | What it does |
+| --- | --- |
+| [prompt-enhancer](plugins/prompt-enhancer) | Rewrite vague prompts into clear, actionable development requests |
 
 ### Manage personal execution
 

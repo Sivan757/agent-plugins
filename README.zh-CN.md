@@ -13,6 +13,7 @@
 - 通过 MCP 对陌生代码库做语义搜索
 - 管理 TickTick 任务、习惯和专注流程
 - 获取 SHEIN 和 Temu 平台 API 的结构化使用指引
+- 把模糊提示词改写成清晰、可执行的开发请求
 
 ## 示例工作流
 
@@ -24,6 +25,7 @@
 - “找一下这个服务是在哪里拼 auth header 的”
 - “给今天的发布清单创建一个 TickTick 任务”
 - “解释一下 Temu 订单接口和 webhook 流程”
+- “把这个粗略功能需求改写成精确的编码提示词”
 
 ## 插件分类
 
@@ -45,6 +47,12 @@
 | 插件 | 作用 |
 | --- | --- |
 | [augment-mcp](plugins/augment-mcp) | 通过 MCP 接入 Augment Context Engine，实现语义级代码搜索 |
+
+### 请求整理
+
+| 插件 | 作用 |
+| --- | --- |
+| [prompt-enhancer](plugins/prompt-enhancer) | 将模糊提示词改写成清晰、可执行的开发请求 |
 
 ### 个人执行管理
 
