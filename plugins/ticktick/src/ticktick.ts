@@ -208,11 +208,96 @@ async function v1(
 // =============================================================================
 
 // =============================================================================
-// Output helpers
+// Output helpers — human-readable plain-text formatting
 // =============================================================================
 
+const SEP = '\t';
+
+function fmtCell(v: unknown): string {
+  if (v === null || v === undefined) return '-';
+  if (Array.isArray(v)) return v.length ? v.join(', ') : '-';
+  return String(v).replace(/\t/g, ' ').replace(/\n/g, ' ');
+}
+
+function printTable(rows: Record<string, unknown>[], cols?: string[]): void {
+  if (!rows.length) { console.log('(empty)'); return; }
+  const keys = cols || Object.keys(rows[0]);
+  console.log(keys.join(SEP));
+  for (const row of rows) {
+    console.log(keys.map(k => fmtCell(row[k])).join(SEP));
+  }
+}
+
+function printKV(obj: Record<string, unknown>): void {
+  const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
+  if (!entries.length) { console.log('(empty)'); return; }
+  const maxLen = Math.max(...entries.map(([k]) => k.length));
+  for (const [k, v] of entries) {
+    const val = v === null ? '-' :
+      Array.isArray(v) ? v.join(', ') :
+      typeof v === 'object' ? JSON.stringify(v) : String(v);
+    console.log(`${k.padEnd(maxLen + 2)}${val}`);
+  }
+}
+
+function printOk(obj: Record<string, unknown>): void {
+  const parts: string[] = [];
+  if (obj.action) parts.push(String(obj.action));
+  if (obj.id) parts.push(String(obj.id));
+  else if (obj.ids) parts.push(`${(obj.ids as unknown[]).length} items`);
+  if (obj.taskId) parts.push(`task ${obj.taskId}`);
+  if (obj.deleted) parts.push(`deleted ${obj.deleted}`);
+  if (obj.renamed) {
+    const r = obj.renamed as Record<string, string>;
+    if (r.from && r.to) parts.push(`${r.from} → ${r.to}`);
+    else parts.push(String(obj.renamed));
+  }
+  if (obj.merged) parts.push(String(obj.merged));
+  if (obj.message) parts.push(String(obj.message));
+  if (obj.addedItem) {
+    const item = obj.addedItem as Record<string, string>;
+    parts.push(`+${item.id?.slice(0, 8)} "${item.title}"`);
+  }
+  if (obj.checked) parts.push(`✓ "${obj.checked}"`);
+  if (obj.unchecked) parts.push(`◻ "${obj.unchecked}"`);
+  if (obj.removed) parts.push(`✗ "${obj.removed}"`);
+  if (obj.token_preview) parts.push(`token ${obj.token_preview}...`);
+  console.log(parts.join('  '));
+}
+
 function out(data: unknown): void {
-  console.log(JSON.stringify(data, null, 2));
+  if (Array.isArray(data)) {
+    if (!data.length) { console.log('(empty)'); return; }
+    if (typeof data[0] === 'object' && data[0] !== null) {
+      printTable(data as Record<string, unknown>[]);
+    } else {
+      for (const item of data) console.log(String(item));
+    }
+    return;
+  }
+  if (typeof data === 'object' && data !== null) {
+    const obj = data as Record<string, unknown>;
+    if (obj.ok === true) { printOk(obj); return; }
+    if (obj.message && !obj.ok) { console.log(String(obj.message)); return; }
+    printKV(obj);
+    return;
+  }
+  console.log(String(data));
+}
+
+function outJson(data: unknown): void {
+  console.log(JSON.stringify(data));
+}
+
+function batchOk(resp: unknown, label?: string): Record<string, unknown> {
+  const result: Record<string, unknown> = { ok: true };
+  if (label) result.action = label;
+  if (resp && typeof resp === 'object' && 'id2etag' in resp) {
+    const ids = Object.keys((resp as { id2etag: Record<string, string> }).id2etag);
+    if (ids.length === 1) result.id = ids[0];
+    else if (ids.length > 1) result.ids = ids;
+  }
+  return result;
 }
 
 function priorityLabel(p: number): string {
@@ -461,7 +546,7 @@ Examples:
       }
       const X_DEVICE = buildXDevice();
       const data = await v2('GET', '/batch/check/0', undefined, config, API_V2, HOST, X_DEVICE) as SyncState;
-      out(data);
+      outJson(data);
     });
 
   // Auth — OAuth2 flow
@@ -687,7 +772,10 @@ async function runResourceAction(
           const projName = String(t.projectName);
           (grouped[projName] ??= []).push(t);
         }
-        out(grouped);
+        for (const [proj, tasks] of Object.entries(grouped)) {
+          console.log(`\n${proj} (${tasks.length})`);
+          printTable(tasks as Record<string, unknown>[]);
+        }
       } else {
         out(result);
       }
@@ -723,7 +811,7 @@ async function runResourceAction(
           await apiV2('POST', '/batch/taskParent', [{ taskId: createdId, projectId: task.projectId, parentId }]);
         }
       }
-      out(resp);
+      out(batchOk(resp, 'create'));
     },
 
     async 'quick-add'(args: string[], opts: Record<string, string | boolean>): Promise<void> {
@@ -732,7 +820,7 @@ async function runResourceAction(
       const session = await getV2TokenBound();
       const task = { title: text, projectId: String(opts.project || session.inboxId) };
       const resp = await apiV2('POST', '/batch/task', { add: [task], update: [], delete: [], addAttachments: [], updateAttachments: [], deleteAttachments: [] });
-      out(resp);
+      out(batchOk(resp, 'quick-add'));
     },
 
     async update(args: string[], opts: Record<string, string | boolean>): Promise<void> {
@@ -747,7 +835,7 @@ async function runResourceAction(
       if (opts.column) update.columnId = opts.column;
 
       const resp = await apiV2('POST', '/batch/task', { add: [], update: [update], delete: [], addAttachments: [], updateAttachments: [], deleteAttachments: [] });
-      out(resp);
+      out(batchOk(resp, 'update'));
     },
 
     async complete(args: string[]): Promise<void> {
@@ -936,7 +1024,7 @@ async function runResourceAction(
         parentId: t.parentId || t.parent_id,
       }));
       const resp = await apiV2('POST', '/batch/task', { add: batchTasks, update: [], delete: [], addAttachments: [], updateAttachments: [], deleteAttachments: [] });
-      out(resp);
+      out(batchOk(resp, 'batch-create'));
     },
 
     async 'batch-complete'(args: string[], opts: Record<string, string | boolean>): Promise<void> {
@@ -1039,7 +1127,7 @@ async function runResourceAction(
       const resp = await apiV2('POST', '/batch/projectGroup', {
         add: [{ name, listType: 'group' }], update: [], delete: [],
       });
-      out(resp);
+      out(batchOk(resp, 'create'));
     },
 
     async rename(args: string[]): Promise<void> {
@@ -1048,14 +1136,14 @@ async function runResourceAction(
       const resp = await apiV2('POST', '/batch/projectGroup', {
         add: [], update: [{ id, name, listType: 'group' }], delete: [],
       });
-      out(resp);
+      out(batchOk(resp, 'rename'));
     },
 
     async delete(args: string[]): Promise<void> {
       const [id] = args;
       if (!id) { console.error('Usage: ticktick folders delete <folderId>'); process.exit(1); }
       const resp = await apiV2('POST', '/batch/projectGroup', { add: [], update: [], delete: [id] });
-      out(resp);
+      out(batchOk(resp, 'delete'));
     },
   };
 
@@ -1081,7 +1169,7 @@ async function runResourceAction(
       if (opts.color) tag.color = opts.color;
       if (opts.parent) tag.parent = opts.parent;
       const resp = await apiV2('POST', '/batch/tag', { add: [tag], update: [] });
-      out(resp);
+      out(batchOk(resp, 'create'));
     },
 
     async update(args: string[], opts: Record<string, string | boolean>): Promise<void> {
@@ -1091,7 +1179,7 @@ async function runResourceAction(
       if (opts.color) tag.color = opts.color;
       if (opts.parent) tag.parent = opts.parent;
       const resp = await apiV2('POST', '/batch/tag', { add: [], update: [tag] });
-      out(resp);
+      out(batchOk(resp, 'update'));
     },
 
     async rename(args: string[]): Promise<void> {
@@ -1134,7 +1222,7 @@ async function runResourceAction(
       const col: Record<string, unknown> = { projectId, name };
       if (opts.order) col.sortOrder = parseInt(String(opts.order));
       const resp = await apiV2('POST', '/column', { add: [col], update: [], delete: [] });
-      out(resp);
+      out(batchOk(resp, 'create'));
     },
 
     async update(args: string[], opts: Record<string, string | boolean>): Promise<void> {
@@ -1144,14 +1232,14 @@ async function runResourceAction(
       if (opts.name) update.name = opts.name;
       if (opts.order) update.sortOrder = parseInt(String(opts.order));
       const resp = await apiV2('POST', '/column', { add: [], update: [update], delete: [] });
-      out(resp);
+      out(batchOk(resp, 'update'));
     },
 
     async delete(args: string[]): Promise<void> {
       const [colId, projectId] = args;
       if (!colId || !projectId) { console.error('Usage: ticktick columns delete <columnId> <projectId>'); process.exit(1); }
       const resp = await apiV2('POST', '/column', { add: [], update: [], delete: [{ columnId: colId, projectId }] });
-      out(resp);
+      out(batchOk(resp, 'delete'));
     },
   };
 
@@ -1219,7 +1307,7 @@ async function runResourceAction(
       if (opts.section) habit.sectionId = opts.section;
 
       const resp = await apiV2('POST', '/habits/batch', { add: [habit], update: [], delete: [] });
-      out(resp);
+      out(batchOk(resp, 'create'));
     },
 
     async checkin(args: string[], opts: Record<string, string | boolean>): Promise<void> {
@@ -1248,7 +1336,7 @@ async function runResourceAction(
       };
 
       const resp = await apiV2('POST', '/habitCheckins/batch', { add: [checkin], update: [], delete: [] });
-      out(resp);
+      out(batchOk(resp, 'checkin'));
     },
 
     async 'checkin-all'(args: string[], opts: Record<string, string | boolean>): Promise<void> {
@@ -1298,14 +1386,14 @@ async function runResourceAction(
       const resp = await apiV2('POST', '/habits/batch', {
         add: [], update: [{ id, status: 2, archivedTime: now, modifiedTime: now }], delete: [],
       });
-      out(resp);
+      out(batchOk(resp, 'archive'));
     },
 
     async delete(args: string[]): Promise<void> {
       const [id] = args;
       if (!id) { console.error('Usage: ticktick habits delete <habitId>'); process.exit(1); }
       const resp = await apiV2('POST', '/habits/batch', { add: [], update: [], delete: [id] });
-      out(resp);
+      out(batchOk(resp, 'delete'));
     },
   };
 
@@ -1315,13 +1403,13 @@ async function runResourceAction(
 
   const user = {
     async profile(): Promise<void> {
-      out(await apiV2('GET', '/user/profile'));
+      outJson(await apiV2('GET', '/user/profile'));
     },
     async status(): Promise<void> {
-      out(await apiV2('GET', '/user/status'));
+      outJson(await apiV2('GET', '/user/status'));
     },
     async stats(): Promise<void> {
-      out(await apiV2('GET', '/statistics/general'));
+      outJson(await apiV2('GET', '/statistics/general'));
     },
   };
 

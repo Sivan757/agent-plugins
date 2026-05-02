@@ -3928,8 +3928,99 @@ async function v1(method, path, body, config, API_V1) {
   const text = await resp.text();
   return text ? JSON.parse(text) : null;
 }
+var SEP = "	";
+function fmtCell(v) {
+  if (v === null || v === void 0) return "-";
+  if (Array.isArray(v)) return v.length ? v.join(", ") : "-";
+  return String(v).replace(/\t/g, " ").replace(/\n/g, " ");
+}
+function printTable(rows, cols) {
+  if (!rows.length) {
+    console.log("(empty)");
+    return;
+  }
+  const keys = cols || Object.keys(rows[0]);
+  console.log(keys.join(SEP));
+  for (const row of rows) {
+    console.log(keys.map((k) => fmtCell(row[k])).join(SEP));
+  }
+}
+function printKV(obj) {
+  const entries = Object.entries(obj).filter(([, v]) => v !== void 0);
+  if (!entries.length) {
+    console.log("(empty)");
+    return;
+  }
+  const maxLen = Math.max(...entries.map(([k]) => k.length));
+  for (const [k, v] of entries) {
+    const val = v === null ? "-" : Array.isArray(v) ? v.join(", ") : typeof v === "object" ? JSON.stringify(v) : String(v);
+    console.log(`${k.padEnd(maxLen + 2)}${val}`);
+  }
+}
+function printOk(obj) {
+  const parts = [];
+  if (obj.action) parts.push(String(obj.action));
+  if (obj.id) parts.push(String(obj.id));
+  else if (obj.ids) parts.push(`${obj.ids.length} items`);
+  if (obj.taskId) parts.push(`task ${obj.taskId}`);
+  if (obj.deleted) parts.push(`deleted ${obj.deleted}`);
+  if (obj.renamed) {
+    const r = obj.renamed;
+    if (r.from && r.to) parts.push(`${r.from} \u2192 ${r.to}`);
+    else parts.push(String(obj.renamed));
+  }
+  if (obj.merged) parts.push(String(obj.merged));
+  if (obj.message) parts.push(String(obj.message));
+  if (obj.addedItem) {
+    const item = obj.addedItem;
+    parts.push(`+${item.id?.slice(0, 8)} "${item.title}"`);
+  }
+  if (obj.checked) parts.push(`\u2713 "${obj.checked}"`);
+  if (obj.unchecked) parts.push(`\u25FB "${obj.unchecked}"`);
+  if (obj.removed) parts.push(`\u2717 "${obj.removed}"`);
+  if (obj.token_preview) parts.push(`token ${obj.token_preview}...`);
+  console.log(parts.join("  "));
+}
 function out(data) {
-  console.log(JSON.stringify(data, null, 2));
+  if (Array.isArray(data)) {
+    if (!data.length) {
+      console.log("(empty)");
+      return;
+    }
+    if (typeof data[0] === "object" && data[0] !== null) {
+      printTable(data);
+    } else {
+      for (const item of data) console.log(String(item));
+    }
+    return;
+  }
+  if (typeof data === "object" && data !== null) {
+    const obj = data;
+    if (obj.ok === true) {
+      printOk(obj);
+      return;
+    }
+    if (obj.message && !obj.ok) {
+      console.log(String(obj.message));
+      return;
+    }
+    printKV(obj);
+    return;
+  }
+  console.log(String(data));
+}
+function outJson(data) {
+  console.log(JSON.stringify(data));
+}
+function batchOk(resp, label) {
+  const result = { ok: true };
+  if (label) result.action = label;
+  if (resp && typeof resp === "object" && "id2etag" in resp) {
+    const ids = Object.keys(resp.id2etag);
+    if (ids.length === 1) result.id = ids[0];
+    else if (ids.length > 1) result.ids = ids;
+  }
+  return result;
 }
 function priorityLabel(p) {
   return { 0: "none", 1: "low", 3: "medium", 5: "high" }[p] || "none";
@@ -4071,7 +4162,7 @@ Examples:
     }
     const X_DEVICE = buildXDevice();
     const data = await v2("GET", "/batch/check/0", void 0, config, API_V2, HOST, X_DEVICE);
-    out(data);
+    outJson(data);
   });
   program2.command("auth").description("OAuth2 token acquisition \u2014 opens browser").action(async () => {
     const config = await requireConfigWithSetup("ticktick", TICKTICK_CONFIG_UI);
@@ -4238,7 +4329,11 @@ async function runResourceAction(resource, action, args, opts, ctx) {
           const projName = String(t.projectName);
           (grouped[projName] ??= []).push(t);
         }
-        out(grouped);
+        for (const [proj, tasks2] of Object.entries(grouped)) {
+          console.log(`
+${proj} (${tasks2.length})`);
+          printTable(tasks2);
+        }
       } else {
         out(result);
       }
@@ -4276,7 +4371,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
           await apiV2("POST", "/batch/taskParent", [{ taskId: createdId, projectId: task.projectId, parentId }]);
         }
       }
-      out(resp);
+      out(batchOk(resp, "create"));
     },
     async "quick-add"(args2, opts2) {
       const text = args2.join(" ");
@@ -4287,7 +4382,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
       const session = await getV2TokenBound();
       const task = { title: text, projectId: String(opts2.project || session.inboxId) };
       const resp = await apiV2("POST", "/batch/task", { add: [task], update: [], delete: [], addAttachments: [], updateAttachments: [], deleteAttachments: [] });
-      out(resp);
+      out(batchOk(resp, "quick-add"));
     },
     async update(args2, opts2) {
       const [taskId, projectId] = args2;
@@ -4303,7 +4398,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
       if (opts2.content) update.content = opts2.content;
       if (opts2.column) update.columnId = opts2.column;
       const resp = await apiV2("POST", "/batch/task", { add: [], update: [update], delete: [], addAttachments: [], updateAttachments: [], deleteAttachments: [] });
-      out(resp);
+      out(batchOk(resp, "update"));
     },
     async complete(args2) {
       const [taskId, projectId] = args2;
@@ -4541,7 +4636,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
         parentId: t.parentId || t.parent_id
       }));
       const resp = await apiV2("POST", "/batch/task", { add: batchTasks, update: [], delete: [], addAttachments: [], updateAttachments: [], deleteAttachments: [] });
-      out(resp);
+      out(batchOk(resp, "batch-create"));
     },
     async "batch-complete"(args2, opts2) {
       let items;
@@ -4644,7 +4739,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
         update: [],
         delete: []
       });
-      out(resp);
+      out(batchOk(resp, "create"));
     },
     async rename(args2) {
       const [id, name] = args2;
@@ -4657,7 +4752,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
         update: [{ id, name, listType: "group" }],
         delete: []
       });
-      out(resp);
+      out(batchOk(resp, "rename"));
     },
     async delete(args2) {
       const [id] = args2;
@@ -4666,7 +4761,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
         process.exit(1);
       }
       const resp = await apiV2("POST", "/batch/projectGroup", { add: [], update: [], delete: [id] });
-      out(resp);
+      out(batchOk(resp, "delete"));
     }
   };
   const tagsCmds = {
@@ -4689,7 +4784,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
       if (opts2.color) tag.color = opts2.color;
       if (opts2.parent) tag.parent = opts2.parent;
       const resp = await apiV2("POST", "/batch/tag", { add: [tag], update: [] });
-      out(resp);
+      out(batchOk(resp, "create"));
     },
     async update(args2, opts2) {
       const [name] = args2;
@@ -4701,7 +4796,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
       if (opts2.color) tag.color = opts2.color;
       if (opts2.parent) tag.parent = opts2.parent;
       const resp = await apiV2("POST", "/batch/tag", { add: [], update: [tag] });
-      out(resp);
+      out(batchOk(resp, "update"));
     },
     async rename(args2) {
       const [oldName, newName] = args2;
@@ -4750,7 +4845,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
       const col = { projectId, name };
       if (opts2.order) col.sortOrder = parseInt(String(opts2.order));
       const resp = await apiV2("POST", "/column", { add: [col], update: [], delete: [] });
-      out(resp);
+      out(batchOk(resp, "create"));
     },
     async update(args2, opts2) {
       const [colId, projectId] = args2;
@@ -4762,7 +4857,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
       if (opts2.name) update.name = opts2.name;
       if (opts2.order) update.sortOrder = parseInt(String(opts2.order));
       const resp = await apiV2("POST", "/column", { add: [], update: [update], delete: [] });
-      out(resp);
+      out(batchOk(resp, "update"));
     },
     async delete(args2) {
       const [colId, projectId] = args2;
@@ -4771,7 +4866,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
         process.exit(1);
       }
       const resp = await apiV2("POST", "/column", { add: [], update: [], delete: [{ columnId: colId, projectId }] });
-      out(resp);
+      out(batchOk(resp, "delete"));
     }
   };
   const habits = {
@@ -4840,7 +4935,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
       if (opts2.repeat) habit.repeatRule = opts2.repeat;
       if (opts2.section) habit.sectionId = opts2.section;
       const resp = await apiV2("POST", "/habits/batch", { add: [habit], update: [], delete: [] });
-      out(resp);
+      out(batchOk(resp, "create"));
     },
     async checkin(args2, opts2) {
       const [habitId] = args2;
@@ -4867,7 +4962,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
         status: 2
       };
       const resp = await apiV2("POST", "/habitCheckins/batch", { add: [checkin], update: [], delete: [] });
-      out(resp);
+      out(batchOk(resp, "checkin"));
     },
     async "checkin-all"(args2, opts2) {
       const all = await apiV2("GET", "/habits");
@@ -4918,7 +5013,7 @@ async function runResourceAction(resource, action, args, opts, ctx) {
         update: [{ id, status: 2, archivedTime: now, modifiedTime: now }],
         delete: []
       });
-      out(resp);
+      out(batchOk(resp, "archive"));
     },
     async delete(args2) {
       const [id] = args2;
@@ -4927,18 +5022,18 @@ async function runResourceAction(resource, action, args, opts, ctx) {
         process.exit(1);
       }
       const resp = await apiV2("POST", "/habits/batch", { add: [], update: [], delete: [id] });
-      out(resp);
+      out(batchOk(resp, "delete"));
     }
   };
   const user = {
     async profile() {
-      out(await apiV2("GET", "/user/profile"));
+      outJson(await apiV2("GET", "/user/profile"));
     },
     async status() {
-      out(await apiV2("GET", "/user/status"));
+      outJson(await apiV2("GET", "/user/status"));
     },
     async stats() {
-      out(await apiV2("GET", "/statistics/general"));
+      outJson(await apiV2("GET", "/statistics/general"));
     }
   };
   const focus = {
