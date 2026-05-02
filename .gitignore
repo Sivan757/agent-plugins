@@ -10,6 +10,7 @@ external-resources/*
 .playwright-mcp
 .vscode/
 node_modules/
+.build/
 *.tsbuildinfo
 bun.lock
 

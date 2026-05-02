@@ -13,12 +13,16 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
+    "generate:plugins": "tsx scripts/generate-plugin-metadata.ts",
+    "pack:plugins": "tsx scripts/pack-plugins.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "validate:plugin-metadata": "tsx scripts/validate-plugin-metadata.ts",
+    "validate:plugin-packs": "tsx scripts/validate-plugin-metadata.ts --packs",
     "validate:claude-layout": "bun run .github/scripts/validate-claude-plugin-layout.ts",
     "validate:codex-layout": "bun run .github/scripts/validate-codex-plugin-layout.ts",
     "validate:marketplace": "bun run .github/scripts/validate-marketplace.ts",
     "validate:versions": "bun run .github/scripts/validate-versions.ts",
-    "validate:plugins": "npm run validate:claude-layout && npm run validate:codex-layout && npm run validate:marketplace && npm run validate:versions",
+    "validate:plugins": "npm run validate:plugin-metadata && npm run validate:claude-layout && npm run validate:codex-layout && npm run validate:marketplace && npm run validate:versions",
     "convert-to-codex": "npx --yes tsx scripts/convert-claude-plugin-to-codex.ts"
   },
   "devDependencies": {

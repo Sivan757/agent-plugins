@@ -1,0 +1,37 @@
+import type { PluginConfig } from "../../scripts/plugin-config";
+
+export default {
+  name: "notebook",
+  version: "0.1.0",
+  description: "Cross-agent local notebook memory with startup bootstrap context, topic files, audits, and transcript-backed insights.",
+  author: { name: "Agent Plugins" },
+  keywords: ["notebook", "memory", "context", "codex", "claude", "productivity"],
+  category: "Productivity",
+  interface: {
+    displayName: "Notebook",
+    shortDescription: "Cross-agent local memory using Markdown files.",
+    longDescription: "Provides a local, file-based multi-level memory system for Codex and Claude Code with short startup bootstrap context, topic-based detailed memory, quality audits, and transcript-backed insights.",
+    developerName: "Agent Plugins",
+    category: "Productivity",
+    defaultPrompt: [
+      "Use notebook memory before working in this repository.",
+      "Record this project pitfall in the notebook.",
+      "Audit notebook memory and suggest cleanup.",
+    ],
+  },
+  build: {
+    entry: "src/notebook.ts",
+    output: "dist/notebook.mjs",
+  },
+  surfaces: {
+    skills: true,
+    hooks: "native",
+    claudeManifestHooks: true,
+  },
+  marketplace: {
+    codex: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+    claude: {
+      description: "Cross-agent local notebook memory with startup bootstrap context, topic files, audits, and transcript-backed insights.",
+    },
+  },
+} satisfies PluginConfig;
