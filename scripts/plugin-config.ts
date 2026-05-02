@@ -482,6 +482,9 @@ export async function packPlugins(root = process.cwd(), options: PackOptions = {
     if (config.surfaces?.app) {
       await copyRelativePath(pluginRoot, packedRoot, ".app.json");
     }
+    if (existsSync(join(pluginRoot, "README.md"))) {
+      await copyRelativePath(pluginRoot, packedRoot, "README.md");
+    }
 
     for (const nativeDirectory of ["assets", "commands", "agents"] as const) {
       if (existsSync(join(pluginRoot, nativeDirectory))) {

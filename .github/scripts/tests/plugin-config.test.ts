@@ -59,6 +59,7 @@ function createRuntimePlugin(root: string, name = "sample-plugin"): string {
   writeJson(join(pluginRoot, "hooks.json"), { hooks: { SessionStart: [] } });
   writeJson(join(pluginRoot, "hooks", "hooks.json"), { hooks: { SessionStart: [] } });
   writeJson(join(pluginRoot, ".mcp.json"), { mcpServers: { sample: { command: "node", args: ["dist/sample.mjs"] } } });
+  writeText(join(pluginRoot, "README.md"), "# Sample Plugin\n");
   writeText(join(pluginRoot, "src", "sample.ts"), "console.log('source');\n");
   writeJson(join(pluginRoot, "package.json"), { name, version: "1.2.3", type: "module" });
   writeText(join(root, ".build", "plugin-dist", name, "dist", "sample.mjs"), "console.log('dist');\n");
@@ -154,6 +155,7 @@ describe("plugin metadata pipeline", () => {
     expect(existsSync(join(packedRoot, "hooks.json"))).toBe(true);
     expect(existsSync(join(packedRoot, "hooks", "hooks.json"))).toBe(true);
     expect(existsSync(join(packedRoot, ".mcp.json"))).toBe(true);
+    expect(existsSync(join(packedRoot, "README.md"))).toBe(true);
     expect(existsSync(join(packedRoot, "dist", "sample.mjs"))).toBe(true);
     expect(existsSync(join(packedRoot, "dist", "extra.dat"))).toBe(true);
 

@@ -30,7 +30,7 @@ Repository-specific knowledge for keeping the shared plugin source compatible wi
 - Buildable plugins emit runtime bundles under `.build/plugin-dist/<name>/`
 - Clean installable artifacts are generated and committed under `plugins/<name>`
 - Source-tree plugins must not contain `.codex-plugin/` or `.claude-plugin/`
-- Packed artifacts include generated manifests plus native runtime surfaces such as `skills/`, `hooks.json`, `hooks/`, `.mcp.json`, `.app.json`, `assets/`, and `dist/`
+- Packed artifacts include generated manifests plus native runtime surfaces such as `README.md`, `skills/`, `hooks.json`, `hooks/`, `.mcp.json`, `.app.json`, `assets/`, and `dist/`
 - Packed artifacts exclude source-only files such as `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `plugin.config.ts`, and `node_modules/`
 - Hooks stay native to the host agent; the pack pipeline copies and validates hook files but does not translate hook semantics
 
