@@ -4021,10 +4021,7 @@ Examples:
   const resourceNames = ["tasks", "projects", "folders", "tags", "columns", "habits", "user", "focus"];
   for (const res of resourceNames) {
     program2.command(res).description(`Manage ${res}`).argument("<action>", "Action to perform (see --help)").argument("[args...]", "Positional arguments for the action").allowUnknownOption(true).allowExcessArguments(true).action(async (action, positionalArgs, _cmdObj) => {
-      const subCmdIdx = process.argv.indexOf(res);
-      const rawAfterSubcmd = subCmdIdx >= 0 ? process.argv.slice(subCmdIdx + 1) : [];
-      const rawOpts = rawAfterSubcmd.slice(1 + positionalArgs.length);
-      const { opts } = parseRawOpts(rawOpts);
+      const { args: realArgs, opts } = parseRawOpts(positionalArgs);
       const config = await requireConfigWithSetup("ticktick", TICKTICK_CONFIG_UI);
       const HOST = config.host || "ticktick.com";
       const API_V2 = `https://api.${HOST}/api/v2`;
@@ -4055,7 +4052,7 @@ Examples:
       async function getV2TokenBound() {
         return getV2Token(config, HOST, X_DEVICE);
       }
-      await runResourceAction(res, action, positionalArgs, opts, { sync, apiV2, apiV1, getV2TokenBound, config });
+      await runResourceAction(res, action, realArgs, opts, { sync, apiV2, apiV1, getV2TokenBound, config });
     });
   }
   program2.command("sync").description("Full account sync \u2014 dump all projects, tasks, tags").action(async () => {
@@ -4083,10 +4080,8 @@ Examples:
   });
   program2.command("setup").argument("<subcommand>", "x-device").argument("[args...]", "Arguments for the subcommand").allowUnknownOption(true).description(`Setup helpers \u2014 e.g. setup x-device '{"platform":"web",...}'`).action(async (sub, subArgs) => {
     if (sub === "x-device") {
-      const subCmdIdx = process.argv.indexOf("setup");
-      const rawAfterSetup = subCmdIdx >= 0 ? process.argv.slice(subCmdIdx + 2) : [];
-      const { args: parsedArgs, opts: parsedOpts } = parseRawOpts(rawAfterSetup);
-      const json = parsedArgs[0] || String(parsedOpts["json"] || subArgs[0] || "");
+      const { args: parsedArgs, opts: parsedOpts } = parseRawOpts(subArgs);
+      const json = parsedArgs[0] || String(parsedOpts["json"] || "");
       if (!json) {
         console.error(`Usage: ticktick setup x-device '{"platform":"web",...}'`);
         console.error("Paste the X-Device header value from browser DevTools.");

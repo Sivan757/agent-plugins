@@ -399,17 +399,10 @@ Examples:
       .allowUnknownOption(true)
       .allowExcessArguments(true)
       .action(async (action: string, positionalArgs: string[], _cmdObj: Command) => {
-        // Collect everything that commander couldn't parse: unknown opts come
-        // through as the remaining raw argv after the subcommand + known tokens.
-        // Commander stores unparsed tokens in _cmdObj.args when allowUnknownOption is set,
-        // but since we captured <action> and [args...] we need to look at the
-        // raw process.argv that follows the subcommand name.
-        const subCmdIdx = process.argv.indexOf(res);
-        const rawAfterSubcmd = subCmdIdx >= 0 ? process.argv.slice(subCmdIdx + 1) : [];
-        // rawAfterSubcmd is: [action, ...positionalArgs, --opt val, --flag, ...]
-        // Skip the action token and known positional args to get only option tokens.
-        const rawOpts = rawAfterSubcmd.slice(1 + positionalArgs.length);
-        const { opts } = parseRawOpts(rawOpts);
+        // Commander's [args...] is greedy and consumes ALL remaining tokens
+        // including --key value pairs. Parse positionalArgs directly to
+        // separate real positional arguments from options.
+        const { args: realArgs, opts } = parseRawOpts(positionalArgs);
 
         const config = await requireConfigWithSetup<TickTickConfig>('ticktick', TICKTICK_CONFIG_UI);
         const HOST = config.host || 'ticktick.com';
@@ -447,7 +440,7 @@ Examples:
           return getV2Token(config, HOST, X_DEVICE);
         }
 
-        await runResourceAction(res, action, positionalArgs, opts, { sync, apiV2, apiV1, getV2TokenBound, config });
+        await runResourceAction(res, action, realArgs, opts, { sync, apiV2, apiV1, getV2TokenBound, config });
       });
   }
 
@@ -490,10 +483,8 @@ Examples:
     .description('Setup helpers — e.g. setup x-device \'{"platform":"web",...}\'')
     .action(async (sub: string, subArgs: string[]) => {
       if (sub === 'x-device') {
-        const subCmdIdx = process.argv.indexOf('setup');
-        const rawAfterSetup = subCmdIdx >= 0 ? process.argv.slice(subCmdIdx + 2) : [];
-        const { args: parsedArgs, opts: parsedOpts } = parseRawOpts(rawAfterSetup);
-        const json = parsedArgs[0] || String(parsedOpts['json'] || subArgs[0] || '');
+        const { args: parsedArgs, opts: parsedOpts } = parseRawOpts(subArgs);
+        const json = parsedArgs[0] || String(parsedOpts['json'] || '');
         if (!json) {
           console.error('Usage: ticktick setup x-device \'{"platform":"web",...}\'');
           console.error('Paste the X-Device header value from browser DevTools.');
