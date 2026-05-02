@@ -12,6 +12,7 @@ Works with Codex and Claude Code.
 - Query MySQL and PostgreSQL directly from your agent workflow
 - Search unfamiliar codebases semantically through MCP
 - Manage TickTick tasks, habits, and focus workflows
+- Keep lightweight local notebook memory across Codex and Claude Code
 - Get structured guidance for SHEIN and Temu platform APIs
 - Turn vague prompts into clear, actionable development requests
 
@@ -24,6 +25,7 @@ These are the kinds of jobs this collection is built for:
 - "Run this MySQL query against the reporting database"
 - "Find where this service builds auth headers"
 - "Create a TickTick task for today's release checklist"
+- "Remember this project pitfall in the local notebook"
 - "Explain the Temu order and webhook flow"
 - "Rewrite this rough feature request into a precise coding prompt"
 
@@ -58,6 +60,7 @@ These are the kinds of jobs this collection is built for:
 
 | Plugin | What it does |
 | --- | --- |
+| [notebook](plugins/notebook) | Keep local Markdown notebook memory with startup context, audits, and transcript-backed insights |
 | [ticktick](plugins/ticktick) | Manage TickTick tasks, projects, habits, and productivity workflows |
 
 ### Work with commerce APIs

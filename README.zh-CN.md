@@ -12,6 +12,7 @@
 - 在 Agent 工作流里直接查询 MySQL 和 PostgreSQL
 - 通过 MCP 对陌生代码库做语义搜索
 - 管理 TickTick 任务、习惯和专注流程
+- 在 Codex 和 Claude Code 之间维护轻量级本地笔记本记忆
 - 获取 SHEIN 和 Temu 平台 API 的结构化使用指引
 - 把模糊提示词改写成清晰、可执行的开发请求
 
@@ -24,6 +25,7 @@
 - “在 reporting 数据库上执行这条 MySQL 查询”
 - “找一下这个服务是在哪里拼 auth header 的”
 - “给今天的发布清单创建一个 TickTick 任务”
+- “把这个项目坑点记到本地 notebook 里”
 - “解释一下 Temu 订单接口和 webhook 流程”
 - “把这个粗略功能需求改写成精确的编码提示词”
 
@@ -58,6 +60,7 @@
 
 | 插件 | 作用 |
 | --- | --- |
+| [notebook](plugins/notebook) | 使用本地 Markdown 笔记本保存启动上下文、审计结果和基于会话来源的洞察 |
 | [ticktick](plugins/ticktick) | 管理 TickTick 任务、项目、习惯和效率流程 |
 
 ### 电商平台 API 能力
