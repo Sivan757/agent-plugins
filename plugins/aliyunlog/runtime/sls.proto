@@ -5,7 +5,7 @@ message Log {
     message Content {
         required string Key = 1;
         required string Value = 2;
-    }  
+    }
     repeated Content Contents = 2;
     optional fixed32 TimeNs = 4;
 }

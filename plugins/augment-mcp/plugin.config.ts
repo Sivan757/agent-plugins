@@ -2,7 +2,7 @@ import type { PluginConfig } from "../../scripts/plugin-config";
 
 export default {
   name: "augment-mcp",
-  version: "0.1.1",
+  version: "0.1.2",
   description: "Integrates Augment Context Engine MCP server for semantic codebase search and retrieval. Requires auggie login for authentication.",
   author: { name: "Agent Plugins" },
   keywords: ["augment", "mcp", "codebase", "semantic-search", "context-engine"],

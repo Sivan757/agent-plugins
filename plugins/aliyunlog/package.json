@@ -1,6 +1,6 @@
 {
   "name": "aliyunlog",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "type": "module",
   "scripts": {
     "build": "bash ../../scripts/build-plugin.sh src/aliyunlog.ts dist/aliyunlog.mjs",

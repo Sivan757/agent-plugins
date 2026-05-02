@@ -2,7 +2,7 @@ import type { PluginConfig } from "../../scripts/plugin-config";
 
 export default {
   name: "notebook",
-  version: "0.1.0",
+  version: "0.1.1",
   description: "Cross-agent local notebook memory with startup bootstrap context, topic files, audits, and transcript-backed insights.",
   author: { name: "Agent Plugins" },
   keywords: ["notebook", "memory", "context", "codex", "claude", "productivity"],

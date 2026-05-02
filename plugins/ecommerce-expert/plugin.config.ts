@@ -2,7 +2,7 @@ import type { PluginConfig } from "../../scripts/plugin-config";
 
 export default {
   name: "ecommerce-expert",
-  version: "1.0.0",
+  version: "1.0.1",
   description: "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu (124 endpoints) with full parameter specs, signing algorithms, and integration patterns",
   author: { name: "Agent Plugins" },
   category: "Coding",

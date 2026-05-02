@@ -11,6 +11,8 @@ external-resources/*
 .vscode/
 node_modules/
 .build/
+plugins/*/dist/
+plugins/*/package-lock.json
 *.tsbuildinfo
 bun.lock
 
