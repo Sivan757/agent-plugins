@@ -35,6 +35,12 @@
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     },
     {
+      "name": "notebook",
+      "version": "0.1.0",
+      "source": "./plugins/notebook",
+      "description": "Cross-agent local notebook memory with startup bootstrap context, topic files, audits, and transcript-backed insights."
+    },
+    {
       "name": "postgresql",
       "version": "0.5.1",
       "source": "./plugins/postgresql",
@@ -45,12 +51,6 @@
       "version": "0.1.0",
       "source": "./plugins/prompt-enhancer",
       "description": "Enhances vague user prompts into clear, actionable prompts for development, debugging, review, architecture, and implementation work."
-    },
-    {
-      "name": "notebook",
-      "version": "0.1.0",
-      "source": "./plugins/notebook",
-      "description": "Cross-agent local notebook memory with startup bootstrap context, topic files, audits, and transcript-backed insights."
     },
     {
       "name": "shopify-ai-toolkit",

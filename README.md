@@ -119,7 +119,7 @@ The shared source tree matters because it keeps the plugins easier to maintain, 
 plugins/   local plugin implementations
 packages/  shared runtime code and helpers
 docs/      development notes and references
-scripts/   repository tooling and migration helpers
+scripts/   metadata generation, packaging, validation, and migration helpers
 ```
 
 ## For Plugin Authors
@@ -127,14 +127,19 @@ scripts/   repository tooling and migration helpers
 If you want to contribute plugins or improve the shared tooling:
 
 - Add or update plugins in [`plugins/`](plugins/)
-- Keep Codex and Claude metadata aligned
+- Keep shared metadata in `plugins/<name>/plugin.config.ts`
+- Run `npm run generate:plugins` after metadata changes
+- Use `npm run pack:plugins` to create clean installable artifacts under `.build/plugins/`
 - Run validation before submitting changes
 
 Useful commands:
 
 ```bash
+npm run generate:plugins
+npm run pack:plugins
+npm run validate:plugin-metadata
+npm run validate:plugin-packs
 npm run validate:plugins
-bash scripts/check-plugin-versions.sh
 bun test ./.github/scripts/tests
 ```
 

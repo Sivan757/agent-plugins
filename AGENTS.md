@@ -7,11 +7,15 @@ General repository guidelines for maintaining the shared `plugins/` source tree.
 - Local plugin implementations live under `plugins/`
 - Shared runtime packages live under `packages/`
 - Do not keep a parallel local `plugin/` tree
+- `plugins/<name>/plugin.config.ts` is the source of truth for plugin metadata
+- `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and local marketplace entries are generated metadata; do not hand-edit them
+- Hooks, MCP configs, app configs, skills, commands, agents, and assets remain native runtime files; do not hide them behind generated cross-agent abstractions
 - `CLAUDE.md` is a symlink to this file; keep broad repository guidance here
 
 ## Required Plugin Shape
 
-- Every local plugin must carry both `.codex-plugin/plugin.json` and `.claude-plugin/plugin.json`
+- Every local plugin must carry `plugin.config.ts`
+- Source-tree manifests are kept for local compatibility and generated from `plugin.config.ts`
 - Keep both manifest directories minimal: `.codex-plugin/` and `.claude-plugin/` should contain only `plugin.json`
 - Codex bundle content belongs at plugin root: `skills/`, `hooks.json`, `.mcp.json`, `.app.json`, and `assets/` when present
 - Codex manifest paths must use the root-standard locations: `./skills/`, `./hooks.json`, `./.mcp.json`, `./.app.json`, and `./assets/...`
@@ -32,14 +36,15 @@ General repository guidelines for maintaining the shared `plugins/` source tree.
 - Local plugins must be registered in both marketplace files at `./plugins/<name>`
 - Codex marketplace local entries must use `{ "source": "local", "path": "./plugins/<name>" }`
 - Codex marketplace entries must always include `policy.installation`, `policy.authentication`, and `category`
+- Local marketplace entries are generated from `plugin.config.ts`
 
 ## Repository Rules
 
 - Store credentials in `~/.cache/agent-plugins/<plugin>.json`, never in project-local files
-- Version bumps must update both manifests and `package.json` when the plugin has a buildable workspace
-- Use `bash scripts/bump-plugin-version.sh <plugin> <version>` instead of manual multi-file edits
-- Run `bash scripts/check-plugin-versions.sh` after plugin metadata changes
+- Version bumps must update `plugin.config.ts` and `package.json` when the plugin has a buildable workspace, then regenerate metadata
+- Run `npm run generate:plugins` after plugin metadata changes
 - Run `npm run validate:plugins` before submitting changes that affect manifests, marketplaces, or skill metadata
+- Run `npm run pack:plugins` and `npm run validate:plugin-packs` before publishing or testing clean installable artifacts
 - When changing validator scripts, run `bun test ./.github/scripts/tests`
 - Stage plugin changes explicitly by path; do not use `git add -A` in this repo
 
@@ -48,8 +53,11 @@ General repository guidelines for maintaining the shared `plugins/` source tree.
 - `bash scripts/dev.sh --target codex`
 - `bash scripts/dev.sh --target claude`
 - `bash scripts/dev.sh --list`
+- `npm run generate:plugins`
+- `npm run pack:plugins`
+- `npm run validate:plugin-metadata`
+- `npm run validate:plugin-packs`
 - `npm run validate:plugins`
-- `bash scripts/check-plugin-versions.sh`
 
 ## Platform References
 

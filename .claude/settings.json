@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "bash scripts/check-plugin-versions.sh",
+            "command": "npm run validate:plugin-metadata",
             "timeout": 10,
             "type": "command"
           }

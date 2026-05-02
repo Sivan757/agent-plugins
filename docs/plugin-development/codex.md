@@ -19,7 +19,8 @@ Relevant upstream docs:
 ## What We Standardized In This Repo
 
 - `plugins/` is the only local source tree for active plugins
-- Every local plugin keeps a Codex manifest and a Claude manifest side by side
+- Every local plugin keeps `plugin.config.ts` as generated metadata source of truth
+- Generated Codex and Claude manifests remain in the source tree for local compatibility
 - Codex hooks live at plugin-root `hooks.json`
 - Codex marketplace lives in `.agents/plugins/marketplace.json`
 - Local Codex marketplace entries use `{ "source": "local", "path": "./plugins/<name>" }`
@@ -27,14 +28,24 @@ Relevant upstream docs:
 
 ## Manifest Conventions
 
-- Keep `.codex-plugin/` minimal: only `plugin.json`
+- Keep `.codex-plugin/` minimal: only generated `plugin.json`
+- Do not hand-edit `.codex-plugin/plugin.json`; edit `plugin.config.ts` and run `npm run generate:plugins`
 - Use stable kebab-case plugin names
 - Prefer explicit canonical root paths: `./skills/`, `./hooks.json`, `./.mcp.json`, `./.app.json`
 - Keep Codex paths rooted in the plugin directory, never pointing outside the plugin root
-- If `skills/` exists, declare it in the manifest
-- If `hooks.json` exists, declare it via `hooks`
-- If `.mcp.json` exists, declare it via `mcpServers`
-- If `.app.json` exists, declare it via `apps`
+- If `skills/` exists, declare `surfaces.skills` in `plugin.config.ts`
+- If `hooks.json` exists, declare `surfaces.hooks: "native"` in `plugin.config.ts`
+- If `.mcp.json` exists, declare `surfaces.mcp` in `plugin.config.ts`
+- If `.app.json` exists, declare `surfaces.app` in `plugin.config.ts`
+
+## Release Artifacts
+
+- Development source stays under `plugins/<name>`
+- Clean installable artifacts are generated under `.build/plugins/<name>`
+- `.build/` is ignored and should not be committed
+- Packed artifacts include generated manifests plus native runtime surfaces such as `skills/`, `hooks.json`, `hooks/`, `.mcp.json`, `.app.json`, `assets/`, and `dist/`
+- Packed artifacts exclude source-only files such as `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `plugin.config.ts`, and `node_modules/`
+- Plugin-specific runtime files that are not copied by default must be declared through `artifact.include` in `plugin.config.ts`
 
 ## Skill Conventions
 
@@ -47,6 +58,7 @@ Relevant upstream docs:
 ## Marketplace Experience
 
 - The repo now validates the Codex marketplace shape in CI and locally
+- Local Codex marketplace entries are generated from `plugin.config.ts`
 - This repo standardizes on the official local-source object form and does not use string sources for local Codex entries:
 
 ```json
@@ -64,7 +76,7 @@ Relevant upstream docs:
 - Codex rules are strict enough that validation should run before review, not after
 - Keeping `SKILL.md` frontmatter minimal avoids drift between Codex and Claude
 - Path validation matters more than it first appears; broken `./` references are easy to introduce during migrations
-- Hook drift is a real maintenance problem; root `hooks.json` and `hooks/hooks.json` should be treated as a mirrored pair
+- Hook drift is a real maintenance problem; root `hooks.json` and `hooks/hooks.json` should be treated as native files, copied and validated but not translated through a custom DSL
 - Keeping Codex-specific metadata optional prevents overfitting plugins to one client
 - `assets/` should be treated as the default home for visual interface files when a plugin adds branded UI metadata
 
@@ -72,8 +84,19 @@ Relevant upstream docs:
 
 ```bash
 bash scripts/dev.sh --target codex
+npm run generate:plugins
+npm run validate:plugin-metadata
+npm run build
+npm run pack:plugins
+npm run validate:plugin-packs
 npm run validate:plugins
-bash scripts/check-plugin-versions.sh
+```
+
+For quick local launch without packing:
+
+```bash
+bash scripts/dev.sh --target codex
+npm run validate:plugins
 ```
 
 ## Migration Notes
