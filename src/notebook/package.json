@@ -1,6 +1,6 @@
 {
   "name": "notebook",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "scripts": {
     "build": "bash ../../scripts/build-plugin.sh src/notebook.ts ../../.build/plugin-dist/notebook/dist/notebook.mjs",

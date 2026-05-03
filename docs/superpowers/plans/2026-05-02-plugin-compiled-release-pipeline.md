@@ -66,7 +66,6 @@ export interface PluginConfig {
   surfaces?: {
     skills?: boolean;
     hooks?: false | "native";
-    claudeManifestHooks?: boolean;
     mcp?: boolean;
     app?: boolean;
   };
@@ -78,7 +77,7 @@ export interface PluginConfig {
 }
 ```
 
-Render Codex manifests with generated `skills`, `hooks`, `mcpServers`, and `apps` path fields only when declared. Render Claude manifests with common metadata and optional `hooks: "./hooks/hooks.json"` only when declared.
+Render Codex manifests with generated `skills`, `hooks`, `mcpServers`, and `apps` path fields only when declared. Render Claude manifests with common metadata only; standard `hooks/hooks.json` remains an auto-discovered runtime file and must not be referenced from the Claude manifest.
 
 - [ ] **Step 2: Add generation, validation, and pack functions**
 

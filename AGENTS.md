@@ -21,7 +21,7 @@ General repository guidelines for maintaining the shared plugin source and relea
 - Codex bundle content belongs at plugin root: `skills/`, `hooks.json`, `.mcp.json`, `.app.json`, and `assets/` when present
 - Codex manifest paths must use the root-standard locations: `./skills/`, `./hooks.json`, `./.mcp.json`, `./.app.json`, and `./assets/...`
 - Claude auto-discovery content belongs at plugin root, not under `.claude-plugin/`: `commands/`, `agents/`, `skills/`, `hooks/`, and `.mcp.json`
-- Prefer Claude default discovery paths over manifest overrides; if `.claude-plugin/plugin.json` declares `hooks` or `mcpServers`, use `./hooks/hooks.json` and `./.mcp.json`
+- Prefer Claude default discovery paths over manifest overrides; do not declare the standard `./hooks/hooks.json` in `.claude-plugin/plugin.json` because Claude auto-loads it
 - Claude-compatible hook config lives at `hooks/hooks.json`
 - Claude hook config must use the plugin wrapper format with a top-level `hooks` object
 - If hook config exists, keep `hooks.json` and `hooks/hooks.json` together and JSON-identical

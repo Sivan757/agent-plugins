@@ -323,8 +323,10 @@ function validateClaudeManifest(pluginRoot: string, errors: string[]): void {
     if (!isNonEmptyString(manifest.hooks)) {
       errors.push(`${pluginRel}: manifest.hooks must be a non-empty string when present`);
     } else {
-      if (manifest.hooks !== "./hooks/hooks.json") {
-        errors.push(`${pluginRel}: manifest.hooks must point to "./hooks/hooks.json"`);
+      if (manifest.hooks === "./hooks/hooks.json") {
+        errors.push(
+          `${pluginRel}: manifest.hooks must not point to "./hooks/hooks.json"; standard hooks/hooks.json is auto-discovered`
+        );
       }
       validateRelativePluginPath(pluginRoot, manifest.hooks, `${pluginRel}: manifest.hooks`, errors);
     }

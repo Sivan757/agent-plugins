@@ -19,7 +19,7 @@ Repository-specific knowledge for keeping the shared plugin source compatible wi
 - Do not hand-edit `.claude-plugin/plugin.json`; edit `src/<name>/plugin.config.ts`, then regenerate and repack
 - Keep Claude components at plugin root, not under `.claude-plugin/`: `commands/`, `agents/`, `skills/`, `hooks/`, and `.mcp.json`
 - Prefer Claude default auto-discovery over explicit manifest paths
-- If `.claude-plugin/plugin.json` declares hooks, it must be generated from `surfaces.claudeManifestHooks` and use `./hooks/hooks.json`
+- Do not declare the standard `./hooks/hooks.json` in `.claude-plugin/plugin.json`; Claude auto-discovers that file and treats a manifest reference as a duplicate load
 - If future Claude metadata declares MCP config, it must use `./.mcp.json`
 - `hooks/hooks.json` should use the Claude plugin wrapper format with an optional `description` plus a top-level `hooks` object
 - Use `${CLAUDE_PLUGIN_ROOT}` anywhere Claude-executed config or content needs a plugin-local path

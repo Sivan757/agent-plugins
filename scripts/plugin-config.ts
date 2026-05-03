@@ -28,7 +28,6 @@ export interface PluginConfig {
   surfaces?: {
     skills?: boolean;
     hooks?: false | "native";
-    claudeManifestHooks?: boolean;
     mcp?: boolean;
     app?: boolean;
   };
@@ -239,11 +238,7 @@ export function renderCodexManifest(config: PluginConfig): JsonObject {
 }
 
 export function renderClaudeManifest(config: PluginConfig): JsonObject {
-  const manifest = commonManifestFields(config);
-  if (config.surfaces?.claudeManifestHooks) {
-    manifest.hooks = "./hooks/hooks.json";
-  }
-  return manifest;
+  return commonManifestFields(config);
 }
 
 function codexMarketplaceEntry(config: PluginConfig): JsonObject {

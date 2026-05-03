@@ -2,7 +2,7 @@ import type { PluginConfig } from "../../scripts/plugin-config";
 
 export default {
   name: "notebook",
-  version: "0.1.1",
+  version: "0.1.2",
   description: "Cross-agent local notebook memory with startup bootstrap context, topic files, audits, and transcript-backed insights.",
   author: { name: "Agent Plugins" },
   keywords: ["notebook", "memory", "context", "codex", "claude", "productivity"],
@@ -26,7 +26,6 @@ export default {
   surfaces: {
     skills: true,
     hooks: "native",
-    claudeManifestHooks: true,
   },
   marketplace: {
     codex: { installation: "AVAILABLE", authentication: "ON_INSTALL" },

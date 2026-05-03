@@ -363,7 +363,7 @@ function buildPluginConfigSource(
     ...(codexManifest.interface ? { interface: codexManifest.interface } : {}),
     surfaces: {
       ...(codexManifest.skills ? { skills: true } : {}),
-      ...(hasHooks ? { hooks: 'native', claudeManifestHooks: true } : {}),
+      ...(hasHooks ? { hooks: 'native' } : {}),
       ...(codexManifest.mcpServers ? { mcp: true } : {}),
       ...(codexManifest.apps ? { app: true } : {}),
     },

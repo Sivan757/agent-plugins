@@ -83,7 +83,6 @@ export default {
   surfaces: {
     skills: true,
     hooks: "native",
-    claudeManifestHooks: true,
     mcp: true
   },
   artifact: {
@@ -151,6 +150,7 @@ describe("plugin metadata pipeline", () => {
     const packedRoot = join(root, ".release/plugins/sample-plugin");
     expect(existsSync(join(packedRoot, ".codex-plugin", "plugin.json"))).toBe(true);
     expect(existsSync(join(packedRoot, ".claude-plugin", "plugin.json"))).toBe(true);
+    expect(readJson<Record<string, unknown>>(join(packedRoot, ".claude-plugin", "plugin.json")).hooks).toBeUndefined();
     expect(existsSync(join(packedRoot, "skills", "sample-plugin", "SKILL.md"))).toBe(true);
     expect(existsSync(join(packedRoot, "hooks.json"))).toBe(true);
     expect(existsSync(join(packedRoot, "hooks", "hooks.json"))).toBe(true);

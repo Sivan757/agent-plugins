@@ -36,7 +36,7 @@
     },
     {
       "name": "notebook",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "source": "./plugins/notebook",
       "description": "Cross-agent local notebook memory with startup bootstrap context, topic files, audits, and transcript-backed insights."
     },

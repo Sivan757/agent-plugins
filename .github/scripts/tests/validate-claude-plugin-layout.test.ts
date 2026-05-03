@@ -101,6 +101,26 @@ describe("validate-claude-plugin-layout", () => {
     expect(result.stderr).toContain("hooks/hooks.json must contain a top-level \"hooks\" object");
   });
 
+  test("fails when manifest hooks points to auto-discovered hooks file", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+
+    writeJson(join(pluginRoot, ".claude-plugin", "plugin.json"), {
+      name: "sample-plugin",
+      version: "1.0.0",
+      description: "sample plugin",
+      hooks: "./hooks/hooks.json",
+    });
+    writeJson(join(pluginRoot, "hooks", "hooks.json"), {
+      hooks: {},
+    });
+
+    const result = runValidator(root);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("manifest.hooks must not point to \"./hooks/hooks.json\"");
+  });
+
   test("fails when manifest commands path is not plugin-root relative", () => {
     const root = createRepo();
     const pluginRoot = createPlugin(root, "sample-plugin");
