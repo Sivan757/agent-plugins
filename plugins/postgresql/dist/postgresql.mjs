@@ -8918,6 +8918,10 @@ function info(msg) {
   process.stderr.write(`[postgresql] ${msg}
 `);
 }
+function die(msg) {
+  console.error(`ERROR: ${msg}`);
+  process.exit(1);
+}
 var PG_CONFIG_UI = {
   spec: {
     root: "page",
@@ -8967,10 +8971,88 @@ var PG_CONFIG_UI = {
       ]
     }
   },
-  collections: [{ statePath: "/connections" }]
+  collections: [{ statePath: "/connections" }],
+  validate: isConfigIncomplete
 };
 async function loadConfig2() {
   return requireConfigWithSetup("postgresql", PG_CONFIG_UI);
+}
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function isConfigIncomplete(config) {
+  const connections = config["connections"];
+  if (!isRecord(connections) || Object.keys(connections).length === 0) {
+    return true;
+  }
+  return Object.values(connections).some((connection) => {
+    if (!isRecord(connection)) return true;
+    return !String(connection["host"] ?? "").trim() || !String(connection["user"] ?? "").trim() || !String(connection["database"] ?? "").trim();
+  });
+}
+function withDatabaseOverride(connConfig, databaseOverride) {
+  const database = databaseOverride?.trim() || connConfig.database;
+  return { ...connConfig, database };
+}
+function printConnectionNames(config) {
+  const names = Object.keys(config.connections || {});
+  if (names.length === 0) {
+    console.error("No connections defined.");
+    return;
+  }
+  console.error("Available connections:");
+  for (const name of names) {
+    const c = config.connections[name];
+    console.error(`  ${name} \u2192 ${c.database} (${c.host}:${c.port || 5432})`);
+  }
+}
+async function loadConnectionConfig(connName, databaseOverride) {
+  let config = await loadConfig2();
+  let connConfig = (config.connections || {})[connName];
+  if (!connConfig) {
+    info(`Connection "${connName}" is not configured. Opening configuration form...`);
+    if (await launchConfigUI("postgresql", PG_CONFIG_UI)) {
+      config = await loadConfig2();
+      connConfig = (config.connections || {})[connName];
+    }
+  }
+  if (!connConfig) {
+    console.error(`Error: Connection "${connName}" not found.`);
+    printConnectionNames(config);
+    process.exit(1);
+  }
+  return withDatabaseOverride(connConfig, databaseOverride);
+}
+async function copyConnection(sourceName, targetName, database, overwrite) {
+  if (!database.trim()) {
+    die("copy-connection requires --database <database>.");
+  }
+  let config = await loadConfig2();
+  let source = (config.connections || {})[sourceName];
+  if (!source) {
+    info(`Source connection "${sourceName}" is not configured. Opening configuration form...`);
+    if (await launchConfigUI("postgresql", PG_CONFIG_UI)) {
+      config = await loadConfig2();
+      source = (config.connections || {})[sourceName];
+    }
+  }
+  if (!source) {
+    console.error(`Error: Source connection "${sourceName}" not found.`);
+    printConnectionNames(config);
+    process.exit(1);
+  }
+  if ((config.connections || {})[targetName] && !overwrite) {
+    die(`Connection "${targetName}" already exists. Re-run with --overwrite to replace it.`);
+  }
+  const nextConfig = {
+    ...config,
+    connections: {
+      ...config.connections || {},
+      [targetName]: withDatabaseOverride(source, database)
+    }
+  };
+  await saveConfig("postgresql", nextConfig);
+  console.log(`Copied connection "${sourceName}" to "${targetName}" with database "${database}".`);
 }
 function printTemplate() {
   const CONFIG_PATH = configPath("postgresql");
@@ -9022,7 +9104,7 @@ function createClient(connConfig) {
   }
   return new Client2(clientConfig);
 }
-async function testConnections(targetName) {
+async function testConnections(targetName, databaseOverride) {
   const config = await loadConfig2();
   const entries = Object.entries(config.connections || {});
   if (entries.length === 0) {
@@ -9031,32 +9113,29 @@ async function testConnections(targetName) {
   }
   const toTest = targetName ? entries.filter(([name]) => name === targetName) : entries;
   if (targetName && toTest.length === 0) {
-    console.error(`Error: Connection "${targetName}" not found.`);
-    await listConnections();
-    process.exit(1);
+    const connConfig = await loadConnectionConfig(targetName, databaseOverride);
+    await testOneConnection(targetName, connConfig);
+    return;
   }
   for (const [name, connConfig] of toTest) {
-    const client = createClient(connConfig);
-    try {
-      await client.connect();
-      await client.query("SELECT 1");
-      await client.end();
-      console.log(`  ${name} \u2192 OK (${connConfig.database})`);
-    } catch (err) {
-      await client.end().catch(() => {
-      });
-      console.log(`  ${name} \u2192 FAILED: ${err.message}`);
-    }
+    await testOneConnection(name, withDatabaseOverride(connConfig, databaseOverride));
   }
 }
-async function listColumns(connName, schemaName, tableName) {
-  const config = await loadConfig2();
-  const connConfig = (config.connections || {})[connName];
-  if (!connConfig) {
-    console.error(`Error: Connection "${connName}" not found.`);
-    await listConnections();
-    process.exit(1);
+async function testOneConnection(name, connConfig) {
+  const client = createClient(connConfig);
+  try {
+    await client.connect();
+    await client.query("SELECT 1");
+    await client.end();
+    console.log(`  ${name} \u2192 OK (${connConfig.database})`);
+  } catch (err) {
+    await client.end().catch(() => {
+    });
+    console.log(`  ${name} \u2192 FAILED: ${err.message}`);
   }
+}
+async function listColumns(connName, schemaName, tableName, databaseOverride) {
+  const connConfig = await loadConnectionConfig(connName, databaseOverride);
   const client = createClient(connConfig);
   try {
     await client.connect();
@@ -9083,14 +9162,8 @@ async function listColumns(connName, schemaName, tableName) {
     });
   }
 }
-async function listDatabases(connName) {
-  const config = await loadConfig2();
-  const connConfig = (config.connections || {})[connName];
-  if (!connConfig) {
-    console.error(`Error: Connection "${connName}" not found.`);
-    await listConnections();
-    process.exit(1);
-  }
+async function listDatabases(connName, databaseOverride) {
+  const connConfig = await loadConnectionConfig(connName, databaseOverride);
   const client = createClient(connConfig);
   try {
     await client.connect();
@@ -9113,14 +9186,8 @@ async function listDatabases(connName) {
     });
   }
 }
-async function listSchemas(connName) {
-  const config = await loadConfig2();
-  const connConfig = (config.connections || {})[connName];
-  if (!connConfig) {
-    console.error(`Error: Connection "${connName}" not found.`);
-    await listConnections();
-    process.exit(1);
-  }
+async function listSchemas(connName, databaseOverride) {
+  const connConfig = await loadConnectionConfig(connName, databaseOverride);
   const client = createClient(connConfig);
   try {
     await client.connect();
@@ -9141,14 +9208,8 @@ async function listSchemas(connName) {
     });
   }
 }
-async function findTable(connName, tableName) {
-  const config = await loadConfig2();
-  const connConfig = (config.connections || {})[connName];
-  if (!connConfig) {
-    console.error(`Error: Connection "${connName}" not found.`);
-    await listConnections();
-    process.exit(1);
-  }
+async function findTable(connName, tableName, databaseOverride) {
+  const connConfig = await loadConnectionConfig(connName, databaseOverride);
   const client = createClient(connConfig);
   try {
     await client.connect();
@@ -9240,8 +9301,8 @@ function formatTable(rows, colWidth) {
   return [sep, fmt(headers), sep, ...cells.map((c) => fmt(c)), sep].join("\n");
 }
 var program2 = new Command();
-program2.name("postgresql").description("PostgreSQL query executor for Codex and Claude Code").version("0.2.0");
-program2.command("query", { isDefault: true }).description("Execute a SQL query against a named connection").argument("<connection>", "Connection name").argument("<sql>", "SQL query to execute").option("--format <fmt>", "Output format: table|json|csv|compact", "csv").option("--params <json>", "Parameterized query values as JSON array").option("--limit <n>", "Max rows to display (0 = unlimited)", String(DEFAULT_ROW_LIMIT)).option("--col-width <n>", "Max column display width", String(DEFAULT_COL_WIDTH)).action(async (connection, sql, opts) => {
+program2.name("postgresql").description("PostgreSQL query executor for Codex and Claude Code").version("0.5.3");
+program2.command("query", { isDefault: true }).description("Execute a SQL query against a named connection").argument("<connection>", "Connection name").argument("<sql>", "SQL query to execute").option("--database <database>", "Temporarily connect to this database without changing saved config").option("--format <fmt>", "Output format: table|json|csv|compact", "csv").option("--params <json>", "Parameterized query values as JSON array").option("--limit <n>", "Max rows to display (0 = unlimited)", String(DEFAULT_ROW_LIMIT)).option("--col-width <n>", "Max column display width", String(DEFAULT_COL_WIDTH)).action(async (connection, sql, opts) => {
   let params = [];
   if (opts.params) {
     try {
@@ -9257,13 +9318,7 @@ program2.command("query", { isDefault: true }).description("Execute a SQL query 
     process.exit(1);
   }
   const colWidth = parseInt(opts.colWidth, 10);
-  const config = await loadConfig2();
-  const connConfig = (config.connections || {})[connection];
-  if (!connConfig) {
-    console.error(`Error: Connection "${connection}" not found.`);
-    await listConnections();
-    process.exit(1);
-  }
+  const connConfig = await loadConnectionConfig(connection, opts.database);
   const client = createClient(connConfig);
   try {
     await client.connect();
@@ -9339,13 +9394,21 @@ Hint: Check column names with:`);
 program2.command("init").description("Create config template at ~/.cache/agent-plugins/postgresql.json").action(() => {
   printTemplate();
 });
+program2.command("setup").description("Open the browser configuration form").action(async () => {
+  const saved = await launchConfigUI("postgresql", PG_CONFIG_UI);
+  if (!saved) {
+    console.error("Configuration was not saved.");
+    process.exit(1);
+  }
+  console.log(`Configuration saved at ${configPath("postgresql")}.`);
+});
 program2.command("list").description("List available connections").action(async () => {
   await listConnections();
 });
-program2.command("test").description("Test connection(s)").argument("[name]", "Connection name to test (omit to test all)").action(async (name) => {
-  await testConnections(name ?? null);
+program2.command("test").description("Test connection(s)").argument("[name]", "Connection name to test (omit to test all)").option("--database <database>", "Temporarily connect to this database without changing saved config").action(async (name, opts) => {
+  await testConnections(name ?? null, opts.database);
 });
-program2.command("columns").description("List column names of a table").argument("<connection>", "Connection name").argument("<schema_or_table>", "Schema name, or table name if schema is omitted").argument("[table]", "Table name (if schema was provided as second argument)").action(async (connection, schemaOrTable, table) => {
+program2.command("columns").description("List column names of a table").argument("<connection>", "Connection name").argument("<schema_or_table>", "Schema name, or table name if schema is omitted").argument("[table]", "Table name (if schema was provided as second argument)").option("--database <database>", "Temporarily connect to this database without changing saved config").action(async (connection, schemaOrTable, table, opts) => {
   let schemaName;
   let tableName;
   if (table === void 0) {
@@ -9355,15 +9418,18 @@ program2.command("columns").description("List column names of a table").argument
     schemaName = schemaOrTable;
     tableName = table;
   }
-  await listColumns(connection, schemaName, tableName);
+  await listColumns(connection, schemaName, tableName, opts.database);
 });
-program2.command("databases").description("List all databases on the connection").argument("<connection>", "Connection name").action(async (connection) => {
-  await listDatabases(connection);
+program2.command("databases").description("List all databases on the connection").argument("<connection>", "Connection name").option("--database <database>", "Temporarily connect to this database without changing saved config").action(async (connection, opts) => {
+  await listDatabases(connection, opts.database);
 });
-program2.command("schemas").description("List all schemas in the connection's database").argument("<connection>", "Connection name").action(async (connection) => {
-  await listSchemas(connection);
+program2.command("schemas").description("List all schemas in the connection's database").argument("<connection>", "Connection name").option("--database <database>", "Temporarily connect to this database without changing saved config").action(async (connection, opts) => {
+  await listSchemas(connection, opts.database);
 });
-program2.command("find-table").description("Find which schema a table belongs to").argument("<connection>", "Connection name").argument("<table>", "Table name or pattern (e.g. %user%)").action(async (connection, table) => {
-  await findTable(connection, table);
+program2.command("find-table").description("Find which schema a table belongs to").argument("<connection>", "Connection name").argument("<table>", "Table name or pattern (e.g. %user%)").option("--database <database>", "Temporarily connect to this database without changing saved config").action(async (connection, table, opts) => {
+  await findTable(connection, table, opts.database);
+});
+program2.command("copy-connection").description("Copy a saved connection under a new name and database").argument("<source>", "Existing connection name").argument("<target>", "New connection name").requiredOption("--database <database>", "Database name for the copied connection").option("--overwrite", "Replace the target connection if it already exists").action(async (source, target, opts) => {
+  await copyConnection(source, target, opts.database, Boolean(opts.overwrite));
 });
 program2.parseAsync();

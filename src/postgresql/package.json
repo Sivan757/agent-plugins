@@ -1,10 +1,11 @@
 {
   "name": "postgresql",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "type": "module",
   "scripts": {
     "build": "bash ../../scripts/build-plugin.sh src/postgresql.ts ../../.build/plugin-dist/postgresql/dist/postgresql.mjs",
     "dev": "tsx src/postgresql.ts",
+    "test": "tsx --test src/postgresql.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

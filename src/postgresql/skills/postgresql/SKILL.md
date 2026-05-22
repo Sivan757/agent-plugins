@@ -17,7 +17,23 @@ Execute SQL queries via `pg` Node.js script with multi-connection support.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `~/.cache/agent-plugins/postgresql.json` directly.** Use `list`, `test`, `init` subcommands instead.
+**NEVER read, open, cat, or view `~/.cache/agent-plugins/postgresql.json` directly.** Use `list`, `test`, `setup`, and `copy-connection` subcommands instead.
+
+## Command Path Setup
+
+Use the installed plugin root, not a literal empty variable. In Claude Code,
+`${CLAUDE_PLUGIN_ROOT}` should point at this plugin. In Codex, first prefer
+`${CODEX_PLUGIN_ROOT}` or `${PLUGIN_ROOT}` when available. If no root variable
+is set, locate the installed plugin cache or repo-local release artifact before
+running commands; do not run `node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs`
+when that expands to `/dist/postgresql.mjs`.
+
+```bash
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-${PLUGIN_ROOT:-}}}"
+test -n "$PLUGIN_ROOT"
+PG_BIN="$PLUGIN_ROOT/dist/postgresql.mjs"
+node "$PG_BIN" list
+```
 
 ## CRITICAL: Write Operations
 
@@ -27,6 +43,9 @@ Execute SQL queries via `pg` Node.js script with multi-connection support.
 2. Explicitly ask the user to confirm
 3. Only after the user confirms, proceed with execution
 
+The PostgreSQL CLI has no `--user-confirm`, `--user-confirmed`, or equivalent
+confirmation flag. After confirmation, run the command directly.
+
 ## MANDATORY: Connection Confirmation
 
 **You MUST confirm the connection name with the user before querying.**
@@ -35,8 +54,14 @@ Execute SQL queries via `pg` Node.js script with multi-connection support.
 2. Use `ask the user` to confirm which connection the user wants
 3. After the user confirms, ask: "Save this as the default connection in the project instructions file (AGENTS.md or CLAUDE.md)?"
 
+If the requested connection is missing, run `setup` to open the browser config
+UI. To reuse the same host/user/password with a different database, use
+`copy-connection` instead of reading the config file:
+
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs list
+node "$PG_BIN" list
+node "$PG_BIN" setup
+node "$PG_BIN" copy-connection <source> <target> --database <database>
 ```
 
 ## MANDATORY: Check Columns Before Writing SQL
@@ -45,11 +70,11 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs list
 
 ```bash
 # Step 1: List columns (schema defaults to 'public' if omitted)
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs columns <connection> <schema> <table>
-# Example: node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs columns prod public orders
+node "$PG_BIN" columns <connection> <schema> <table>
+# Example: node "$PG_BIN" columns prod public orders
 
 # Step 2: Only THEN write SELECT using actual column names
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs <conn> "SELECT col1, col2 FROM schema.table WHERE ..."
+node "$PG_BIN" query <conn> "SELECT col1, col2 FROM schema.table WHERE ..."
 ```
 
 ## MANDATORY: Schema Discovery Before Cross-Schema Queries
@@ -58,20 +83,20 @@ PostgreSQL uses **schemas** (not databases) to organize tables. If a table doesn
 
 ```bash
 # Step 1: Find which schema a table belongs to
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs find-table <conn> <table_name>
+node "$PG_BIN" find-table <conn> <table_name>
 # Example output: public.orders (~1234 rows)
 
 # Step 2: Use schema.table syntax in your query
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs <conn> "SELECT * FROM public.orders WHERE ..."
+node "$PG_BIN" query <conn> "SELECT * FROM public.orders WHERE ..."
 
 # Fuzzy search with % pattern
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs find-table <conn> "%warehouse%"
+node "$PG_BIN" find-table <conn> "%warehouse%"
 
 # List all schemas in the database
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs schemas <conn>
+node "$PG_BIN" schemas <conn>
 
 # List all non-system databases
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs databases <conn>
+node "$PG_BIN" databases <conn>
 ```
 
 **NEVER create additional connections for the same host.** Use `schema.table` syntax instead.
@@ -79,7 +104,7 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs databases <conn>
 ## Command Reference
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs query <connection> "<sql>" [options]
+node "$PG_BIN" query <connection> "<sql>" [options]
 ```
 
 | Option | Description |
@@ -88,13 +113,20 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs query <connection> "<sql>" [optio
 | `--params '<json>'` | Parameterized query values |
 | `--limit <n>` | Max rows (default: 1, 0=unlimited) |
 | `--col-width <n>` | Max column width (default: 40) |
+| `--database <name>` | Temporarily connect to another database without saving config |
 
-Subcommands: `init`, `list`, `test [name]`, `columns <conn> [schema] <table>`, `databases <conn>`, `schemas <conn>`, `find-table <conn> <table|%pat%>`, `--help`
+Subcommands: `setup`, `init`, `list`, `test [name]`, `copy-connection <source> <target> --database <db>`, `columns <conn> [schema] <table>`, `databases <conn>`, `schemas <conn>`, `find-table <conn> <table|%pat%>`, `--help`
+
+`--format`, `--params`, `--limit`, and `--col-width` are `query` options only.
+Do not add them to `databases`, `schemas`, `find-table`, or `columns`.
+
+PostgreSQL dollar-quoted SQL like `DO $$ ... $$` must be single-quoted or
+escaped in shell commands, because unescaped `$$` expands to the shell PID.
 
 ## Token Optimization Rules
 
 1. **Preview first** — default limit is 1 row; check the data shape before requesting more with `--limit=N`
-2. **NEVER `SELECT *`** — run `--columns` first, then pick minimal columns
+2. **NEVER `SELECT *`** — run `columns` first, then pick minimal columns
 3. **Aggregate first** — `COUNT(*)`, `GROUP BY`, `SUM()` over raw rows
 4. **Filter with WHERE** — narrow server-side, not by scanning results
 5. **Default CSV** — most token-efficient format; use `--format=compact` for less overhead

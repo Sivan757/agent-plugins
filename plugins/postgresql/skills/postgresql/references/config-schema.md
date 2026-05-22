@@ -3,6 +3,9 @@
 ## Config Location
 
 Config is stored globally at `~/.cache/agent-plugins/postgresql.json`.
+Use `setup` to edit it through the browser UI. If a new connection only needs a
+different database name, use `copy-connection <source> <target> --database <db>`
+instead of reading or editing the file manually.
 
 ## Full Schema
 
@@ -88,4 +91,4 @@ Or with full options:
 - Config is stored globally at `~/.cache/agent-plugins/postgresql.json` — outside project directories
 - Use read-only credentials for production connections when possible
 - Consider using SSH tunnels for remote database access
-- **Never read config directly** — use `--list` to view connections, `--test` to verify
+- **Never read config directly** — use `list` to view connections, `test` to verify, and `copy-connection` to duplicate safely

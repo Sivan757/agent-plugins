@@ -10,13 +10,14 @@ Enables Claude to execute SQL queries against PostgreSQL databases with multi-co
 bash plugins/postgresql/hooks/postgresql-setup.sh
 ```
 
-2. Initialize the config file:
+2. Open the browser setup form:
 
 ```bash
-node plugins/postgresql/dist/postgresql.mjs init
+node plugins/postgresql/dist/postgresql.mjs setup
 ```
 
-3. Edit `~/.cache/agent-plugins/postgresql.json` to add your connections.
+3. Add or edit your connections in the browser form. Credentials are written to
+   `~/.cache/agent-plugins/postgresql.json` without exposing them to the agent.
 
 ## Usage
 
@@ -29,6 +30,9 @@ node plugins/postgresql/dist/postgresql.mjs test
 
 # Query (default limit: 1 row, CSV output)
 node plugins/postgresql/dist/postgresql.mjs query myconn "SELECT * FROM public.users LIMIT 5"
+
+# Temporarily switch database without changing saved config
+node plugins/postgresql/dist/postgresql.mjs query myconn "SELECT current_database()" --database=analytics
 
 # Column listing (schema defaults to 'public')
 node plugins/postgresql/dist/postgresql.mjs columns myconn public users
@@ -46,6 +50,9 @@ node plugins/postgresql/dist/postgresql.mjs query myconn "SELECT * FROM users WH
 
 # Unlimited rows
 node plugins/postgresql/dist/postgresql.mjs query myconn "SELECT * FROM users" --limit=0
+
+# Copy an existing connection and only change the database name
+node plugins/postgresql/dist/postgresql.mjs copy-connection myconn analytics --database=analytics
 ```
 
 ## Features
@@ -55,5 +62,8 @@ node plugins/postgresql/dist/postgresql.mjs query myconn "SELECT * FROM users" -
 - Column introspection (`--columns`)
 - Multiple output formats (csv, table, json, compact)
 - Parameterized queries
+- Temporary database override with `--database`
+- Credential-safe connection copying with `copy-connection`
+- Browser config UI via `setup` and when configuration must be fixed
 - SSL auto-detection for non-localhost connections
 - Token-efficient defaults (limit=1, CSV format)
