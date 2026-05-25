@@ -26,6 +26,16 @@ async function writeJson(path: string, value: unknown): Promise<void> {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
+async function writePngHeader(path: string, width: number, height: number): Promise<void> {
+  const bytes = Buffer.alloc(24);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(bytes, 0);
+  bytes.writeUInt32BE(13, 8);
+  bytes.write('IHDR', 12, 'ascii');
+  bytes.writeUInt32BE(width, 16);
+  bytes.writeUInt32BE(height, 20);
+  await writeFile(path, bytes);
+}
+
 function runCli(home: string, args: string[]) {
   const cli = join(process.cwd(), 'src/new-media-ops.ts');
   const tsx = join(process.cwd(), '../../node_modules/tsx/dist/cli.mjs');
@@ -67,6 +77,85 @@ test('createDraftPackage writes a stable v1 Xiaohongshu package', async () => {
     assert.equal(pkg.files.platformCopy, 'xiaohongshu-copy.md');
     assert.deepEqual(pkg.files.images, ['cover.png']);
     assert.ok(pkg.quality.score >= 70);
+  });
+});
+
+test('createDraftPackage requires portrait local images for WeChat newspic packages', async () => {
+  await withTempDir(async (root) => {
+    const input = join(root, 'source.md');
+    const portrait = join(root, 'portrait.png');
+    const landscape = join(root, 'landscape.png');
+    await writeFile(input, '# 微信贴图\n\n靠竖屏图片输出主要观点，正文只做简短补充。\n', 'utf8');
+    await writePngHeader(portrait, 900, 1600);
+    await writePngHeader(landscape, 1600, 900);
+
+    await assert.rejects(
+      () => createDraftPackage({
+        input,
+        target: 'wechat-newspic',
+        outDir: join(root, 'packages'),
+        slug: 'landscape-card',
+        title: '横屏贴图',
+        images: [landscape],
+      }),
+      /must be portrait/,
+    );
+
+    const result = await createDraftPackage({
+      input,
+      target: 'wechat-newspic',
+      outDir: join(root, 'packages'),
+      slug: 'portrait-card',
+      title: '竖屏贴图',
+      images: [portrait],
+    });
+
+    assert.equal(result.success, true);
+    const packageDir = result.packageDir;
+    assert.ok(packageDir);
+    const pkg = JSON.parse(await readFile(join(packageDir, 'content-package.json'), 'utf8'));
+    assert.equal(pkg.target, 'wechat-newspic');
+    assert.deepEqual(pkg.files.images, [portrait]);
+    assert.equal(pkg.quality.score, 100);
+  });
+});
+
+test('createDraftPackage keeps WeChat newspic copy short and image-led', async () => {
+  await withTempDir(async (root) => {
+    const input = join(root, 'source.md');
+    const portrait = join(root, 'portrait.png');
+    await writePngHeader(portrait, 900, 1600);
+    await writeFile(input, [
+      '# 大模型不是搜索引擎',
+      '',
+      '![主图](portrait.png)',
+      '',
+      '很多人第一次用 AI，会把它当成更聪明的搜索引擎。这样用当然能问出答案，但也最容易遇到一个问题：它说得很顺，不代表它一定是真的。',
+      '',
+      '这一段是长文展开内容，解释搜索、模型、核查、改写、资料整理、协作流程和更多案例，贴图正文不应该把这些长篇内容全部塞进去。',
+      '',
+      '## 细节展开',
+      '',
+      '这里还有更多长文细节，用来确保旧实现会输出过多正文。',
+    ].join('\n'), 'utf8');
+
+    const result = await createDraftPackage({
+      input,
+      target: 'wechat-newspic',
+      outDir: join(root, 'packages'),
+      slug: 'short-copy',
+      title: '大模型不是搜索引擎',
+      images: [portrait],
+    });
+
+    const packageDir = result.packageDir;
+    assert.ok(packageDir);
+    const copy = await readFile(join(packageDir, 'wechat-newspic-copy.md'), 'utf8');
+    assert.match(copy, /^大模型不是搜索引擎/);
+    assert.match(copy, /主要观点看图/);
+    assert.doesNotMatch(copy, /!\[/);
+    assert.doesNotMatch(copy, /这一段是长文展开内容/);
+    assert.ok(copy.length <= 120, copy);
   });
 });
 
@@ -221,6 +310,8 @@ test('publish-draft dry-run accepts local image assets by using placeholder medi
     await writeFile(join(articleDir, 'article.html'), '<p>正文</p>', 'utf8');
     await writeFile(join(articleDir, 'final.md'), '# 公众号文章\n\n正文内容足够用于草稿校验。\n', 'utf8');
     await writeFile(join(newspicDir, 'final.md'), '# 微信贴图\n\n短正文内容。\n', 'utf8');
+    await writePngHeader(join(newspicDir, 'card-1.png'), 900, 1600);
+    await writePngHeader(join(newspicDir, 'card-2.png'), 900, 1600);
     await writeJson(join(articleDir, 'content-package.json'), {
       version: 1,
       slug: 'wechat-post',
@@ -236,7 +327,7 @@ test('publish-draft dry-run accepts local image assets by using placeholder medi
       title: '微信贴图',
       sourceInputs: ['input.md'],
       target: 'wechat-newspic',
-      files: { markdown: 'final.md', images: [join(root, 'card-1.png'), join(root, 'card-2.png')] },
+      files: { markdown: 'final.md', images: ['card-1.png', 'card-2.png'] },
       quality: { score: 88, warnings: [], checkedAt: new Date(0).toISOString() },
     });
     await writeJson(join(home, '.cache/agent-plugins/new-media-ops.json'), {
@@ -279,5 +370,50 @@ test('publish-draft dry-run accepts local image assets by using placeholder medi
     const parsedNewspic = JSON.parse(newspic.stdout);
     assert.equal(parsedNewspic.remote.articleType, 'newspic');
     assert.match(parsedNewspic.warnings.join('\n'), /placeholder image media IDs/);
+  });
+});
+
+test('publish-draft dry-run requires local portrait package assets for WeChat newspic', async () => {
+  await withTempDir(async (root) => {
+    const home = join(root, 'home');
+    const newspicDir = join(root, 'newspic-package');
+    await mkdir(newspicDir, { recursive: true });
+    await writeFile(join(newspicDir, 'final.md'), '# 微信贴图\n\n短正文内容。\n', 'utf8');
+    await writeJson(join(newspicDir, 'content-package.json'), {
+      version: 1,
+      slug: 'wechat-newspic',
+      title: '微信贴图',
+      sourceInputs: ['input.md'],
+      target: 'wechat-newspic',
+      files: { markdown: 'final.md' },
+      quality: { score: 88, warnings: [], checkedAt: new Date(0).toISOString() },
+    });
+    await writeJson(join(home, '.cache/agent-plugins/new-media-ops.json'), {
+      wechat: {
+        accounts: {
+          default: {
+            appId: 'wx-test-app',
+            appSecret: 'do-not-print-this-secret',
+            author: '运营',
+            publishMethod: 'api',
+          },
+        },
+      },
+    });
+
+    const result = runCli(home, [
+      'publish-draft',
+      newspicDir,
+      '--account',
+      'default',
+      '--image-media-id',
+      'existing-media-id',
+      '--dry-run',
+      '--format',
+      'json',
+    ]);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /requires at least 1 portrait image/);
   });
 });

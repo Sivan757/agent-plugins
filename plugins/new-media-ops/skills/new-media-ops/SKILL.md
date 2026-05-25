@@ -79,7 +79,9 @@ Wechat article (`wechat-article`):
 Wechat image-text (`wechat-newspic`):
 
 - Means 微信贴图 / 小绿书 / 图文消息, not sticker packs.
-- Requires 1-9 image media IDs or uploadable image files.
+- Requires 1-9 portrait image files in the package assets, even when publish uses existing media IDs.
+- Local image files must be vertical: image height must be greater than image width.
+- Keep body copy brief; the image cards should carry the main content, structure, and viewpoint.
 - Uses `article_type: "newspic"`.
 
 Xiaohongshu (`xiaohongshu`):

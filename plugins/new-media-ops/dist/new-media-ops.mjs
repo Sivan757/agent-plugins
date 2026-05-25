@@ -3463,7 +3463,7 @@ import { existsSync as existsSync3 } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { mkdir as mkdir2, readFile as readFile2, stat, writeFile as writeFile2 } from "node:fs/promises";
 import { createServer as createServer2, connect } from "node:net";
-import { basename, extname, join as join3, relative, resolve as resolve2 } from "node:path";
+import { basename, dirname as dirname3, extname, join as join3, relative, resolve as resolve2 } from "node:path";
 import { fileURLToPath as fileURLToPath2, pathToFileURL } from "node:url";
 
 // ../../node_modules/commander/esm.mjs
@@ -5231,6 +5231,89 @@ function extractMarkdownLinks(markdown) {
 function extractMarkdownHeadings(markdown) {
   return [...markdown.matchAll(/^#{1,3}\s+(.+?)\s*$/gm)].map((match) => match[1].trim());
 }
+function isHttpUrl(value) {
+  return /^https?:\/\//i.test(value);
+}
+function readUint24LE(buffer, offset) {
+  return buffer.readUIntLE(offset, 3);
+}
+function readJpegDimensions(buffer) {
+  if (buffer[0] !== 255 || buffer[1] !== 216) return void 0;
+  let offset = 2;
+  while (offset + 9 < buffer.length) {
+    if (buffer[offset] !== 255) {
+      offset += 1;
+      continue;
+    }
+    const marker = buffer[offset + 1];
+    if (marker === 217 || marker === 218) return void 0;
+    const segmentLength = buffer.readUInt16BE(offset + 2);
+    if (segmentLength < 2) return void 0;
+    const isStartOfFrame = marker >= 192 && marker <= 207 && ![196, 200, 204].includes(marker);
+    if (isStartOfFrame) {
+      return {
+        height: buffer.readUInt16BE(offset + 5),
+        width: buffer.readUInt16BE(offset + 7)
+      };
+    }
+    offset += 2 + segmentLength;
+  }
+  return void 0;
+}
+async function readImageDimensions(imagePath) {
+  const resolved = resolve2(imagePath);
+  const buffer = await readFile2(resolved);
+  if (buffer.length >= 24 && buffer[0] === 137 && buffer.toString("ascii", 1, 4) === "PNG" && buffer.toString("ascii", 12, 16) === "IHDR") {
+    return {
+      width: buffer.readUInt32BE(16),
+      height: buffer.readUInt32BE(20)
+    };
+  }
+  const jpeg = readJpegDimensions(buffer);
+  if (jpeg) return jpeg;
+  if (buffer.length >= 30 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") {
+    const chunk = buffer.toString("ascii", 12, 16);
+    if (chunk === "VP8X") {
+      return {
+        width: readUint24LE(buffer, 24) + 1,
+        height: readUint24LE(buffer, 27) + 1
+      };
+    }
+  }
+  throw new Error(`Unsupported image format for WeChat newspic portrait validation: ${imagePath}`);
+}
+function resolveDraftImagePath(imagePath, input) {
+  if (isHttpUrl(imagePath)) return imagePath;
+  if (existsSync3(imagePath)) return resolve2(imagePath);
+  if (existsSync3(input)) return resolve2(dirname3(input), imagePath);
+  return resolve2(imagePath);
+}
+async function validateWechatNewspicImages(images, options = {}) {
+  if (images.length === 0) {
+    throw new Error("wechat-newspic requires at least 1 portrait image.");
+  }
+  if (images.length > 9) {
+    throw new Error("wechat-newspic supports at most 9 images.");
+  }
+  for (const image of images) {
+    if (isHttpUrl(image)) {
+      throw new Error(`wechat-newspic image assets must be local portrait images: ${image}`);
+    }
+    const resolved = options.packageDir ? resolvePackageFile(options.packageDir, image) : resolveDraftImagePath(image, options.input || "");
+    if (!resolved) {
+      throw new Error(`wechat-newspic image path is empty: ${image}`);
+    }
+    const dimensions = await readImageDimensions(resolved);
+    if (dimensions.height <= dimensions.width) {
+      throw new Error(`wechat-newspic image must be portrait: ${image} is ${dimensions.width}x${dimensions.height}.`);
+    }
+  }
+}
+function truncateText(value, maxLength) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}\u2026`;
+}
 function scoreMarkdown(markdown, target, title, images) {
   const warnings = [];
   let score = 100;
@@ -5239,17 +5322,26 @@ function scoreMarkdown(markdown, target, title, images) {
     warnings.push("Missing title.");
     score -= 25;
   }
-  if (plainText.length < 80) {
+  if (target === "wechat-newspic") {
+    if (images.length === 0) {
+      warnings.push("WeChat image-text posts require at least one portrait image.");
+      score -= 35;
+    }
+    if (images.length > 9) {
+      warnings.push("WeChat image-text posts support at most 9 images.");
+      score -= 35;
+    }
+    if (plainText.length > 180) {
+      warnings.push("WeChat image-text copy should stay brief; move the main content and viewpoint into portrait images.");
+      score -= 15;
+    }
+  } else if (plainText.length < 80) {
     warnings.push("Content is short; review depth before staging.");
     score -= 15;
   }
   if (target === "xiaohongshu" && images.length === 0) {
     warnings.push("Xiaohongshu packages should include at least one cover or card image.");
     score -= 10;
-  }
-  if (target === "wechat-newspic" && images.length > 9) {
-    warnings.push("WeChat image-text posts support at most 9 images.");
-    score -= 35;
   }
   return {
     score: Math.max(0, Math.min(100, score)),
@@ -5326,7 +5418,17 @@ function buildXiaohongshuCopy(title, markdown) {
   ].join("\n");
 }
 function buildNewspicCopy(title, markdown) {
-  return [title, "", stripFirstHeading(markdown)].join("\n").trim();
+  const body = stripFirstHeading(markdown).replace(/```[\s\S]*?```/g, "").replace(/!\[[^\]]*]\([^)]+\)/g, "").replace(/^#{1,6}\s+.+$/gm, "").replace(/\[[^\]]+]\([^)]+\)/g, "$1").split(/\n{2,}/).map((part) => part.replace(/^[-*]\s+/gm, "").replace(/^\d+\.\s+/gm, "").replace(/^>\s?/gm, "").replace(/\s+/g, " ").trim()).find(Boolean);
+  const viewpoint = truncateText(body || title, 42);
+  return [title, "", `\u4E3B\u8981\u89C2\u70B9\u770B\u56FE\uFF1A${viewpoint}`].join("\n").trim();
+}
+function stripNewspicCopyTitle(copy, title) {
+  const withoutHeading = stripFirstHeading(copy);
+  const lines = withoutHeading.split(/\r?\n/);
+  if (lines[0]?.trim() === title.trim()) {
+    return lines.slice(1).join("\n").trim();
+  }
+  return withoutHeading.trim();
 }
 function applyCitations(markdown) {
   const refs = [];
@@ -5385,8 +5487,13 @@ async function createDraftPackage(options) {
   const slug = safeSlug(options.slug || title);
   const outDir = resolve2(options.outDir || "new-media-ops");
   const packageDir = join3(outDir, slug);
-  const images = options.images ?? extractMarkdownImages(markdown);
+  const rawImages = options.images ?? extractMarkdownImages(markdown);
+  const images = target === "wechat-newspic" ? rawImages.map((image) => resolveDraftImagePath(image, options.input)) : rawImages;
   const cover = options.cover;
+  const qualityMarkdown = target === "wechat-newspic" ? buildNewspicCopy(title, markdown) : markdown;
+  if (target === "wechat-newspic") {
+    await validateWechatNewspicImages(images, { input: options.input });
+  }
   await ensureDirectory(packageDir);
   await writeFile2(join3(packageDir, "final.md"), markdown.trimEnd() + "\n", "utf8");
   const files = {
@@ -5416,7 +5523,7 @@ async function createDraftPackage(options) {
     sourceInputs: [options.input],
     target,
     files,
-    quality: scoreMarkdown(markdown, target, title, images)
+    quality: scoreMarkdown(qualityMarkdown, target, title, images)
   };
   await writePackageJson(packageDir, contentPackage);
   writtenFiles.package = join3(packageDir, "content-package.json");
@@ -5446,11 +5553,13 @@ async function formatContentPackage(packageDir, options = {}) {
     await writeFile2(join3(packageDir, pkg.files.platformCopy), buildXiaohongshuCopy(pkg.title, markdown) + "\n", "utf8");
     writtenFiles.platformCopy = join3(packageDir, pkg.files.platformCopy);
   } else {
+    await validateWechatNewspicImages(pkg.files.images ?? [], { packageDir });
     pkg.files.platformCopy = pkg.files.platformCopy || "wechat-newspic-copy.md";
     await writeFile2(join3(packageDir, pkg.files.platformCopy), buildNewspicCopy(pkg.title, markdown) + "\n", "utf8");
     writtenFiles.platformCopy = join3(packageDir, pkg.files.platformCopy);
   }
-  pkg.quality = scoreMarkdown(markdown, pkg.target, pkg.title, pkg.files.images ?? []);
+  const qualityMarkdown = pkg.target === "wechat-newspic" ? buildNewspicCopy(pkg.title, markdown) : markdown;
+  pkg.quality = scoreMarkdown(qualityMarkdown, pkg.target, pkg.title, pkg.files.images ?? []);
   await writePackageJson(packageDir, pkg);
   writtenFiles.package = join3(packageDir, "content-package.json");
   return {
@@ -5843,7 +5952,9 @@ async function buildPayloadFromPackage(packageDir, pkg, account, options) {
     };
   }
   if (pkg.target === "wechat-newspic") {
-    const markdown = await readFile2(join3(packageDir, pkg.files.markdown), "utf8");
+    await validateWechatNewspicImages(pkg.files.images ?? [], { packageDir });
+    const contentPath = pkg.files.platformCopy ? join3(packageDir, pkg.files.platformCopy) : join3(packageDir, pkg.files.markdown);
+    const markdown = await readFile2(contentPath, "utf8");
     const imageMediaIds = options.imageMediaIds?.length ? options.imageMediaIds : options.dryRun && pkg.files.images?.length ? pkg.files.images.slice(0, 9).map((_2, index) => `__dry_run_image_media_id_${index + 1}__`) : options.imageMediaIds;
     if (!options.imageMediaIds?.length && imageMediaIds?.length) {
       warnings.push("Dry run used placeholder image media IDs for local image assets; real staging uploads each image first.");
@@ -5852,7 +5963,7 @@ async function buildPayloadFromPackage(packageDir, pkg, account, options) {
       payload: buildWechatDraftPayload({
         target: pkg.target,
         title: pkg.title,
-        markdown: stripFirstHeading(markdown),
+        markdown: stripNewspicCopyTitle(markdown, pkg.title),
         imageMediaIds
       }),
       warnings
