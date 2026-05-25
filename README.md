@@ -15,6 +15,7 @@ Works with Codex and Claude Code.
 - Keep lightweight local notebook memory across Codex and Claude Code
 - Get structured guidance for SHEIN and Temu platform APIs
 - Turn vague prompts into clear, actionable development requests
+- Plan, format, package, and stage Chinese new-media drafts for WeChat and Xiaohongshu
 
 ## Example Workflows
 
@@ -28,6 +29,7 @@ These are the kinds of jobs this collection is built for:
 - "Remember this project pitfall in the local notebook"
 - "Explain the Temu order and webhook flow"
 - "Rewrite this rough feature request into a precise coding prompt"
+- "Turn this article into a WeChat Official Account draft package"
 
 ## Browse The Collection
 
@@ -55,6 +57,12 @@ These are the kinds of jobs this collection is built for:
 | Plugin | What it does |
 | --- | --- |
 | [prompt-enhancer](plugins/prompt-enhancer) | Rewrite vague prompts into clear, actionable development requests |
+
+### Operate content workflows
+
+| Plugin | What it does |
+| --- | --- |
+| [new-media-ops](plugins/new-media-ops) | Plan, draft, format, package, and safely stage Chinese new-media content for WeChat and Xiaohongshu |
 
 ### Manage personal execution
 
@@ -111,7 +119,7 @@ References:
 
 Most plugin repositories either focus on one client or treat the plugin code as an implementation detail hidden behind internal tooling. This repository takes the opposite approach: the plugin collection is the product.
 
-The shared source tree matters because it keeps the plugins easier to maintain, but that is not the main value proposition. The main value proposition is that this repository collects practical plugins for logs, databases, task management, code search, and API-heavy workflows in one place.
+The shared source tree matters because it keeps the plugins easier to maintain, but that is not the main value proposition. The main value proposition is that this repository collects practical plugins for logs, databases, task management, code search, content operations, and API-heavy workflows in one place.
 
 ## Repository Layout
 
