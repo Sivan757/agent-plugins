@@ -3842,6 +3842,42 @@ var TICKTICK_CONFIG_UI = {
     state: { host: "ticktick.com", username: "", password: "" }
   }
 };
+var FETCH_RETRY_ATTEMPTS = 3;
+var FETCH_RETRY_DELAY_MS = 350;
+function isTransientFetchError(error) {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  const cause = error.cause;
+  const causeCode = String(cause?.code || "").toLowerCase();
+  const causeMessage = String(cause?.message || "").toLowerCase();
+  return [
+    "fetch failed",
+    "network",
+    "socket",
+    "timeout",
+    "econnreset",
+    "econnrefused",
+    "etimedout",
+    "enotfound"
+  ].some((needle) => message.includes(needle) || causeCode.includes(needle) || causeMessage.includes(needle));
+}
+async function sleep(ms) {
+  await new Promise((resolve2) => setTimeout(resolve2, ms));
+}
+async function fetchWithRetry(url, init, label) {
+  let lastError;
+  for (let attempt = 1; attempt <= FETCH_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      lastError = error;
+      if (!isTransientFetchError(error) || attempt === FETCH_RETRY_ATTEMPTS) break;
+      await sleep(FETCH_RETRY_DELAY_MS * attempt);
+    }
+  }
+  const message = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`${label} failed after ${FETCH_RETRY_ATTEMPTS} attempts: ${message}`);
+}
 async function getV2Token(config, HOST, X_DEVICE) {
   const API_V2 = `https://api.${HOST}/api/v2`;
   if (existsSync3(SESSION_CACHE)) {
@@ -3851,7 +3887,7 @@ async function getV2Token(config, HOST, X_DEVICE) {
     } catch {
     }
   }
-  const resp = await fetch(`${API_V2}/user/signon?wc=true&remember=true`, {
+  const resp = await fetchWithRetry(`${API_V2}/user/signon?wc=true&remember=true`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -3862,7 +3898,7 @@ async function getV2Token(config, HOST, X_DEVICE) {
       username: config.username,
       password: config.password
     })
-  });
+  }, "V2 auth");
   if (!resp.ok) {
     const text = await resp.text();
     let msg;
@@ -3906,7 +3942,7 @@ async function v2(method, path, body, config, API_V2, HOST, X_DEVICE) {
   const headers = await v2Headers(config, HOST, X_DEVICE);
   const opts = { method, headers };
   if (body !== void 0) opts.body = JSON.stringify(body);
-  const resp = await fetch(`${API_V2}${path}`, opts);
+  const resp = await fetchWithRetry(`${API_V2}${path}`, opts, `V2 API ${method} ${path}`);
   if (!resp.ok) {
     const text2 = await resp.text();
     console.error(`API error ${resp.status}: ${text2}`);
@@ -3919,7 +3955,7 @@ async function v1(method, path, body, config, API_V1) {
   const headers = v1Headers(config);
   const opts = { method, headers };
   if (body !== void 0) opts.body = JSON.stringify(body);
-  const resp = await fetch(`${API_V1}${path}`, opts);
+  const resp = await fetchWithRetry(`${API_V1}${path}`, opts, `V1 API ${method} ${path}`);
   if (!resp.ok) {
     const text2 = await resp.text();
     console.error(`API error ${resp.status}: ${text2}`);
@@ -4229,7 +4265,7 @@ async function authFlow(config, HOST) {
       return;
     }
     try {
-      const tokenResp = await fetch(`https://${HOST}/oauth/token`, {
+      const tokenResp = await fetchWithRetry(`https://${HOST}/oauth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -4240,7 +4276,7 @@ async function authFlow(config, HOST) {
           redirect_uri: REDIRECT_URI,
           scope: SCOPE
         }).toString()
-      });
+      }, "OAuth token exchange");
       const tokenData = await tokenResp.json();
       if (tokenData.access_token) {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });

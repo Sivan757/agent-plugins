@@ -2,6 +2,58 @@
 
 General repository guidelines for maintaining the shared plugin source and release trees.
 
+## Product Design Principles
+
+Agent Plugins follows a "smart Agent, simple tool" architecture. Plugins are execution bodies and sensors; the Agent is the reasoning layer. A plugin should do the action, observe the environment, and return enough context for the Agent to decide the next step. Do not turn plugins into hidden agents with complex self-healing state machines, broad retry loops, or local transaction managers.
+
+### Interface Shape
+
+- Prefer coarse-grained scenario commands as the golden path. A useful command should complete a real workflow end to end, such as "package and stage a WeChat draft" rather than exposing only "upload image" and "create article" as unrelated commands.
+- Keep fine-grained primitive commands only as fallback surfaces for inspection, manual compensation, or unusual edge cases. Primitive commands are not the product API by themselves.
+- Do not map third-party APIs one-to-one unless the plugin is explicitly a low-level diagnostic adapter. Raw endpoint wrappers increase planning entropy and usually make the Agent do avoidable orchestration.
+- Use names that describe user intent and workflow outcomes, not vendor endpoint names. Expose vendor IDs only when the user or a later command truly needs them.
+
+### Error Feedback
+
+- Fail fast when an operation cannot continue. Do not silently mask failures with hidden retries, local rollbacks, or alternate flows unless the command explicitly documents that behavior.
+- Error output must include actionable context. When an Agent likely hallucinated an argument, return nearby ground truth with the error. Examples: existing database columns for an unknown column, available projects/columns for an unknown TickTick target, valid account names for a missing account, or matching candidates for a not-found ID.
+- Prefer returning the next viable command or corrective input shape over generic failure text. The goal is not for the tool to decide; the goal is to give the Agent a precise path for reflection and recovery.
+- Keep sensitive values out of diagnostics. Redact tokens, passwords, cookies, and full secret-bearing URLs.
+
+### Evolution And Idempotency
+
+- Apply YAGNI. Do not build local distributed transactions, broad idempotency stores, or cleanup schedulers before real failures justify them.
+- Delegate idempotency, deduplication, and conflict handling to the upstream service when the service already provides it.
+- Add fine-grained rollback or repair commands only after real dirty data appears and blocks useful work. Document the dirty-state symptom that justified the addition.
+
+## Script-Backed Quality Gates
+
+Some repository constraints are already enforced by scripts. Others are design-quality constraints that should be added to validators when they become stable enough to enforce.
+
+### Already Enforced
+
+| Constraint | Script gate |
+| --- | --- |
+| `plugin.config.ts` is the metadata source of truth | `npm run generate:plugins`, `npm run validate:plugin-metadata` |
+| Generated installable artifacts under `plugins/` match source metadata and release shape | `npm run pack:plugins`, `npm run validate:plugin-packs` |
+| Claude manifest directories stay minimal and paths stay rooted in the plugin | `npm run validate:claude-layout` |
+| Claude auto-discovery conventions for commands, agents, hooks, and MCP are respected | `npm run validate:claude-layout` |
+| Codex manifest paths use supported root-standard locations and point at real files | `npm run validate:codex-layout` |
+| Marketplace entries exist and follow the local source/path policy | `npm run validate:marketplace` |
+| Plugin versions stay consistent across source metadata and generated manifests | `npm run validate:versions` |
+| Shared metadata generation and packing behavior stays regression-tested | `bun test ./.github/scripts/tests` |
+
+### Scriptable Next
+
+| Design constraint | Suggested script gate |
+| --- | --- |
+| Each command-line plugin has at least one coarse-grained scenario command, not only primitive endpoint wrappers | Add a validator that checks `plugin.config.ts` capabilities/default prompts and command help for workflow verbs such as `stage`, `publish-draft`, `copy-connection`, `doctor`, `inspect`, or plugin-specific golden paths |
+| Error feedback includes corrective context for likely Agent hallucinations | Require per-plugin tests for known failure modes; examples include unknown SQL column returning actual columns, missing project returning available projects, and missing account returning configured account names |
+| Primitive commands are documented as fallback or diagnostic surfaces | Add a docs validator that scans each plugin README/SKILL for "Golden path" and "Fallback primitives" sections when a plugin exposes more than one command group |
+| Tools fail fast instead of hiding broad self-healing behavior | Add a static heuristic that flags retry loops, rollback flows, and catch-all recovery blocks unless the command name or docs explicitly mark them as transport retry, dry-run, repair, or rollback |
+| Diagnostics do not leak secrets | Add snapshot tests or a redaction validator for common secret keys in command output fixtures |
+| Scenario commands avoid forcing users to handle vendor-internal IDs between adjacent steps | Add review checks for multi-step workflows where one command output is only useful as the next command's required input; prefer a composed command when that pattern appears |
+
 ## Source of Truth
 
 - Local plugin implementations live under `src/`

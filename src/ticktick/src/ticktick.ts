@@ -94,6 +94,48 @@ interface V2ErrorResponse {
   errorCode?: string;
 }
 
+const FETCH_RETRY_ATTEMPTS = 3;
+const FETCH_RETRY_DELAY_MS = 350;
+
+function isTransientFetchError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  const cause = error.cause as { code?: string; message?: string } | undefined;
+  const causeCode = String(cause?.code || '').toLowerCase();
+  const causeMessage = String(cause?.message || '').toLowerCase();
+
+  return [
+    'fetch failed',
+    'network',
+    'socket',
+    'timeout',
+    'econnreset',
+    'econnrefused',
+    'etimedout',
+    'enotfound',
+  ].some((needle) => message.includes(needle) || causeCode.includes(needle) || causeMessage.includes(needle));
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url: string, init: RequestInit, label: string): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= FETCH_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      lastError = error;
+      if (!isTransientFetchError(error) || attempt === FETCH_RETRY_ATTEMPTS) break;
+      await sleep(FETCH_RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  const message = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`${label} failed after ${FETCH_RETRY_ATTEMPTS} attempts: ${message}`);
+}
+
 async function getV2Token(config: TickTickConfig, HOST: string, X_DEVICE: string): Promise<V2Session> {
   const API_V2 = `https://api.${HOST}/api/v2`;
 
@@ -105,7 +147,7 @@ async function getV2Token(config: TickTickConfig, HOST: string, X_DEVICE: string
     } catch { }
   }
 
-  const resp = await fetch(`${API_V2}/user/signon?wc=true&remember=true`, {
+  const resp = await fetchWithRetry(`${API_V2}/user/signon?wc=true&remember=true`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -116,7 +158,7 @@ async function getV2Token(config: TickTickConfig, HOST: string, X_DEVICE: string
       username: config.username,
       password: config.password,
     }),
-  });
+  }, 'V2 auth');
 
   if (!resp.ok) {
     const text = await resp.text();
@@ -173,7 +215,7 @@ async function v2(
   const headers = await v2Headers(config, HOST, X_DEVICE);
   const opts: RequestInit = { method, headers };
   if (body !== undefined) opts.body = JSON.stringify(body);
-  const resp = await fetch(`${API_V2}${path}`, opts);
+  const resp = await fetchWithRetry(`${API_V2}${path}`, opts, `V2 API ${method} ${path}`);
   if (!resp.ok) {
     const text = await resp.text();
     console.error(`API error ${resp.status}: ${text}`);
@@ -193,7 +235,7 @@ async function v1(
   const headers = v1Headers(config);
   const opts: RequestInit = { method, headers };
   if (body !== undefined) opts.body = JSON.stringify(body);
-  const resp = await fetch(`${API_V1}${path}`, opts);
+  const resp = await fetchWithRetry(`${API_V1}${path}`, opts, `V1 API ${method} ${path}`);
   if (!resp.ok) {
     const text = await resp.text();
     console.error(`API error ${resp.status}: ${text}`);
@@ -636,7 +678,7 @@ async function authFlow(config: TickTickConfig, HOST: string): Promise<void> {
     }
 
     try {
-      const tokenResp = await fetch(`https://${HOST}/oauth/token`, {
+      const tokenResp = await fetchWithRetry(`https://${HOST}/oauth/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -647,7 +689,7 @@ async function authFlow(config: TickTickConfig, HOST: string): Promise<void> {
           redirect_uri: REDIRECT_URI,
           scope: SCOPE,
         }).toString(),
-      });
+      }, 'OAuth token exchange');
       const tokenData = await tokenResp.json() as { access_token?: string };
       if (tokenData.access_token) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
