@@ -1366,7 +1366,7 @@ async function main(): Promise<void> {
   program
     .name('new-media-ops')
     .description('Draft-first new-media operations for WeChat and Xiaohongshu')
-    .version('0.1.0');
+    .version('0.1.1');
 
   program
     .command('setup')
