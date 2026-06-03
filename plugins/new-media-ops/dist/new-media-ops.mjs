@@ -6047,7 +6047,7 @@ async function inspectPackage(packageDir, format) {
 }
 async function main() {
   const program2 = new Command();
-  program2.name("new-media-ops").description("Draft-first new-media operations for WeChat and Xiaohongshu").version("0.1.1");
+  program2.name("new-media-ops").description("Draft-first new-media operations for WeChat and Xiaohongshu").version("0.1.2");
   program2.command("setup").description("Open the browser configuration form").action(async () => {
     await launchConfigUI(PLUGIN_NAME, CONFIG_UI);
   });

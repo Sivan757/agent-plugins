@@ -54,6 +54,8 @@ npm run dev --workspace new-media-ops -- --help
 
 3. Prepare visuals and assets.
    - For WeChat image-text / Xiaolushu, the image cards carry the main content and viewpoint; body copy stays short.
+   - When creating platform-bound teaching illustrations, WeChat article images, or image-text cards, use the `imagegen` skill and built-in `image_gen` tool as the image source.
+   - Do not substitute SVG, HTML, canvas, Mermaid, or other code-native/vector drawing workflows for platform-bound images unless the user explicitly asks for that exception.
    - Enforce portrait assets before packaging: height must be greater than width, ideally 9:16.
    - Do not use local image paths in platform content.
    - When the user requires PicGo, upload platform images through the local PicGo endpoint such as `http://127.0.0.1:36677/upload` and record the returned remote URLs.
@@ -105,6 +107,7 @@ Wechat image-text (`wechat-newspic`):
 
 - Means 微信贴图 / 小绿书 / 图文消息, not sticker packs.
 - Requires 1-9 portrait image files in the package assets, even when publish uses existing media IDs.
+- Image cards must be generated from `imagegen`; SVG or code-rendered cards are not acceptable as default production assets.
 - Local image files must be vertical: image height must be greater than image width.
 - Keep body copy brief; the image cards should carry the main content, structure, and viewpoint.
 - Reject text-heavy image-text bodies; the post should read mainly through the cards.
@@ -123,6 +126,7 @@ Before staging, check:
 - Quality score is at least 70.
 - Claims and current facts have source notes or a verification TODO.
 - WeChat cover and image constraints are satisfied.
+- Platform-bound visuals were produced from `imagegen`, with no SVG/code-rendered substitute unless explicitly requested.
 - No platform content references local image paths.
 - WeChat article inline images use stable remote URLs, preferably WeChat-uploaded image URLs.
 - WeChat preview has been checked after staging; if automation is blocked, require a user screenshot or explicit manual confirmation.
