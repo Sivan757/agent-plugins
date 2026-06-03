@@ -44,12 +44,14 @@ npm run dev --workspace new-media-ops -- --help
    - For planned original content, create a topic card first: reader scenario, core problem, one-sentence reader gain, concept, plain-language metaphor, visual idea, fact risks, and target channels.
    - Prefer topics that score well for ordinary-reader relevance, metaphor strength, visual explainability, reuse potential, and risk control.
    - Do not draft immediately when the user only asked for analysis.
+   - When a user corrects a draft or preview issue, treat it as process evidence: update the relevant skill, project SOP, workflow, template, or checker instead of storing project-specific standards in global memory.
 
 2. Draft with review stages.
    - Create or ask for a brief before long-form writing.
    - Produce `draft-v1.md`, then revise for structure, facts, platform fit, and human tone.
    - For ordinary-reader AI education, explain technical terms with plain language and life metaphors; avoid empty hype phrases.
    - Split the same theme into separate channel assets when needed: long-form article for durable explanation, image-text post for light reading and viewpoint delivery.
+   - For WeChat image-text / Xiaolushu body copy, stay concise but not empty: include the core judgment, one short metaphor or reason, and one reader action. Do not use "主要观点看图" or similar as the whole body.
    - Keep user-provided style samples local; do not fetch private materials automatically.
 
 3. Prepare visuals and assets.
@@ -68,13 +70,17 @@ npm run dev --workspace new-media-ops -- --help
    - For WeChat Official Account articles, do not rely on local Markdown preview alone; WeChat may strip or alter styles.
    - Avoid full-page tinted backgrounds unless the WeChat preview has confirmed they render cleanly.
    - Render section headings, images, lists, and code blocks with inline WeChat-compatible styles.
+   - Article body content must not repeat the platform title as an in-body H1. If the Markdown starts with the title, remove or skip that first H1 before staging.
+   - Before the first major section, add light structure when needed, such as a short subheading, note, or setup block; avoid an unstructured wall of opening paragraphs.
+   - Blockquotes should render as readable notes with background or border treatment, not oversized centered headlines unless the user explicitly asks for that style.
 
 5. Stage drafts only.
    - For WeChat article drafts, use `publish-draft` with `--dry-run` first, then API staging only when credentials and media IDs or local images are ready.
    - For WeChat image-text / Xiaolushu, enforce 1-9 images and map to `article_type: "newspic"`.
    - For Xiaohongshu, generate title, body, tags, and image-card assets; use available browser tools only to fill a draft, leaving final posting to the user.
    - After staging a WeChat draft, require preview validation before handoff for scheduled send or mass-send confirmation.
-   - Record package path, uploaded image URLs, media IDs, preview URL, preview status, reviewer, and issue notes.
+   - After staging a WeChat draft, read it back when possible with platform APIs or opencli and verify article type, title, image counts, body image URLs, and known style risk checks.
+   - Record the latest package path, uploaded image URLs, media IDs, readback result, preview URL, preview status, reviewer, issue notes, and whether this draft supersedes an older media ID.
 
 6. Use OpenCLI only as a backend assistant.
    - Run `opencli doctor` before browser-dependent WeChat backend operations.
@@ -101,6 +107,9 @@ Wechat article (`wechat-article`):
 - Uses `article_type: "news"`.
 - Markdown links should usually become bottom citations for WeChat-friendly output.
 - Article body images must not be local paths; use remote image URLs, and prefer WeChat `media/uploadimg` URLs for inline body images.
+- The article body must not contain a repeated in-body title or `<h1>` after WeChat's platform title.
+- Intro paragraphs should not be silently promoted to large or bold lead text unless deliberately designed and verified in preview.
+- Blockquotes, lists, code blocks, section headings, and image captions need explicit inline styles.
 - Preview must show styled section headings, readable lists/code blocks, visible images, and a clean mobile background before publish handoff.
 
 Wechat image-text (`wechat-newspic`):
@@ -109,8 +118,9 @@ Wechat image-text (`wechat-newspic`):
 - Requires 1-9 portrait image files in the package assets, even when publish uses existing media IDs.
 - Image cards must be generated from `imagegen`; SVG or code-rendered cards are not acceptable as default production assets.
 - Local image files must be vertical: image height must be greater than image width.
-- Keep body copy brief; the image cards should carry the main content, structure, and viewpoint.
+- Keep body copy brief but meaningful; it should state the viewpoint, why it matters, and what the reader should do next.
 - Reject text-heavy image-text bodies; the post should read mainly through the cards.
+- Also reject empty or perfunctory bodies such as "主要观点看图" when they do not explain the viewpoint.
 - Uses `article_type: "newspic"`.
 
 Xiaohongshu (`xiaohongshu`):
@@ -129,6 +139,9 @@ Before staging, check:
 - Platform-bound visuals were produced from `imagegen`, with no SVG/code-rendered substitute unless explicitly requested.
 - No platform content references local image paths.
 - WeChat article inline images use stable remote URLs, preferably WeChat-uploaded image URLs.
+- WeChat article HTML has no repeated in-body title or `<h1>`, no accidental oversized lead paragraph, and no unstyled blockquote.
+- WeChat image-text body is concise but has a real viewpoint, not a placeholder instruction to look at the images.
+- Staged WeChat drafts were read back when possible, and the latest media ID is recorded as superseding any older draft.
 - WeChat preview has been checked after staging; if automation is blocked, require a user screenshot or explicit manual confirmation.
 - OpenCLI browser profile is selected before backend automation when multiple profiles are connected.
 - Xiaohongshu title/body/tags fit the platform plan.

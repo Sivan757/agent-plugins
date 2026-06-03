@@ -2,7 +2,7 @@ import type { PluginConfig } from "../../scripts/plugin-config";
 
 export default {
   name: "new-media-ops",
-  version: "0.1.2",
+  version: "0.1.3",
   description: "Plans, drafts, formats, packages, and safely stages Chinese new-media content for WeChat Official Account, WeChat image-text posts, and Xiaohongshu.",
   author: { name: "Agent Plugins" },
   keywords: ["new-media", "wechat", "xiaohongshu", "markdown", "content", "drafts", "publishing"],

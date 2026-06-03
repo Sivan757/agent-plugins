@@ -1,6 +1,6 @@
 {
   "name": "new-media-ops",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "scripts": {
     "build": "bash ../../scripts/build-plugin.sh src/new-media-ops.ts ../../.build/plugin-dist/new-media-ops/dist/new-media-ops.mjs",
