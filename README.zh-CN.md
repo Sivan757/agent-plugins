@@ -58,12 +58,6 @@
 | --- | --- |
 | [prompt-enhancer](plugins/prompt-enhancer) | 将模糊提示词改写成清晰、可执行的开发请求 |
 
-### 内容运营
-
-| 插件 | 作用 |
-| --- | --- |
-| [new-media-ops](plugins/new-media-ops) | 规划、撰写、排版、打包并安全暂存微信公众号、微信贴图和小红书内容 |
-
 ### 个人执行管理
 
 | 插件 | 作用 |

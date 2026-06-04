@@ -58,12 +58,6 @@ These are the kinds of jobs this collection is built for:
 | --- | --- |
 | [prompt-enhancer](plugins/prompt-enhancer) | Rewrite vague prompts into clear, actionable development requests |
 
-### Operate content workflows
-
-| Plugin | What it does |
-| --- | --- |
-| [new-media-ops](plugins/new-media-ops) | Plan, draft, format, package, and safely stage Chinese new-media content for WeChat and Xiaohongshu |
-
 ### Manage personal execution
 
 | Plugin | What it does |

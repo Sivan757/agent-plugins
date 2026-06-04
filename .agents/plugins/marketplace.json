@@ -53,18 +53,6 @@
       "category": "Coding"
     },
     {
-      "name": "new-media-ops",
-      "source": {
-        "source": "local",
-        "path": "./plugins/new-media-ops"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "notebook",
       "source": {
         "source": "local",

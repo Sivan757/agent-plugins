@@ -35,12 +35,6 @@
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     },
     {
-      "name": "new-media-ops",
-      "version": "0.1.3",
-      "source": "./plugins/new-media-ops",
-      "description": "New-media operations workflow for analysis, writing, formatting, and draft-only staging on WeChat and Xiaohongshu."
-    },
-    {
       "name": "notebook",
       "version": "0.1.2",
       "source": "./plugins/notebook",
