@@ -160,11 +160,15 @@ For each of the 8 source skills:
 
 All new plugins start at `0.1.0`. Rewritten existing plugins: bump patch for the refactor (e.g. ticktick 0.6.4→0.6.5) — content of the bump is the import-path + cache-layout migration.
 
+## Resolved decisions
+
+1. **Cross-plugin invocation — workspace import (recommended, confirmed).** Credentialed skill plugins do NOT shell out to `config-center`; they bundle `@agent-plugins/config-center` as a workspace dependency and `import` the shared helper in-process. This keeps each plugin self-contained (`${CLAUDE_PLUGIN_ROOT}` resolves correctly), avoids cross-plugin path fragility, and respects the "Agent never touches cache" rule — the plugin reads plaintext, never the Agent. `config-center` the *standalone plugin* is reserved for the human-facing UI (`init`/`edit`) and the Agent's redacted `get`/`show` confirmation tool.
+2. **Codex `agents/openai.yaml` stubs — drop (recommended, confirmed).** They are Codex-CLI interface stubs, not Claude-format agents. Not carried into plugin source. The generator emits Codex `interface` metadata from `plugin.config.ts` when needed.
+3. **prompt-forge `serve` local web viewer — keep, marked optional (recommended, confirmed).** Retain `pf serve` in the TS port for the corpora-rating/browsing workflow; flagged optional so it can be pruned later without breaking the core CLI.
+
 ## Open Questions
 
-1. **Cross-plugin CLI invocation path.** A temu-api SKILL tells the Agent to run `config-center get temu-*`. But the Agent's `${CLAUDE_PLUGIN_ROOT}` resolves to temu-api's own root, not config-center's. Options: (a) the 4 rewritten CLIs bundle config-center as a workspace dep so each can `import` the helper directly from within their own `dist` (no cross-plugin shell call — preferred; Agent only invokes the *current* plugin's CLI which internally calls the shared helper); (b) document a marketplace-resolved cross-plugin path. **Recommend (a): credentialed skill plugins don't invoke config-center by shell; config-center is a separate standalone plugin only for the human-facing UI and the `get`/`show` confirmation tool.** Need user confirmation.
-2. **`agents/openai.yaml` Codex stubs.** Drop them entirely (these skills ship as Claude plugins; Codex interface stubs are not Claude agents), or regenerate minimal Codex-compatible stubs from `plugin.config.ts` `interface` field during `generate:plugins`. Current generator already supports `interface`. Recommend: drop the stubs, rely on generator-produced `interface` if Codex is ever needed.
-3. **prompt-forge serve.** Keep the local web viewer as `pf serve`, or drop it (YAGNI) and let the Agent query via CLI only? Recommend keep-but-mark-optional in v0.1.0, since the corpora rating workflow benefits from browsing; can be pruned later.
+(none remaining)
 
 ## Scope decomposition note
 
