@@ -29,6 +29,18 @@
       "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu (124 endpoints) with full parameter specs, signing algorithms, and integration patterns"
     },
     {
+      "name": "ffmpeg",
+      "version": "0.1.0",
+      "source": "./plugins/ffmpeg",
+      "description": "Generate, execute, and verify FFmpeg and ffprobe commands for video, audio, and image media processing. Use when the user needs to compress, transcode, trim, crop, scale, extract frames, create thumbnails, watermark, concatenate, create HLS, remove or extract audio, convert formats, denoise, normalize loudness, merge media, compose complex layouts, animate overlays, or view/edit metadata for video, audio, image, WebP, GIF, or APNG files."
+    },
+    {
+      "name": "magick",
+      "version": "0.1.0",
+      "source": "./plugins/magick",
+      "description": "Generate, execute, and verify ImageMagick magick, mogrify, identify, compare, composite, and montage workflows for image conversion, resizing, compression, normalization, clothing mockup overlays, watermarks, labels, contact sheets, chroma-key transparency and print cutouts, metadata, visual QA, PDF/SVG rasterization, and delegate/format troubleshooting."
+    },
+    {
       "name": "mysql",
       "version": "0.11.2",
       "source": "./plugins/mysql",
@@ -39,6 +51,12 @@
       "version": "0.5.3",
       "source": "./plugins/postgresql",
       "description": "Enables AI to execute SQL queries against PostgreSQL databases via Node.js with multi-connection support for schema inspection and discovery."
+    },
+    {
+      "name": "real-esrgan",
+      "version": "0.1.0",
+      "source": "./plugins/real-esrgan",
+      "description": "Local Real-ESRGAN image super-resolution and clarity workflows using realesrgan-ncnn-vulkan, Upscayl-adjacent outputs, and ImageMagick verification. Use when the user needs to upscale, enhance, or compare raster images, transparent cutouts, print-ready PNG artwork, product/social/ecommerce images, AI-generated images, or batch image folders while preserving alpha, DPI metadata, canvas placement, and reproducible quality checks."
     },
     {
       "name": "shopify-ai-toolkit",
