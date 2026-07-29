@@ -10,14 +10,14 @@
  *   node mysql.mjs test [name]                      Test connection(s)
  *   node mysql.mjs init                             Create template config
  *
- * Config: ~/.cache/agent-plugins/mysql.json
+ * Config: ~/.cache/agent-plugins/mysql/config.json
  */
 
 import mysql from 'mysql2/promise';
 import { Command } from 'commander';
 
-import { requireConfigWithSetup, saveConfig, configPath } from '@agent-plugins/core';
-import type { ConfigUIOptions } from '@agent-plugins/core';
+import { requireConfigWithSetup, saveConfig, configPath } from '@agent-plugins/config-center';
+import type { ConfigUIOptions } from '@agent-plugins/config-center';
 
 const DEFAULT_ROW_LIMIT = 1;
 const DEFAULT_COL_WIDTH = 40;
