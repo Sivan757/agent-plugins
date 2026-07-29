@@ -10,11 +10,8 @@ Works with Codex and Claude Code.
 
 - Investigate production issues from Alibaba Cloud logs
 - Query MySQL and PostgreSQL directly from your agent workflow
-- Search unfamiliar codebases semantically through MCP
 - Manage TickTick tasks, habits, and focus workflows
-- Keep lightweight local notebook memory across Codex and Claude Code
 - Get structured guidance for SHEIN and Temu platform APIs
-- Turn vague prompts into clear, actionable development requests
 - Plan, format, package, and stage Chinese new-media drafts for WeChat and Xiaohongshu
 
 ## Example Workflows
@@ -26,9 +23,7 @@ These are the kinds of jobs this collection is built for:
 - "Run this MySQL query against the reporting database"
 - "Find where this service builds auth headers"
 - "Create a TickTick task for today's release checklist"
-- "Remember this project pitfall in the local notebook"
 - "Explain the Temu order and webhook flow"
-- "Rewrite this rough feature request into a precise coding prompt"
 - "Turn this article into a WeChat Official Account draft package"
 
 ## Browse The Collection
@@ -46,24 +41,45 @@ These are the kinds of jobs this collection is built for:
 | [mysql](plugins/mysql) | Run MySQL queries with multi-connection support |
 | [postgresql](plugins/postgresql) | Run PostgreSQL queries with schema discovery and parameterized queries |
 
-### Search code and context
+### Process media
 
 | Plugin | What it does |
 | --- | --- |
-| [augment-mcp](plugins/augment-mcp) | Connect Augment Context Engine as an MCP server for semantic codebase search |
+| [ffmpeg](plugins/ffmpeg) | Build and verify FFmpeg/ffprobe commands for video, audio, and image media |
+| [magick](plugins/magick) | Build ImageMagick workflows for conversion, resizing, mockups, and compositing |
+| [real-esrgan](plugins/real-esrgan) | Upscale and enhance raster images with Real-ESRGAN, verified via ImageMagick |
+| [withoutbg](plugins/withoutbg) | Remove image backgrounds with the withoutbg CLI |
 
-### Shape requests
+### Manage prompts
 
 | Plugin | What it does |
 | --- | --- |
-| [prompt-enhancer](plugins/prompt-enhancer) | Rewrite vague prompts into clear, actionable development requests |
+| [prompt-forge](plugins/prompt-forge) | Image-generation prompt library with RAG search, synthesis, and rating over a local SQLite DB |
+
+### Work with Temu
+
+| Plugin | What it does |
+| --- | --- |
+| [temu-api](plugins/temu-api) | Reference for Temu Partner/OpenAPI integrations: signing, gateways, and API maps |
+| [temu-dev](plugins/temu-dev) | Reference for Temu Partner developer docs and implementation planning |
+
+### Get advice
+
+| Plugin | What it does |
+| --- | --- |
+| [consulting-advisor](plugins/consulting-advisor) | Structured cross-domain consulting using authoritative frameworks |
 
 ### Manage personal execution
 
 | Plugin | What it does |
 | --- | --- |
-| [notebook](plugins/notebook) | Keep local Markdown notebook memory with startup context, audits, and transcript-backed insights |
 | [ticktick](plugins/ticktick) | Manage TickTick tasks, projects, habits, and productivity workflows |
+
+### Manage credentials
+
+| Plugin | What it does |
+| --- | --- |
+| [config-center](plugins/config-center) | Manage plugin credentials and env config; redacted reads, browser-UI edits |
 
 ### Work with commerce APIs
 

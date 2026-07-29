@@ -12,9 +12,7 @@
 - 在 Agent 工作流里直接查询 MySQL 和 PostgreSQL
 - 通过 MCP 对陌生代码库做语义搜索
 - 管理 TickTick 任务、习惯和专注流程
-- 在 Codex 和 Claude Code 之间维护轻量级本地笔记本记忆
 - 获取 SHEIN 和 Temu 平台 API 的结构化使用指引
-- 把模糊提示词改写成清晰、可执行的开发请求
 - 规划、排版、打包并安全暂存微信公众号和小红书内容草稿
 
 ## 示例工作流
@@ -26,9 +24,7 @@
 - “在 reporting 数据库上执行这条 MySQL 查询”
 - “找一下这个服务是在哪里拼 auth header 的”
 - “给今天的发布清单创建一个 TickTick 任务”
-- “把这个项目坑点记到本地 notebook 里”
 - “解释一下 Temu 订单接口和 webhook 流程”
-- “把这个粗略功能需求改写成精确的编码提示词”
 - “把这篇文章整理成微信公众号草稿包”
 
 ## 插件分类
@@ -46,24 +42,45 @@
 | [mysql](plugins/mysql) | 支持多连接配置的 MySQL 查询 |
 | [postgresql](plugins/postgresql) | 支持 schema 发现和参数化查询的 PostgreSQL 查询 |
 
-### 代码与上下文搜索
+### 媒体处理
 
 | 插件 | 作用 |
 | --- | --- |
-| [augment-mcp](plugins/augment-mcp) | 通过 MCP 接入 Augment Context Engine，实现语义级代码搜索 |
+| [ffmpeg](plugins/ffmpeg) | 构建并校验 FFmpeg/ffprobe 视频、音频、图像处理命令 |
+| [magick](plugins/magick) | 构建 ImageMagick 转换、缩放、样图与合成工作流 |
+| [real-esrgan](plugins/real-esrgan) | 用 Real-ESRGAN 放大增强位图，ImageMagick 校验 |
+| [withoutbg](plugins/withoutbg) | 用 withoutbg CLI 去除图片背景 |
 
-### 请求整理
+### 提示词管理
 
 | 插件 | 作用 |
 | --- | --- |
-| [prompt-enhancer](plugins/prompt-enhancer) | 将模糊提示词改写成清晰、可执行的开发请求 |
+| [prompt-forge](plugins/prompt-forge) | 生图提示词库，基于本地 SQLite 的 RAG 检索、合成与评分 |
+
+### Temu 集成
+
+| 插件 | 作用 |
+| --- | --- |
+| [temu-api](plugins/temu-api) | Temu Partner/OpenAPI 集成参考：签名、网关与 API 地图 |
+| [temu-dev](plugins/temu-dev) | Temu Partner 开发文档与实现规划参考 |
+
+### 咨询建议
+
+| 插件 | 作用 |
+| --- | --- |
+| [consulting-advisor](plugins/consulting-advisor) | 用权威框架进行结构化跨领域咨询 |
 
 ### 个人执行管理
 
 | 插件 | 作用 |
 | --- | --- |
-| [notebook](plugins/notebook) | 使用本地 Markdown 笔记本保存启动上下文、审计结果和基于会话来源的洞察 |
 | [ticktick](plugins/ticktick) | 管理 TickTick 任务、项目、习惯和效率流程 |
+
+### 凭证管理
+
+| 插件 | 作用 |
+| --- | --- |
+| [config-center](plugins/config-center) | 管理插件账密与环境配置；读取脱敏，修改经浏览器 UI |
 
 ### 电商平台 API 能力
 

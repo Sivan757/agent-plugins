@@ -3,14 +3,20 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*",
     "src/ticktick",
     "src/postgresql",
     "src/mysql",
     "src/aliyunlog",
     "src/ecommerce-expert",
     "src/config-center",
-    "src/prompt-forge"
+    "src/prompt-forge",
+    "src/ffmpeg",
+    "src/magick",
+    "src/real-esrgan",
+    "src/withoutbg",
+    "src/temu-api",
+    "src/temu-dev",
+    "src/consulting-advisor"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

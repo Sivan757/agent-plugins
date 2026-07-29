@@ -140,7 +140,7 @@ Options:
 
 Examples:
   tsx scripts/convert-claude-plugin-to-codex.ts --source /path/to/claude-plugin/mysql --marketplace-root .
-  tsx scripts/convert-claude-plugin-to-codex.ts --source /path/to/claude-plugin/augment --output src/augment-mcp --category Productivity
+  tsx scripts/convert-claude-plugin-to-codex.ts --source /path/to/claude-plugin/mysql --output src/mysql --category Coding
 `);
 }
 

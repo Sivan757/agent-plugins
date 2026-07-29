@@ -10,7 +10,6 @@ body:
       description: Which plugin is affected?
       options:
         - aliyunlog
-        - augment-mcp
         - ecommerce-expert
         - mysql
         - postgresql
