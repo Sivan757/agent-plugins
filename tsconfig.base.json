@@ -5,7 +5,8 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "@agent-plugins/core": ["packages/core/src/index.ts"]
+      "@agent-plugins/core": ["packages/core/src/index.ts"],
+      "@agent-plugins/config-center": ["src/config-center/src/index.ts"]
     },
     "strict": true,
     "esModuleInterop": true,
