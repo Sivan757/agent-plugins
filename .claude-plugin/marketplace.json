@@ -23,6 +23,12 @@
       "description": "Local configuration center for managing plugin credentials and environment state. Agent-facing reads are redacted; modifications require the HTML UI."
     },
     {
+      "name": "consulting-advisor",
+      "version": "0.1.0",
+      "source": "./plugins/consulting-advisor",
+      "description": "Structured cross-domain consulting for problem solving and cognitive upgrade. Use when the user asks for advice, diagnosis, planning, strategy, career/job-search help, management, product/design/marketing, communication/PPT/writing, programming tradeoffs, decision-making, learning, or any ambiguous problem where the agent should identify domains, infer intent, select an authoritative framework, briefly teach it, ask clarifying questions before final recommendations, and apply the framework to the user's context."
+    },
+    {
       "name": "ecommerce-expert",
       "version": "1.0.1",
       "source": "./plugins/ecommerce-expert",
