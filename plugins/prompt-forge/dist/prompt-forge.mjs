@@ -3718,7 +3718,7 @@ function cmdPromptSearch(query, output) {
     usedFTS = true;
   } catch {
   }
-  if (!usedFTS) {
+  if (!usedFTS || rows.length === 0) {
     rows = db.prepare(
       `SELECT id, title, category, rating FROM prompts
          WHERE title LIKE ? OR prompt_text LIKE ?
@@ -3733,7 +3733,7 @@ function cmdPromptSearch(query, output) {
   }
   db.close();
 }
-function cmdPromptShow(id, output) {
+function cmdPromptShow(id, full, output) {
   const db = openDB();
   const row = db.prepare("SELECT * FROM prompts WHERE id = ? OR id LIKE ?").get(id, `${id}%`);
   if (!row) {
@@ -3744,7 +3744,7 @@ function cmdPromptShow(id, output) {
   }
   for (const [k, v] of Object.entries(row)) {
     let s = v === null ? "" : String(v);
-    if (s.length > 200) s = s.slice(0, 200) + "...";
+    if (!full && s.length > 200) s = s.slice(0, 200) + "...";
     output.stdout(`${k}: ${s}
 `);
   }
@@ -3906,7 +3906,7 @@ function buildProgram(output) {
     (opts) => cmdPromptList(opts, output)
   );
   promptCmd.command("search <query>").description("Full-text search (FTS5 with LIKE fallback).").action((query) => cmdPromptSearch(query, output));
-  promptCmd.command("show <id>").description("Show details of a prompt by id or id prefix.").action((id) => cmdPromptShow(id, output));
+  promptCmd.command("show <id>").description("Show details of a prompt by id or id prefix.").option("--full", "Do not truncate long field values.", false).action((id, opts) => cmdPromptShow(id, opts.full, output));
   promptCmd.command("add").description("Add a prompt manually.").requiredOption("--title <title>", "Prompt title").option("--category <category>", "Prompt category", "unclassified").requiredOption("--text <text>", "Prompt text").option("--source <source>", "Source type", "manual").action(
     (opts) => cmdPromptAdd(opts, output)
   );

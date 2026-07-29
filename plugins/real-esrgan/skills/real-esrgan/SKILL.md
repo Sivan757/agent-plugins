@@ -16,6 +16,35 @@ Official docs:
 
 Real-ESRGAN is not mathematically lossless. When a user says "lossless upscale" or "lossless clarity", interpret the practical target as: preserve originals, use lossless/intermediate PNG when appropriate, preserve alpha/canvas/DPI metadata deliberately, and verify outputs. AI-generated detail is synthetic.
 
+## Prerequisites
+
+`realesrgan-ncnn-vulkan` is required and is NOT on PATH by default after installation. ImageMagick (`magick`) is also required for verification steps.
+
+**macOS install:**
+
+1. Download the prebuilt `realesrgan-ncnn-vulkan` binary from GitHub Releases:
+   https://github.com/xinntao/Real-ESRGAN/releases (choose the `macos` zip for your architecture).
+
+2. Unzip and either add the extracted directory to PATH or invoke the binary by its full path.
+
+3. The binary must be able to find its `models/` folder. Either run it from the directory that contains `models/`, or pass the models path explicitly:
+   ```bash
+   realesrgan-ncnn-vulkan -m /path/to/models -i input.png -o output.png
+   ```
+
+4. Verify the binary is reachable:
+   ```bash
+   command -v realesrgan-ncnn-vulkan || /full/path/to/realesrgan-ncnn-vulkan -h
+   ```
+
+**ImageMagick:**
+
+```bash
+brew install imagemagick
+```
+
+Verify: `magick -version`
+
 ## Route By Task
 
 Load only the reference needed for the current task:

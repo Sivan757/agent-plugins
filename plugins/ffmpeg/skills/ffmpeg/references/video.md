@@ -49,8 +49,18 @@ ffmpeg -hide_banner -i input.mp4 -vf "fps=1" frames/frame-%04d.jpg
 Generate a cover image:
 
 ```bash
-ffmpeg -hide_banner -ss 00:00:03 -i input.mp4 -frames:v 1 -q:v 2 cover.jpg
+ffmpeg -hide_banner -ss 00:00:03 -i input.mp4 -frames:v 1 -update 1 -q:v 2 cover.jpg
 ```
+
+`-update 1` suppresses the image2 muxer "does not contain an image sequence pattern" warning for single-frame outputs.
+
+Generate a synthetic test video:
+
+```bash
+ffmpeg -f lavfi -i testsrc=duration=2:size=1280x720:rate=30 -c:v libx264 -pix_fmt yuv420p out.mp4
+```
+
+`testsrc`, `color`, and `smptebars` are useful lavfi sources for testing without source footage.
 
 Add watermark:
 

@@ -221,7 +221,10 @@ function cmdPromptSearch(query: string, output: CLIOutput): void {
   } catch {
     // FTS5 unavailable or query syntax error; fall back to LIKE.
   }
-  if (!usedFTS) {
+  // FTS5's default tokenizer does not segment CJK text, so CJK queries (and
+  // other tokenization edge cases) return 0 rows without error. Fall back to
+  // LIKE so users searching in Chinese still get matches.
+  if (!usedFTS || rows.length === 0) {
     rows = db
       .prepare(
         `SELECT id, title, category, rating FROM prompts
@@ -238,7 +241,7 @@ function cmdPromptSearch(query: string, output: CLIOutput): void {
   db.close();
 }
 
-function cmdPromptShow(id: string, output: CLIOutput): void {
+function cmdPromptShow(id: string, full: boolean, output: CLIOutput): void {
   const db = openDB();
   const row = db
     .prepare('SELECT * FROM prompts WHERE id = ? OR id LIKE ?')
@@ -250,7 +253,7 @@ function cmdPromptShow(id: string, output: CLIOutput): void {
   }
   for (const [k, v] of Object.entries(row)) {
     let s = v === null ? '' : String(v);
-    if (s.length > 200) s = s.slice(0, 200) + '...';
+    if (!full && s.length > 200) s = s.slice(0, 200) + '...';
     output.stdout(`${k}: ${s}\n`);
   }
   db.close();
@@ -445,7 +448,8 @@ function buildProgram(output: CLIOutput): Command {
   promptCmd
     .command('show <id>')
     .description('Show details of a prompt by id or id prefix.')
-    .action((id: string) => cmdPromptShow(id, output));
+    .option('--full', 'Do not truncate long field values.', false)
+    .action((id: string, opts: { full: boolean }) => cmdPromptShow(id, opts.full, output));
   promptCmd
     .command('add')
     .description('Add a prompt manually.')

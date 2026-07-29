@@ -20,6 +20,10 @@ Load only the reference needed for the current task:
 - Common commands: see [references/common-commands.md](references/common-commands.md) for installation, single image runs, batch runs, API mode, Python API usage, model-cache handling, alpha verification, checkerboard previews, and troubleshooting.
 - Complex workflows: see [references/complex-workflows.md](references/complex-workflows.md) for ecommerce/product pipelines, local-vs-API decisions, quality evaluation, post-processing, comparison tests, and structured task decomposition.
 
+## First Run: Model Download
+
+The local open-source mode downloads model weights from Hugging Face on first use. The main ONNX model (`withoutbg-open-weights.onnx`) is approximately 450MB. The first run will be slow while the download completes, and Hugging Face connections sometimes drop mid-download. If the automatic download fails, use the manual-download fallback documented in [references/common-commands.md](references/common-commands.md) (Download Reliability section).
+
 ## Standard Workflow
 
 1. Inspect the inputs before running a model:

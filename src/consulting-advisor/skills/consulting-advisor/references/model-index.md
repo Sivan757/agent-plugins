@@ -21,7 +21,7 @@ Use this as the internal model catalog for `consulting-advisor`. Select one prim
 | --- | --- | --- | --- |
 | Diagnose a vague problem | First Principles, Issue Tree, MECE, 5 Whys | The user describes symptoms but not root cause | What is the observable symptom, what changed, and what constraints cannot change? |
 | Root cause analysis | 5 Whys, Fishbone/Ishikawa, Fault Tree | Failures, incidents, quality problems | What happened, when did it start, what evidence separates cause from coincidence? |
-| Make a decision | Decision Matrix, Expected Value, Reversibility, OODA | Several options with tradeoffs | What options exist, what criteria matter, and which downside is unacceptable? |
+| Make a decision | Decision Matrix, Expected Value, Reversibility, OODA | Several options with tradeoffs:<br>- Decision Matrix: use when comparing options across multiple weighted criteria.<br>- Expected Value: use when outcomes have probabilities and quantifiable payoffs.<br>- Reversibility: use when the primary unknown is how hard the choice is to undo (one-way vs two-way door).<br>- OODA: use when acting iteratively under fast-changing conditions (observe, orient, decide, act). | What options exist, what criteria matter, and which downside is unacceptable? |
 | Manage risk | Premortem, Probability-Impact Matrix, Scenario Planning | Plans with uncertainty | What would make this fail, how likely is each risk, and what early signal reveals it? |
 | Set goals | SMART, OKR, North Star Metric | Targets, plans, accountability | What measurable outcome matters, by when, and what leading indicators prove progress? |
 

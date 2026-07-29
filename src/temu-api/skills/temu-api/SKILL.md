@@ -7,6 +7,8 @@ description: "Use when the user needs to design, implement, debug, or review Tem
 
 ## Core Rules
 
+All `references/...` paths below are relative to this skill's directory, i.e. `${CLAUDE_PLUGIN_ROOT}/skills/temu-api/references/...`. When reading a reference file, resolve the full path under the plugin root rather than the current working directory.
+
 Use this skill for Temu adapter work, especially when the task touches live shop credentials, product publication, image upload, size charts, logistics templates, model information, inventory, or price.
 
 Before writing or calling code:

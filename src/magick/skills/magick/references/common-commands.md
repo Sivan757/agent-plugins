@@ -46,6 +46,14 @@ mkdir -p out
 magick mogrify -path out -format webp -quality 85 *.jpg
 ```
 
+## Create A Solid-Color Image
+
+```bash
+magick -size 200x200 xc:red out.png
+```
+
+`canvas:red` is equivalent to `xc:red` in ImageMagick 7.
+
 ## Resize, Thumbnail, And Compress
 
 Keep aspect ratio:

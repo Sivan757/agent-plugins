@@ -86,6 +86,41 @@ Signing failure checklist:
 
 Never log the full canonical string in production because it includes secrets and token-bearing values. For debugging, log only keys, redacted values, and a hash of the canonical string.
 
+### Worked example (test values, verify your signer)
+
+These are TEST placeholders, not real credentials. Compute the signature and compare with the expected digest to validate a signer implementation.
+
+Outer request object (no `sign` yet):
+
+```json
+{
+  "access_token": "TEST_TOKEN",
+  "app_key": "TEST_APP_KEY",
+  "data_type": "JSON",
+  "page": "1",
+  "pageSize": "20",
+  "timestamp": "1739688901",
+  "type": "bg.goods.list.get"
+}
+```
+
+`app_secret` = `TEST_SECRET_DO_NOT_USE`
+
+Step-by-step:
+
+1. Sort outer keys ASCII: `access_token, app_key, data_type, page, pageSize, timestamp, type`.
+2. Concatenate `key+value` with NO separator (no `=`, no `&`):
+   `access_tokenTEST_TOKENapp_keyTEST_APP_KEYdata_typeJSONpage1pageSize20timestamp1739688901typebg.goods.list.get`
+3. Wrap with `app_secret` as prefix and suffix:
+   `TEST_SECRET_DO_NOT_USEaccess_tokenTEST_TOKENapp_keyTEST_APP_KEYdata_typeJSONpage1pageSize20timestamp1739688901typebg.goods.list.getTEST_SECRET_DO_NOT_USE`
+4. MD5 uppercase 32-hex:
+   `4A0AA0A23F2F2E03D0AE9056EEAACB42`
+
+That final digest is the `sign` field. Notes:
+
+- `data_type` and `version` are public fields; include in signing every field actually present in the outer object. Optional fields that are OMITTED from the request body are also omitted from the signing string - do not sign fields that are not sent.
+- Inner JSON (e.g. `joinInfoList`) is preserved verbatim as serialized in the request; it is not sorted.
+
 ## Live Call Safety
 
 Before any live Temu call that changes remote state:

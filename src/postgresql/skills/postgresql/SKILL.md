@@ -54,6 +54,8 @@ confirmation flag. After confirmation, run the command directly.
 2. Use `ask the user` to confirm which connection the user wants
 3. After the user confirms, ask: "Save this as the default connection in the project instructions file (AGENTS.md or CLAUDE.md)?"
 
+**Exception for read-only queries on an already-confirmed connection:** Read-only queries that the user explicitly requested against an already-confirmed connection (e.g., `SELECT 1`, schema inspection via `columns`, `schemas`, `databases`, `find-table`) may proceed without re-confirming each time. The mandatory confirmation applies to choosing WHICH connection and to any write/DDL operation (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `CREATE`).
+
 If the requested connection is missing, run `setup` to open the browser config
 UI. To reuse the same host/user/password with a different database, use
 `copy-connection` instead of reading the config file:

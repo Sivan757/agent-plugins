@@ -7,6 +7,8 @@ description: "Use when the user needs to inspect or operationalize Temu Partner 
 
 ## Use This Workflow
 
+All `references/...` paths below are relative to this skill's directory, i.e. `${CLAUDE_PLUGIN_ROOT}/skills/temu-dev/references/...`. Resolve reference files under the plugin root, not the current working directory.
+
 Use this skill to read Temu's developer docs and turn them into safe implementation guidance.
 
 1. If the task needs current docs, use the already logged-in Chrome tab when available. Prefer OpenCLI browser extraction over scraping public HTML because Temu docs are SPA pages and some content is login-gated.
