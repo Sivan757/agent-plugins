@@ -381,7 +381,7 @@ function cmdServe(opts: { port: string }, output: CLIOutput): void {
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not Found');
   });
-  server.listen(port, () => {
+  server.listen(port, '127.0.0.1', () => {
     output.stdout(`Serving on http://localhost:${port}\n`);
   });
 }
