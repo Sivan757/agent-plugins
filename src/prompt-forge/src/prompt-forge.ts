@@ -347,13 +347,27 @@ function cmdSourceDedup(output: CLIOutput): void {
     )
     .all() as { prompt_text: string; c: number; ids: string }[];
   let removed = 0;
-  const deleteStmt = db.prepare('DELETE FROM prompts WHERE id = ?');
-  for (const r of dups) {
-    const ids = r.ids.split(',');
-    for (const dupId of ids.slice(1)) {
-      deleteStmt.run(dupId);
-      removed++;
+  const deleteRatings = db.prepare('DELETE FROM ratings WHERE prompt_id = ?');
+  const deleteImages = db.prepare('DELETE FROM images WHERE prompt_id = ?');
+  const deletePrompt = db.prepare('DELETE FROM prompts WHERE id = ?');
+  db.exec('BEGIN');
+  try {
+    for (const r of dups) {
+      const ids = r.ids.split(',');
+      for (const dupId of ids.slice(1)) {
+        // Delete child rows first to satisfy PRAGMA foreign_keys=ON
+        // (schema has no ON DELETE CASCADE on images/ratings).
+        deleteRatings.run(dupId);
+        deleteImages.run(dupId);
+        deletePrompt.run(dupId);
+        removed++;
+      }
     }
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    db.close();
+    throw e;
   }
   rebuildFTS(db);
   db.close();

@@ -42,7 +42,7 @@ import os from 'os';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { Command } from 'commander';
-import { requireConfigWithSetup, configPath, PluginError } from '@agent-plugins/config-center';
+import { requireConfigWithSetup, configPath, saveConfig, PluginError } from '@agent-plugins/config-center';
 import type { ConfigUIOptions } from '@agent-plugins/config-center';
 
 // Type declarations are in alicloud-log.d.ts
@@ -938,9 +938,7 @@ async function cmdSetup(): Promise<void> {
   }
 
   // Save config
-  const configDir = path.dirname(CONFIG_PATH);
-  fs.mkdirSync(configDir, { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n');
+  await saveConfig('aliyunlog', config);
 
   console.log(`\n\u2713 Configuration saved.`);
   console.log('\nNext steps:');
@@ -951,7 +949,7 @@ async function cmdSetup(): Promise<void> {
 
 // ── Subcommands ───────────────────────────────────────────────────────────────
 
-function cmdInit(): void {
+async function cmdInit(): Promise<void> {
   if (fs.existsSync(CONFIG_PATH)) {
     console.log(`Config already exists.`);
     return;
@@ -968,9 +966,7 @@ function cmdInit(): void {
     aliases: {},
   };
 
-  const configDir = path.dirname(CONFIG_PATH);
-  fs.mkdirSync(configDir, { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(template, null, 2) + '\n');
+  await saveConfig('aliyunlog', template);
   console.log(`Created config file.`);
   console.log('Edit this file with your SLS credentials and project/logstore mapping.');
 }
@@ -1516,7 +1512,7 @@ program
 program
   .command('init')
   .description('Create config template')
-  .action(() => { cmdInit(); });
+  .action(async () => { await cmdInit(); });
 
 program
   .command('setup')

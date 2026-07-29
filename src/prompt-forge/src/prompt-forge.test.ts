@@ -181,28 +181,54 @@ test('pf image rate updates prompt rating for valid score', async () => {
   assert.match(stdout, /Rated:.*= 4\/5 \(avg: 4\.0\)/);
 });
 
-test('pf source dedup removes exact-text duplicates', async () => {
-  // Add a duplicate via source import, then dedup.
-  const dupFile = join(tmpDataDir, 'dedup-fixture.jsonl');
-  writeFileSync(
-    dupFile,
-    JSON.stringify({
-      title: 'Another dup',
-      prompt_text: 'Overhead flat lay of cosmetics on marble, studio lighting, no text',
-      category: 'Product & E-commerce',
-      source_type: 'test',
-    }) + '\n',
-    'utf-8',
-  );
+test('pf source dedup removes exact-text duplicates and cleans up child rows (FK safety)', async () => {
+  // Add two prompts with the SAME prompt_text via `prompt add`. Unlike
+  // `source import`, `prompt add` uses random UUIDs (not sha256 prefixes),
+  // so both rows land in the table and create a real duplicate group.
+  const dupText = 'dedup stress test identical text zzz';
+  const add1 = await runMain([
+    'prompt', 'add', '--title', 'Dup A', '--category', 'Test', '--text', dupText,
+  ]);
+  assert.equal(add1.code, 0);
+  const id1Match = add1.stdout.match(/^Added: ([0-9a-f]{16})$/m);
+  assert.ok(id1Match, `could not extract id from add output: ${add1.stdout}`);
+  const id1 = id1Match[1];
 
-  const importResult = await runMain(['source', 'import', dupFile]);
-  assert.equal(importResult.code, 0);
-  // The duplicate should be skipped by sha256 dedup during import.
-  assert.match(importResult.stdout, /Imported: 0 prompts/);
+  const add2 = await runMain([
+    'prompt', 'add', '--title', 'Dup B', '--category', 'Test', '--text', dupText,
+  ]);
+  assert.equal(add2.code, 0);
+  const id2Match = add2.stdout.match(/^Added: ([0-9a-f]{16})$/m);
+  assert.ok(id2Match, `could not extract id from add output: ${add2.stdout}`);
+  const id2 = id2Match[1];
 
+  // Link a rating (child row) to BOTH duplicates so whichever is deleted
+  // exercises the child-row cleanup. The schema has PRAGMA foreign_keys=ON
+  // and no ON DELETE CASCADE on images/ratings, so a naive DELETE FROM prompts
+  // would raise SQLITE_CONSTRAINT_FOREIGNKEY.
+  const rate1 = await runMain(['image', 'rate', id1, '4']);
+  assert.equal(rate1.code, 0);
+  assert.match(rate1.stdout, /Rated:/);
+  const rate2 = await runMain(['image', 'rate', id2, '5']);
+  assert.equal(rate2.code, 0);
+  assert.match(rate2.stdout, /Rated:/);
+
+  // Confirm both duplicates are present before dedup.
+  const beforeSearch = await runMain(['prompt', 'search', 'zzz']);
+  assert.equal(beforeSearch.code, 0);
+  const beforeLines = beforeSearch.stdout.trim().split('\n').filter(l => l.length > 0);
+  assert.equal(beforeLines.length, 2, `expected 2 duplicates before dedup, got ${beforeLines.length}`);
+
+  // Run dedup; must not throw SQLITE_CONSTRAINT_FOREIGNKEY.
   const { code, stdout } = await runMain(['source', 'dedup']);
-  assert.equal(code, 0);
-  assert.match(stdout, /Deduped:/);
+  assert.equal(code, 0, `dedup failed (FK constraint?): ${stdout}`);
+  assert.match(stdout, /Deduped: 1 duplicates removed/);
+
+  // Confirm exactly one duplicate remains after dedup.
+  const afterSearch = await runMain(['prompt', 'search', 'zzz']);
+  assert.equal(afterSearch.code, 0);
+  const afterLines = afterSearch.stdout.trim().split('\n').filter(l => l.length > 0);
+  assert.equal(afterLines.length, 1, `expected 1 prompt after dedup, got ${afterLines.length}`);
 });
 
 test('pf main returns 1 on unknown command', async () => {

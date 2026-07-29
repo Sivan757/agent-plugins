@@ -110,13 +110,13 @@ function printTemplate(): void {
   const CONFIG_PATH = configPath('mysql');
   import('fs').then(({ existsSync }) => {
     if (existsSync(CONFIG_PATH)) {
-      console.error(`Error: Config already exists at ${CONFIG_PATH}`);
+      console.error('Error: Config already exists. Run setup --force to overwrite.');
       process.exit(1);
     }
   });
   const template = { connections: {} };
   saveConfig('mysql', template).then(() => {
-    console.log(`Created: ${CONFIG_PATH}`);
+    console.log('Created config file.');
     console.log('Edit this file to add your database connection details.');
     console.log('');
     console.log('Example connection format:');

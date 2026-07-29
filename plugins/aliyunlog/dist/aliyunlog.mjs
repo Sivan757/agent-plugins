@@ -11462,9 +11462,7 @@ async function cmdSetup() {
   if (defaultProject) {
     config.default_project = defaultProject;
   }
-  const configDir3 = path.dirname(CONFIG_PATH);
-  fs.mkdirSync(configDir3, { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n");
+  await saveConfig("aliyunlog", config);
   console.log(`
 \u2713 Configuration saved.`);
   console.log("\nNext steps:");
@@ -11472,7 +11470,7 @@ async function cmdSetup() {
   console.log("  - Run 'node aliyunlog.mjs list-logstores <project>' to explore logstores");
   console.log("  - Edit the config file to add environment aliases and service mappings");
 }
-function cmdInit() {
+async function cmdInit() {
   if (fs.existsSync(CONFIG_PATH)) {
     console.log(`Config already exists.`);
     return;
@@ -11487,9 +11485,7 @@ function cmdInit() {
     environments: {},
     aliases: {}
   };
-  const configDir3 = path.dirname(CONFIG_PATH);
-  fs.mkdirSync(configDir3, { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(template, null, 2) + "\n");
+  await saveConfig("aliyunlog", template);
   console.log(`Created config file.`);
   console.log("Edit this file with your SLS credentials and project/logstore mapping.");
 }
@@ -11885,8 +11881,8 @@ Hint: List available logstores:
 }
 var program2 = new Command();
 program2.name("aliyunlog").description("Alibaba Cloud SLS log query CLI").version("1.2.0");
-program2.command("init").description("Create config template").action(() => {
-  cmdInit();
+program2.command("init").description("Create config template").action(async () => {
+  await cmdInit();
 });
 program2.command("setup").description("Interactive setup wizard").action(async () => {
   await cmdSetup();

@@ -723,7 +723,7 @@ async function authFlow(config: TickTickConfig, HOST: string): Promise<void> {
     process.exit(1);
   }
 
-  await saveConfig('ticktick', { accessToken: result.access_token }, true);
+  await saveConfig('ticktick', { accessToken: result.access_token }, { merge: true });
   out({ ok: true, message: `Access token saved to config`, token_preview: (result.access_token ?? '').slice(0, 8) + '...' });
 }
 
@@ -1533,7 +1533,7 @@ async function setupDevice(xDeviceJson: string): Promise<void> {
   await saveConfig('ticktick', {
     deviceId: String(parsed.id),
     xDevice: JSON.stringify(parsed),
-  }, true);
+  }, { merge: true });
 
   out({
     ok: true,
