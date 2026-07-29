@@ -1,6 +1,6 @@
 {
   "name": "aliyunlog",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "type": "module",
   "scripts": {
     "build": "bash ../../scripts/build-plugin.sh src/aliyunlog.ts ../../.build/plugin-dist/aliyunlog/dist/aliyunlog.mjs",
@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agent-plugins/core": "*",
+    "@agent-plugins/config-center": "*",
     "@alicloud/log": "^1.2.5",
     "commander": "*"
   }

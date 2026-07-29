@@ -13,6 +13,8 @@
 //   node aliyunlog.mjs list-services <logstore> [--project <p>]
 //   node aliyunlog.mjs test
 //   node aliyunlog.mjs init
+//
+// Config: ~/.cache/agent-plugins/aliyunlog/config.json
 //   node aliyunlog.mjs setup
 //   node aliyunlog.mjs --help
 //
@@ -40,8 +42,8 @@ import os from 'os';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { Command } from 'commander';
-import { requireConfig, requireConfigWithSetup, configPath, PluginError } from '@agent-plugins/core';
-import type { ConfigUIOptions } from '@agent-plugins/core';
+import { requireConfigWithSetup, configPath, PluginError } from '@agent-plugins/config-center';
+import type { ConfigUIOptions } from '@agent-plugins/config-center';
 
 // Type declarations are in alicloud-log.d.ts
 import ALY from '@alicloud/log';
@@ -887,7 +889,7 @@ async function cmdSetup(): Promise<void> {
 
   // Check if config already exists
   if (fs.existsSync(CONFIG_PATH)) {
-    const overwrite = await prompt(`Config already exists at ${CONFIG_PATH}. Overwrite? (y/N): `);
+    const overwrite = await prompt(`Config already exists. Overwrite? (y/N): `);
     if (overwrite.toLowerCase() !== 'y') {
       console.log('Setup cancelled.');
       return;
@@ -940,7 +942,7 @@ async function cmdSetup(): Promise<void> {
   fs.mkdirSync(configDir, { recursive: true });
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n');
 
-  console.log(`\n\u2713 Configuration saved to: ${CONFIG_PATH}`);
+  console.log(`\n\u2713 Configuration saved.`);
   console.log('\nNext steps:');
   console.log('  - Run \'node aliyunlog.mjs test\' to verify setup');
   console.log('  - Run \'node aliyunlog.mjs list-logstores <project>\' to explore logstores');
@@ -951,7 +953,7 @@ async function cmdSetup(): Promise<void> {
 
 function cmdInit(): void {
   if (fs.existsSync(CONFIG_PATH)) {
-    console.log(`Config already exists: ${CONFIG_PATH}`);
+    console.log(`Config already exists.`);
     return;
   }
 
@@ -969,7 +971,7 @@ function cmdInit(): void {
   const configDir = path.dirname(CONFIG_PATH);
   fs.mkdirSync(configDir, { recursive: true });
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(template, null, 2) + '\n');
-  console.log(`Created: ${CONFIG_PATH}`);
+  console.log(`Created config file.`);
   console.log('Edit this file with your SLS credentials and project/logstore mapping.');
 }
 
