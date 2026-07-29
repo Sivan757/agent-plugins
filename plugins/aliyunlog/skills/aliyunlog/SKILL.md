@@ -17,7 +17,7 @@ Query Alibaba Cloud SLS logs via `@alicloud/log` Node.js SDK.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `~/.cache/agent-plugins/aliyunlog.json` directly.** Use `test` subcommand to verify connectivity. When config is missing or credentials are invalid, the CLI auto-opens a browser setup form.
+**NEVER read, open, cat, or view `~/.cache/agent-plugins/aliyunlog/config.json` directly.** Use `test` subcommand to verify connectivity. When config is missing or credentials are invalid, the CLI auto-opens a browser setup form.
 
 ## Command Reference
 

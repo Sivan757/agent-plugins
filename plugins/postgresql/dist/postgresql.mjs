@@ -8594,13 +8594,13 @@ var {
   Help
 } = import_index.default;
 
-// ../../packages/core/src/config.ts
-import { readFile, writeFile, mkdir } from "fs/promises";
+// ../config-center/src/config-store.ts
+import { readFile, writeFile, rename, mkdir } from "fs/promises";
 import { existsSync } from "fs";
-import { join, dirname } from "path";
+import { join } from "path";
 import { homedir } from "os";
 
-// ../../packages/core/src/errors.ts
+// ../config-center/src/errors.ts
 var PluginError = class extends Error {
   constructor(message, code, exitCode = 1) {
     super(message);
@@ -8612,72 +8612,128 @@ var PluginError = class extends Error {
   exitCode;
 };
 
-// ../../packages/core/src/config.ts
-var CACHE_DIR = join(homedir(), ".cache", "agent-plugins");
-var LEGACY_CACHE_DIR = join(homedir(), ".cache", ["ap", "ex-plugin"].join(""));
-function configPath(pluginName) {
-  return join(CACHE_DIR, `${pluginName}.json`);
+// ../config-center/src/config-store.ts
+var home = process.env.HOME || homedir();
+var CACHE_DIR = join(home, ".cache", "agent-plugins");
+function legacyFlatPath(name) {
+  return join(CACHE_DIR, `${name}.json`);
 }
-function legacyConfigPath(pluginName) {
-  return join(LEGACY_CACHE_DIR, `${pluginName}.json`);
+function legacyOlderPath(name) {
+  return join(home, ".cache", "ap", "ex-plugin", `${name}.json`);
 }
-function resolveConfigPathForRead(pluginName) {
-  const primaryPath = configPath(pluginName);
-  if (existsSync(primaryPath)) return primaryPath;
-  const legacyPath = legacyConfigPath(pluginName);
-  return existsSync(legacyPath) ? legacyPath : primaryPath;
+function configDir(name) {
+  return join(CACHE_DIR, name);
 }
-async function loadConfig(pluginName) {
-  const path = resolveConfigPathForRead(pluginName);
+function configPath(name) {
+  return join(configDir(name), "config.json");
+}
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function deepMerge(target, source) {
+  const result = { ...target };
+  for (const [key, value] of Object.entries(source)) {
+    if (isRecord(value) && isRecord(result[key])) {
+      result[key] = deepMerge(
+        result[key],
+        value
+      );
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+async function migrateLegacyConfig(name) {
+  const target = configPath(name);
+  if (existsSync(target)) return;
+  const dir = configDir(name);
+  const flat = legacyFlatPath(name);
+  if (existsSync(flat)) {
+    await mkdir(dir, { recursive: true });
+    await rename(flat, target);
+    return;
+  }
+  const older = legacyOlderPath(name);
+  if (existsSync(older)) {
+    await mkdir(dir, { recursive: true });
+    await rename(older, target);
+    return;
+  }
+}
+async function readConfigRaw(name) {
+  const path = configPath(name);
+  try {
+    const raw = await readFile(path, "utf-8");
+    return JSON.parse(raw);
+  } catch (e) {
+    if (e.code === "ENOENT") return null;
+    throw new PluginError("Failed to parse config", "CONFIG_INVALID");
+  }
+}
+async function loadConfig(name) {
+  await migrateLegacyConfig(name);
+  const path = configPath(name);
   if (!existsSync(path)) return null;
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw);
   } catch (e) {
-    throw new PluginError(
-      `Failed to parse config at ${path}: ${e.message}`,
-      "CONFIG_INVALID"
-    );
+    if (e.code === "ENOENT") return null;
+    throw new PluginError("Failed to parse config", "CONFIG_INVALID");
   }
 }
-async function saveConfig(pluginName, data, merge = false) {
-  const path = configPath(pluginName);
-  await mkdir(dirname(path), { recursive: true });
+async function saveConfig(name, data, options = {}) {
+  const dir = configDir(name);
+  await mkdir(dir, { recursive: true });
   let finalData = data;
-  if (merge) {
-    const existing = await loadConfig(pluginName);
+  if (options.merge === true) {
+    const existing = await readConfigRaw(name);
     if (existing) {
-      finalData = { ...existing, ...data };
+      finalData = deepMerge(existing, data);
     }
   }
+  const path = configPath(name);
   await writeFile(path, JSON.stringify(finalData, null, 2) + "\n", "utf-8");
 }
-async function requireConfig(pluginName) {
-  const config = await loadConfig(pluginName);
+async function requireConfig(name) {
+  const config = await loadConfig(name);
   if (!config) {
-    throw new PluginError(
-      `No config found at ${configPath(pluginName)}. Run the plugin setup to configure credentials.`,
-      "CONFIG_MISSING"
-    );
+    throw new PluginError("No config found", "CONFIG_MISSING");
   }
   return config;
 }
 
-// ../../packages/core/src/config-ui.ts
-import { createServer } from "http";
-import { readFileSync, writeFileSync, existsSync as existsSync2, mkdirSync } from "fs";
-import { dirname as dirname2, resolve } from "path";
-import { exec } from "child_process";
-import { randomBytes } from "crypto";
-import { fileURLToPath } from "url";
+// ../config-center/src/launch-ui.ts
+import { createServer } from "node:http";
+import { readFileSync, existsSync as existsSync2, readdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { exec } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { fileURLToPath } from "node:url";
+var defaultOutput = {
+  stdout: (s) => process.stdout.write(s),
+  stderr: (s) => process.stderr.write(s)
+};
+function isValidPluginName(name) {
+  return /^[A-Za-z0-9_-]+$/.test(name);
+}
+var KNOWN_PLUGINS = [
+  "aliyunlog",
+  "config-center",
+  "ecommerce-expert",
+  "mysql",
+  "postgresql",
+  "ticktick"
+];
 function isPlainObject(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
 }
-function deepMerge(target, source) {
+function deepMerge2(target, source) {
   const out = { ...target };
   for (const key of Object.keys(source)) {
     if (isPlainObject(out[key]) && isPlainObject(source[key])) {
-      out[key] = deepMerge(
+      out[key] = deepMerge2(
         out[key],
         source[key]
       );
@@ -8749,33 +8805,27 @@ function stateToConfig(state, collections) {
   }
   return config;
 }
-function readConfigFile(cfgPath) {
-  if (!existsSync2(cfgPath)) return {};
-  const raw = readFileSync(cfgPath, "utf-8").trim();
-  if (!raw) return {};
+function readConfigSync(name) {
+  if (!name) return {};
+  const path = configPath(name);
+  if (!existsSync2(path)) return {};
   try {
+    const raw = readFileSync(path, "utf-8").trim();
+    if (!raw) return {};
     return JSON.parse(raw);
   } catch {
     return {};
   }
 }
-function writeConfigFile(cfgPath, data) {
-  mkdirSync(dirname2(cfgPath), { recursive: true });
-  writeFileSync(cfgPath, JSON.stringify(data, null, 2) + "\n");
-}
 function loadBundledHTML() {
-  const thisDir = typeof __dirname !== "undefined" ? __dirname : dirname2(fileURLToPath(import.meta.url));
+  const thisDir = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
   const candidates = [
-    // From plugins/<name>/dist/ → config-ui bundle shipped alongside the .mjs
+    // Bundled plugin: <plugin>/dist/config-ui/dist/index.html
     resolve(thisDir, "config-ui", "dist", "index.html"),
-    // From plugins/<name>/dist/ → ../../../packages/config-ui/dist/index.html
-    resolve(thisDir, "..", "..", "..", "packages", "config-ui", "dist", "index.html"),
-    // Legacy root-level plugin layout → ../../packages/config-ui/dist/index.html
-    resolve(thisDir, "..", "..", "packages", "config-ui", "dist", "index.html"),
-    // From packages/core/dist/ → ../../config-ui/dist/index.html (unbundled/dev)
-    resolve(thisDir, "..", "..", "config-ui", "dist", "index.html"),
-    // From packages/core/src/ → ../../config-ui/dist/index.html (tsx dev)
-    resolve(thisDir, "..", "..", "config-ui", "dist", "index.html")
+    // Dev: src/config-center/src/ -> ../ui/dist/index.html
+    resolve(thisDir, "..", "ui", "dist", "index.html"),
+    // Fallback: deeper nesting
+    resolve(thisDir, "..", "..", "ui", "dist", "index.html")
   ];
   for (const candidate of candidates) {
     if (existsSync2(candidate)) {
@@ -8791,85 +8841,221 @@ ${candidates.map((c) => `  - ${c}`).join("\n")}`,
 function safeJSON(value) {
   return JSON.stringify(value).replace(/<\//g, "<\\/").replace(/<!--/g, "<\\!--");
 }
-function injectGlobals(html, spec, state, cfgPath, csrfToken) {
+function injectGlobals(html, spec, state, csrfToken, pluginName) {
   const scriptTag = `<script>
-window.__CONFIG_SPEC__ = ${safeJSON(spec)};
+window.__CONFIG_SPEC__ = ${safeJSON(spec ?? null)};
 window.__CONFIG_STATE__ = ${safeJSON(state)};
-window.__CONFIG_PATH__ = ${safeJSON(cfgPath)};
 window.__CSRF_TOKEN__ = ${safeJSON(csrfToken)};
+window.__PLUGIN_NAME__ = ${safeJSON(pluginName ?? null)};
 </script>`;
   return html.replace("</head>", `${scriptTag}
 </head>`);
 }
-function launchConfigUI(pluginName, options) {
-  const cfgPath = configPath(pluginName);
-  return new Promise((resolve2) => {
-    const csrfToken = randomBytes(16).toString("hex");
-    const existing = readConfigFile(cfgPath);
-    const defaults2 = options.spec.state ?? {};
-    const merged = deepMerge(defaults2, existing);
-    const uiState = configToState(merged, options.collections);
-    let html;
-    try {
-      const rawHTML = loadBundledHTML();
-      html = injectGlobals(rawHTML, options.spec, uiState, cfgPath, csrfToken);
-    } catch (e) {
-      process.stderr.write(`[config-ui] ${e.message}
+function listPlugins() {
+  let fromCache = [];
+  try {
+    fromCache = readdirSync(CACHE_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+  } catch {
+  }
+  const all = /* @__PURE__ */ new Set([...KNOWN_PLUGINS, ...fromCache]);
+  return Array.from(all).sort();
+}
+async function readBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  return Buffer.concat(chunks).toString();
+}
+function launchUI(pluginName, options) {
+  const output = options?.output ?? defaultOutput;
+  const open = options?.open ?? true;
+  const timeoutMs = options?.timeoutMs ?? 5 * 60 * 1e3;
+  const spec = options?.spec;
+  const collections = options?.collections;
+  const csrfToken = randomBytes(16).toString("hex");
+  const existing = pluginName ? readConfigSync(pluginName) : {};
+  const defaults2 = spec?.state ?? {};
+  const merged = deepMerge2(defaults2, existing);
+  const uiState = configToState(merged, collections);
+  let html = null;
+  let htmlError = null;
+  try {
+    const rawHTML = loadBundledHTML();
+    html = injectGlobals(rawHTML, spec, uiState, csrfToken, pluginName);
+  } catch (e) {
+    htmlError = e.message;
+    output.stderr(`[config-ui] Warning: UI bundle not loaded: ${htmlError}
 `);
-      resolve2(false);
+  }
+  let resolveDone;
+  let resolved = false;
+  let timeoutHandle;
+  let serverPort = 0;
+  const done = new Promise((resolve2) => {
+    resolveDone = resolve2;
+  });
+  const settle = (value) => {
+    if (resolved) return;
+    resolved = true;
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    resolveDone(value);
+  };
+  let resolveReady;
+  const ready = new Promise((resolve2) => {
+    resolveReady = resolve2;
+  });
+  const server = createServer(async (req, res) => {
+    const url = req.url ?? "";
+    const method = req.method ?? "GET";
+    if (method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "http://127.0.0.1",
+        "Access-Control-Allow-Headers": "Content-Type, X-CSRF-Token",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+      });
+      res.end();
       return;
     }
-    const server = createServer(async (req, res) => {
-      if (req.method === "GET" && req.url === "/") {
+    if (method === "GET" && (url === "/" || url === "/index.html")) {
+      if (html !== null) {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(html);
+      } else {
+        res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(`Config-UI bundle not available: ${htmlError ?? "unknown error"}
+Run: cd src/config-center && npx vite build --config ui/vite.config.ts`);
+      }
+      return;
+    }
+    if (method === "GET" && url === "/api/plugins") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(listPlugins()));
+      return;
+    }
+    const getConfigMatch = url.match(/^\/api\/config\/([^/?]+)$/);
+    if (method === "GET" && getConfigMatch) {
+      const plugin = decodeURIComponent(getConfigMatch[1]);
+      if (!isValidPluginName(plugin)) {
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not found");
         return;
       }
-      if (req.method === "POST" && req.url === "/save") {
-        const chunks = [];
-        for await (const chunk of req) chunks.push(chunk);
-        const body = Buffer.concat(chunks).toString();
-        try {
-          const token = req.headers["x-csrf-token"];
-          if (token !== csrfToken) {
-            res.writeHead(403, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ ok: false, error: "Invalid CSRF token" }));
-            return;
-          }
-          const submittedState = JSON.parse(body);
-          const configData = stateToConfig(submittedState, options.collections);
-          const finalConfig = deepMerge(existing, configData);
-          writeConfigFile(cfgPath, finalConfig);
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ ok: true }));
-          setTimeout(() => {
-            server.close();
-            resolve2(true);
-          }, 500);
-        } catch (e) {
-          res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ ok: false, error: e.message }));
-        }
+      const config = readConfigSync(plugin);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(config));
+      return;
+    }
+    const postConfigMatch = url.match(/^\/api\/config\/([^/?]+)$/);
+    if (method === "POST" && postConfigMatch) {
+      const token = req.headers["x-csrf-token"];
+      if (token !== csrfToken) {
+        res.writeHead(403, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "Invalid CSRF token" }));
         return;
       }
-      res.writeHead(404);
-      res.end("Not found");
-    });
-    server.listen(0, "127.0.0.1", () => {
-      const addr = server.address();
-      const url = `http://127.0.0.1:${addr.port}`;
-      process.stderr.write(`[setup] Opening configuration form in browser...
-`);
-      process.stderr.write(JSON.stringify({ url, port: addr.port }) + "\n");
-      const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-      exec(`${cmd} "${url}"`, () => {
-      });
-    });
-    setTimeout(() => {
-      server.close();
-      resolve2(false);
-    }, 5 * 60 * 1e3);
+      const plugin = decodeURIComponent(postConfigMatch[1]);
+      if (!isValidPluginName(plugin)) {
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not found");
+        return;
+      }
+      const body = await readBody(req);
+      try {
+        const data = JSON.parse(body);
+        await saveConfig(plugin, data, { merge: false });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true }));
+        setTimeout(() => {
+          server.close();
+          settle(true);
+        }, 500);
+      } catch (e) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
+      return;
+    }
+    if (method === "POST" && url === "/save") {
+      const token = req.headers["x-csrf-token"];
+      if (token !== csrfToken) {
+        res.writeHead(403, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "Invalid CSRF token" }));
+        return;
+      }
+      if (!pluginName) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "No plugin name bound to this server" }));
+        return;
+      }
+      if (!isValidPluginName(pluginName)) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "Invalid plugin name" }));
+        return;
+      }
+      const body = await readBody(req);
+      try {
+        const submittedState = JSON.parse(body);
+        const configData = stateToConfig(submittedState, collections);
+        const currentExisting = readConfigSync(pluginName);
+        const finalConfig = deepMerge2(currentExisting, configData);
+        await saveConfig(pluginName, finalConfig, { merge: false });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true }));
+        setTimeout(() => {
+          server.close();
+          settle(true);
+        }, 500);
+      } catch (e) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
+      return;
+    }
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not found");
   });
+  server.listen(0, "127.0.0.1", () => {
+    const addr = server.address();
+    serverPort = addr?.port ?? 0;
+    output.stderr(`Open the config UI at: http://localhost:${serverPort}
+`);
+    if (open && serverPort > 0) {
+      const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+      exec(`${cmd} "http://localhost:${serverPort}"`, () => {
+      });
+    }
+    timeoutHandle = setTimeout(() => {
+      server.close();
+      settle(false);
+    }, timeoutMs);
+    resolveReady();
+  });
+  server.on("error", (err) => {
+    output.stderr(`[config-ui] Server error: ${err.message}
+`);
+    settle(false);
+    resolveReady();
+  });
+  return {
+    get port() {
+      return serverPort;
+    },
+    get url() {
+      return serverPort ? `http://localhost:${serverPort}` : "";
+    },
+    csrfToken,
+    ready,
+    done,
+    async close() {
+      settle(false);
+      await new Promise((resolve2) => {
+        server.close(() => resolve2());
+      });
+    }
+  };
+}
+async function launchConfigUI(pluginName, options) {
+  const handle = launchUI(pluginName, options);
+  return handle.done;
 }
 async function requireConfigWithSetup(pluginName, options) {
   const { validate } = options;
@@ -8878,7 +9064,9 @@ async function requireConfigWithSetup(pluginName, options) {
     config = await requireConfig(pluginName);
   } catch (e) {
     if (e instanceof PluginError && e.code === "CONFIG_MISSING") {
-      if (await launchConfigUI(pluginName, options)) {
+      const handle = launchUI(pluginName, options);
+      const saved = await handle.done;
+      if (saved) {
         try {
           config = await requireConfig(pluginName);
           if (!validate || !validate(config)) return config;
@@ -8895,7 +9083,9 @@ async function requireConfigWithSetup(pluginName, options) {
   if (validate && validate(config)) {
     process.stderr.write(`[${pluginName}] Configuration is incomplete.
 `);
-    if (await launchConfigUI(pluginName, options)) {
+    const handle = launchUI(pluginName, options);
+    const saved = await handle.done;
+    if (saved) {
       try {
         const newConfig = await requireConfig(pluginName);
         if (!validate(newConfig)) return newConfig;
@@ -8974,19 +9164,19 @@ var PG_CONFIG_UI = {
   collections: [{ statePath: "/connections" }],
   validate: isConfigIncomplete
 };
-async function loadConfig2() {
+async function loadConfig3() {
   return requireConfigWithSetup("postgresql", PG_CONFIG_UI);
 }
-function isRecord(value) {
+function isRecord2(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function isConfigIncomplete(config) {
   const connections = config["connections"];
-  if (!isRecord(connections) || Object.keys(connections).length === 0) {
+  if (!isRecord2(connections) || Object.keys(connections).length === 0) {
     return true;
   }
   return Object.values(connections).some((connection) => {
-    if (!isRecord(connection)) return true;
+    if (!isRecord2(connection)) return true;
     return !String(connection["host"] ?? "").trim() || !String(connection["user"] ?? "").trim() || !String(connection["database"] ?? "").trim();
   });
 }
@@ -9007,12 +9197,12 @@ function printConnectionNames(config) {
   }
 }
 async function loadConnectionConfig(connName, databaseOverride) {
-  let config = await loadConfig2();
+  let config = await loadConfig3();
   let connConfig = (config.connections || {})[connName];
   if (!connConfig) {
     info(`Connection "${connName}" is not configured. Opening configuration form...`);
     if (await launchConfigUI("postgresql", PG_CONFIG_UI)) {
-      config = await loadConfig2();
+      config = await loadConfig3();
       connConfig = (config.connections || {})[connName];
     }
   }
@@ -9027,12 +9217,12 @@ async function copyConnection(sourceName, targetName, database, overwrite) {
   if (!database.trim()) {
     die("copy-connection requires --database <database>.");
   }
-  let config = await loadConfig2();
+  let config = await loadConfig3();
   let source = (config.connections || {})[sourceName];
   if (!source) {
     info(`Source connection "${sourceName}" is not configured. Opening configuration form...`);
     if (await launchConfigUI("postgresql", PG_CONFIG_UI)) {
-      config = await loadConfig2();
+      config = await loadConfig3();
       source = (config.connections || {})[sourceName];
     }
   }
@@ -9075,7 +9265,7 @@ function printTemplate() {
   });
 }
 async function listConnections() {
-  const config = await loadConfig2();
+  const config = await loadConfig3();
   const names = Object.keys(config.connections || {});
   if (names.length === 0) {
     console.log("No connections defined.");
@@ -9105,7 +9295,7 @@ function createClient(connConfig) {
   return new Client2(clientConfig);
 }
 async function testConnections(targetName, databaseOverride) {
-  const config = await loadConfig2();
+  const config = await loadConfig3();
   const entries = Object.entries(config.connections || {});
   if (entries.length === 0) {
     console.log("No connections defined.");

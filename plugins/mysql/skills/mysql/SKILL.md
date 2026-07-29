@@ -17,7 +17,7 @@ Execute SQL queries via `mysql2` Node.js script with multi-connection support.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `~/.cache/agent-plugins/mysql.json` directly.** Use `list`, `test`, `init` subcommands instead.
+**NEVER read, open, cat, or view `~/.cache/agent-plugins/mysql/config.json` directly.** Use `list`, `test`, `init` subcommands instead.
 
 ## CRITICAL: Write Operations FORBIDDEN
 

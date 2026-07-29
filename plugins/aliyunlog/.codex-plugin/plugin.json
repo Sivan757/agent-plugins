@@ -1,6 +1,6 @@
 {
   "name": "aliyunlog",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup.",
   "author": {
     "name": "Agent Plugins"
