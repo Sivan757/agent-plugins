@@ -203,6 +203,20 @@ test('saveConfig without merge overwrites existing config', async () => {
   rmSync(configStore.configDir('demo'), { recursive: true, force: true });
 });
 
+test('saveConfig default (no options) overwrites, does not merge', async () => {
+  await configStore.saveConfig('demo', { a: 1, nested: { x: 1 } });
+
+  // Second call with no options — overwrite, not merge
+  await configStore.saveConfig('demo', { b: 2 });
+
+  const { readFile } = await import('fs/promises');
+  const content = JSON.parse(await readFile(configStore.configPath('demo'), 'utf-8'));
+  assert.deepEqual(content, { b: 2 });
+
+  // Cleanup
+  rmSync(configStore.configDir('demo'), { recursive: true, force: true });
+});
+
 test('requireConfig loads existing config', async () => {
   mkdirSync(configStore.configDir('demo'), { recursive: true });
   writeFileSync(configStore.configPath('demo'), JSON.stringify({ key: 'required' }), 'utf-8');

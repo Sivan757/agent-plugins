@@ -74,6 +74,19 @@ export async function migrateLegacyConfig(name: string): Promise<void> {
   }
 }
 
+async function readConfigRaw<T extends Record<string, unknown>>(
+  name: string
+): Promise<T | null> {
+  const path = configPath(name);
+  try {
+    const raw = await readFile(path, 'utf-8');
+    return JSON.parse(raw) as T;
+  } catch (e: any) {
+    if (e.code === 'ENOENT') return null;
+    throw new PluginError('Failed to parse config', 'CONFIG_INVALID');
+  }
+}
+
 export async function loadConfig<T extends Record<string, unknown>>(
   name: string
 ): Promise<T | null> {
@@ -85,7 +98,8 @@ export async function loadConfig<T extends Record<string, unknown>>(
   try {
     const raw = await readFile(path, 'utf-8');
     return JSON.parse(raw) as T;
-  } catch {
+  } catch (e: any) {
+    if (e.code === 'ENOENT') return null;
     throw new PluginError('Failed to parse config', 'CONFIG_INVALID');
   }
 }
@@ -100,8 +114,8 @@ export async function saveConfig(
 
   let finalData = data;
 
-  if (options.merge !== false) {
-    const existing = await loadConfig<Record<string, unknown>>(name);
+  if (options.merge === true) {
+    const existing = await readConfigRaw<Record<string, unknown>>(name);
     if (existing) {
       finalData = deepMerge(existing, data);
     }
