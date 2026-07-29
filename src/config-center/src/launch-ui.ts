@@ -83,6 +83,15 @@ const defaultOutput: CLIOutput = {
   stderr: (s: string) => process.stderr.write(s),
 };
 
+/**
+ * Validate a plugin name to prevent path traversal. Plugin names may only
+ * contain alphanumerics, underscores, and hyphens. This is applied AFTER
+ * decodeURIComponent so that encoded slashes (%2F) cannot escape the cache dir.
+ */
+function isValidPluginName(name: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(name);
+}
+
 // ── Known plugin names for the plugin selector ───────────────────────────────
 
 /**
@@ -294,14 +303,12 @@ function injectGlobals(
   html: string,
   spec: ConfigSpec | undefined,
   state: Record<string, unknown>,
-  cfgPath: string,
   csrfToken: string,
   pluginName: string | undefined,
 ): string {
   const scriptTag = `<script>
 window.__CONFIG_SPEC__ = ${safeJSON(spec ?? null)};
 window.__CONFIG_STATE__ = ${safeJSON(state)};
-window.__CONFIG_PATH__ = ${safeJSON(cfgPath)};
 window.__CSRF_TOKEN__ = ${safeJSON(csrfToken)};
 window.__PLUGIN_NAME__ = ${safeJSON(pluginName ?? null)};
 </script>`;
@@ -361,7 +368,6 @@ export function launchUI(
   const collections = options?.collections;
 
   const csrfToken = randomBytes(16).toString('hex');
-  const cfgPath = pluginName ? configPath(pluginName) : '';
 
   // Load existing config synchronously for initial HTML injection.
   const existing = pluginName ? readConfigSync(pluginName) : {};
@@ -375,7 +381,7 @@ export function launchUI(
   let htmlError: string | null = null;
   try {
     const rawHTML = loadBundledHTML();
-    html = injectGlobals(rawHTML, spec, uiState, cfgPath, csrfToken, pluginName);
+    html = injectGlobals(rawHTML, spec, uiState, csrfToken, pluginName);
   } catch (e) {
     htmlError = (e as Error).message;
     output.stderr(`[config-ui] Warning: UI bundle not loaded: ${htmlError}\n`);
@@ -447,6 +453,11 @@ export function launchUI(
     const getConfigMatch = url.match(/^\/api\/config\/([^/?]+)$/);
     if (method === 'GET' && getConfigMatch) {
       const plugin = decodeURIComponent(getConfigMatch[1]);
+      if (!isValidPluginName(plugin)) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not found');
+        return;
+      }
       const config = readConfigSync(plugin);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(config));
@@ -464,6 +475,11 @@ export function launchUI(
       }
 
       const plugin = decodeURIComponent(postConfigMatch[1]);
+      if (!isValidPluginName(plugin)) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not found');
+        return;
+      }
       const body = await readBody(req);
       try {
         const data = JSON.parse(body) as Record<string, unknown>;
@@ -495,6 +511,12 @@ export function launchUI(
       if (!pluginName) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: false, error: 'No plugin name bound to this server' }));
+        return;
+      }
+
+      if (!isValidPluginName(pluginName)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'Invalid plugin name' }));
         return;
       }
 
@@ -563,7 +585,9 @@ export function launchUI(
     done,
     async close() {
       settle(false);
-      server.close();
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
     },
   };
 }

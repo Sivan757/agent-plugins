@@ -205,6 +205,38 @@ test('edit prints UI URL to stderr', async () => {
   assert.match(stderr, /Open the config UI at: http:\/\/localhost:\d+/);
 });
 
+test('init does not leak cache path, HOME, or plaintext config', async () => {
+  const secret = 'init-leak-secret-987654';
+  writeConfig('demo', { TOKEN: secret });
+  try {
+    const { stdout, stderr } = await runMain(['init', 'demo']);
+    assert.equal(stdout.includes('.cache/agent-plugins'), false, 'cache path leaked into init stdout');
+    assert.equal(stdout.includes(tmpHome), false, 'tmp HOME leaked into init stdout');
+    assert.equal(stdout.includes(secret), false, 'plaintext leaked into init stdout');
+    assert.equal(stderr.includes('.cache/agent-plugins'), false, 'cache path leaked into init stderr');
+    assert.equal(stderr.includes(tmpHome), false, 'tmp HOME leaked into init stderr');
+    assert.equal(stderr.includes(secret), false, 'plaintext leaked into init stderr');
+  } finally {
+    removeConfig('demo');
+  }
+});
+
+test('edit does not leak cache path, HOME, or plaintext config', async () => {
+  const secret = 'edit-leak-secret-321098';
+  writeConfig('demo', { TOKEN: secret });
+  try {
+    const { stdout, stderr } = await runMain(['edit', 'demo']);
+    assert.equal(stdout.includes('.cache/agent-plugins'), false, 'cache path leaked into edit stdout');
+    assert.equal(stdout.includes(tmpHome), false, 'tmp HOME leaked into edit stdout');
+    assert.equal(stdout.includes(secret), false, 'plaintext leaked into edit stdout');
+    assert.equal(stderr.includes('.cache/agent-plugins'), false, 'cache path leaked into edit stderr');
+    assert.equal(stderr.includes(tmpHome), false, 'tmp HOME leaked into edit stderr');
+    assert.equal(stderr.includes(secret), false, 'plaintext leaked into edit stderr');
+  } finally {
+    removeConfig('demo');
+  }
+});
+
 test('init without plugin prints UI URL to stderr', async () => {
   const { stderr } = await runMain(['init']);
   assert.match(stderr, /Open the config UI at: http:\/\/localhost:\d+/);

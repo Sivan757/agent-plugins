@@ -17,7 +17,6 @@ declare global {
   interface Window {
     __CONFIG_SPEC__: Spec | null;
     __CONFIG_STATE__: Record<string, unknown>;
-    __CONFIG_PATH__: string;
     __CSRF_TOKEN__: string;
     __PLUGIN_NAME__: string | null;
   }

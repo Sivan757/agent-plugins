@@ -159,6 +159,41 @@ test('GET /api/config/<plugin> returns existing config (plaintext to browser)', 
   await handle.close();
 });
 
+test('GET /api/config/<plugin> rejects path traversal via %2F encoding', async () => {
+  // Create a sentinel file OUTSIDE the cache dir that the traversal would
+  // reach if validation were missing. configPath('..%2F..%2Fconfig') decodes
+  // to '../../config' which resolves to <tmpHome>/config/config.json.
+  const sentinelDir = join(tmpHome, 'config');
+  mkdirSync(sentinelDir, { recursive: true });
+  const sentinelSecret = 'TRAVERSAL_SENTINEL_98765';
+  writeFileSync(
+    join(sentinelDir, 'config.json'),
+    JSON.stringify({ secret: sentinelSecret }),
+    'utf-8',
+  );
+
+  const handle = launchUI.launchUI(undefined, {
+    output: mockOutput(),
+    open: false,
+    timeoutMs: 5000,
+  });
+  await handle.ready;
+
+  try {
+    // %2F is URL-encoded /. After decodeURIComponent, ..%2F..%2Fconfig
+    // becomes ../../config. Without validation, configPath would resolve
+    // OUTSIDE the cache dir. The route must reject this.
+    const res = await get(`${handle.url}/api/config/..%2F..%2Fconfig`);
+    assert.ok(res.status >= 400 && res.status < 500,
+      `expected 4xx for path traversal attempt, got ${res.status}`);
+    assert.equal(res.body.includes(sentinelSecret), false,
+      'path traversal read sentinel file outside cache dir');
+  } finally {
+    await handle.close();
+    rmSync(sentinelDir, { recursive: true, force: true });
+  }
+});
+
 test('POST /api/config/<plugin> writes config via saveConfig', async () => {
   const handle = launchUI.launchUI(undefined, {
     output: mockOutput(),
@@ -167,27 +202,30 @@ test('POST /api/config/<plugin> writes config via saveConfig', async () => {
   });
   await handle.ready;
 
-  const res = await get(`${handle.url}/api/config/test-write`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': handle.csrfToken,
-    },
-    body: JSON.stringify({ KEY1: 'value1', KEY2: 'value2' }),
-  });
-  assert.equal(res.status, 200);
-  assert.deepEqual(JSON.parse(res.body), { ok: true });
+  try {
+    const res = await get(`${handle.url}/api/config/test-write`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': handle.csrfToken,
+      },
+      body: JSON.stringify({ KEY1: 'value1', KEY2: 'value2' }),
+    });
+    assert.equal(res.status, 200);
+    assert.deepEqual(JSON.parse(res.body), { ok: true });
 
-  // The server closes after a successful POST; wait for done.
-  const saved = await handle.done;
-  assert.equal(saved, true);
+    // The server closes after a successful POST; wait for done.
+    const saved = await handle.done;
+    assert.equal(saved, true);
 
-  // Verify the file was written via loadConfig (the production read path).
-  const loaded = await configStore.loadConfig('test-write');
-  assert.deepEqual(loaded, { KEY1: 'value1', KEY2: 'value2' });
-
-  // Cleanup
-  rmSync(configStore.configDir('test-write'), { recursive: true, force: true });
+    // Verify the file was written via loadConfig (the production read path).
+    const loaded = await configStore.loadConfig('test-write');
+    assert.deepEqual(loaded, { KEY1: 'value1', KEY2: 'value2' });
+  } finally {
+    // Cleanup
+    await handle.close();
+    rmSync(configStore.configDir('test-write'), { recursive: true, force: true });
+  }
 });
 
 test('POST /api/config/<plugin> rejects without CSRF token', async () => {
@@ -233,39 +271,42 @@ test('POST /save writes config for schema-driven form (with collections)', async
   });
   await handle.ready;
 
-  // The schema form posts UI state (arrays with _name).
-  const formState = {
-    connections: [
-      { _name: 'default', host: 'localhost', port: 5432 },
-      { _name: 'qa', host: 'qa.db', port: 5433 },
-    ],
-  };
+  try {
+    // The schema form posts UI state (arrays with _name).
+    const formState = {
+      connections: [
+        { _name: 'default', host: 'localhost', port: 5432 },
+        { _name: 'qa', host: 'qa.db', port: 5433 },
+      ],
+    };
 
-  const res = await get(`${handle.url}/save`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': handle.csrfToken,
-    },
-    body: JSON.stringify(formState),
-  });
-  assert.equal(res.status, 200);
-  assert.deepEqual(JSON.parse(res.body), { ok: true });
+    const res = await get(`${handle.url}/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': handle.csrfToken,
+      },
+      body: JSON.stringify(formState),
+    });
+    assert.equal(res.status, 200);
+    assert.deepEqual(JSON.parse(res.body), { ok: true });
 
-  const saved = await handle.done;
-  assert.equal(saved, true);
+    const saved = await handle.done;
+    assert.equal(saved, true);
 
-  // Verify the config was written in keyed-object format (arrays -> objects).
-  const loaded = await configStore.loadConfig('test-schema');
-  assert.deepEqual(loaded, {
-    connections: {
-      default: { host: 'localhost', port: 5432 },
-      qa: { host: 'qa.db', port: 5433 },
-    },
-  });
-
-  // Cleanup
-  rmSync(configStore.configDir('test-schema'), { recursive: true, force: true });
+    // Verify the config was written in keyed-object format (arrays -> objects).
+    const loaded = await configStore.loadConfig('test-schema');
+    assert.deepEqual(loaded, {
+      connections: {
+        default: { host: 'localhost', port: 5432 },
+        qa: { host: 'qa.db', port: 5433 },
+      },
+    });
+  } finally {
+    // Cleanup
+    await handle.close();
+    rmSync(configStore.configDir('test-schema'), { recursive: true, force: true });
+  }
 });
 
 test('POST /save rejects without CSRF token', async () => {
@@ -294,8 +335,12 @@ test('handle.done resolves false on timeout', async () => {
   });
   await handle.ready;
 
-  const saved = await handle.done;
-  assert.equal(saved, false);
+  try {
+    const saved = await handle.done;
+    assert.equal(saved, false);
+  } finally {
+    await handle.close();
+  }
 });
 
 test('handle.close() is idempotent and settles done', async () => {

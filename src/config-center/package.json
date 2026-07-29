@@ -14,7 +14,7 @@
     "build": "npx vite build --config ui/vite.config.ts && bash ../../scripts/build-plugin.sh src/config-center.ts ../../.build/plugin-dist/config-center/dist/config-center.mjs",
     "build:ui": "npx vite build --config ui/vite.config.ts",
     "dev": "tsx src/config-center.ts",
-    "test": "tsx --test src/config-center.test.ts",
+    "test": "bun test src/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
