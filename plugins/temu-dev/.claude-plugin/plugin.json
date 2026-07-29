@@ -1,0 +1,8 @@
+{
+  "name": "temu-dev",
+  "version": "0.1.0",
+  "description": "Reference knowledge base for Temu Partner developer documentation: navigating logged-in Temu docs, capturing docs with OpenCLI/Chrome, self-developed app setup, auth, region partitioning, signing rules, API lists, goods publishing flow, data dictionaries, and turning Temu docs into implementation plans.",
+  "author": {
+    "name": "Agent Plugins"
+  }
+}

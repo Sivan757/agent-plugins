@@ -1,0 +1,302 @@
+{
+  "capturedAt": "2026-06-17T05:08:50.202Z",
+  "source": "Temu Partner Platform document center",
+  "profile": "dkumwg4s",
+  "session": "temu-docs",
+  "catalog": {
+    "key": "developer",
+    "name": "开发者文档",
+    "cataId": 875196199516,
+    "url": "https://agentpartner.temu.com/document?cataId=875196199516&docId=896172443264",
+    "groupCount": 5,
+    "documentCount": 23,
+    "groups": [
+      {
+        "id": 875198013030,
+        "name": "开发指南",
+        "children": 6,
+        "childrenNum": 6
+      },
+      {
+        "id": 896171251823,
+        "name": "调用流程",
+        "children": 2,
+        "childrenNum": 2
+      },
+      {
+        "id": 893021155102,
+        "name": "数据字典",
+        "children": 13,
+        "childrenNum": 16
+      },
+      {
+        "id": 878343104777,
+        "name": "常见问题",
+        "children": 1,
+        "childrenNum": 1
+      },
+      {
+        "id": 903509273660,
+        "name": "入驻流程",
+        "children": 1,
+        "childrenNum": 1
+      }
+    ]
+  },
+  "documents": [
+    {
+      "catalog": "developer",
+      "group": "开发指南",
+      "docId": 896167235113,
+      "documentId": 129273750890,
+      "documentType": 2,
+      "name": "签名规则",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=896167235113",
+      "file": "developer/01-开发指南/01-896167235113-签名规则.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "开发指南",
+      "docId": 899322689413,
+      "documentId": 132429173222,
+      "documentType": 2,
+      "name": "自研专属接口",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=899322689413",
+      "file": "developer/01-开发指南/03-899322689413-自研专属接口.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "开发指南",
+      "docId": 909799935182,
+      "documentId": 141858478483,
+      "documentType": 2,
+      "name": "分区说明",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=909799935182",
+      "file": "developer/01-开发指南/04-909799935182-分区说明.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "开发指南",
+      "docId": 899312840459,
+      "documentId": 132420401064,
+      "documentType": 2,
+      "name": "接口列表",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=899312840459",
+      "file": "developer/01-开发指南/05-899312840459-接口列表.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 894069632221,
+      "documentId": 127177168942,
+      "documentType": 2,
+      "name": "发品-省份枚举值",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=894069632221",
+      "file": "developer/03-数据字典/01-894069632221-发品-省份枚举值.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 921341154291,
+      "documentId": 153400122150,
+      "documentType": 2,
+      "name": "部分类目模特信息必填",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=921341154291",
+      "file": "developer/03-数据字典/02-921341154291-部分类目模特信息必填.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 907701113730,
+      "documentId": 139759717684,
+      "documentType": 2,
+      "name": "定制品定制工艺层级关系",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=907701113730",
+      "file": "developer/03-数据字典/03-907701113730-定制品定制工艺层级关系.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 893022798763,
+      "documentId": 126128279515,
+      "documentType": 2,
+      "name": "半托管站点列表",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=893022798763",
+      "file": "developer/03-数据字典/04-893022798763-半托管站点列表.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 901417326943,
+      "documentId": 134523592060,
+      "documentType": 2,
+      "name": "（单码）鞋类尺码&脚长映射配置",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=901417326943",
+      "file": "developer/03-数据字典/05-901417326943-单码-鞋类尺码-脚长映射配置.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 927624305278,
+      "documentId": 159682943373,
+      "documentType": 2,
+      "name": "（双码）鞋类尺码&脚长映射配置",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=927624305278",
+      "file": "developer/03-数据字典/06-927624305278-双码-鞋类尺码-脚长映射配置.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 929724079178,
+      "documentId": 161781232534,
+      "documentType": 2,
+      "name": "车型库必填类目",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=929724079178",
+      "file": "developer/03-数据字典/07-929724079178-车型库必填类目.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 919235879240,
+      "documentId": 151293979205,
+      "documentType": 2,
+      "name": "支持底板套板的类目",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=919235879240",
+      "file": "developer/03-数据字典/08-919235879240-支持底板套板的类目.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 922384819299,
+      "documentId": 154442717054,
+      "documentType": 2,
+      "name": "半托管sku分类&净含量必填叶子类目",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=922384819299",
+      "file": "developer/03-数据字典/09-922384819299-半托管sku分类-净含量必填叶子类目.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 925549081396,
+      "documentId": 156551928165,
+      "documentType": 2,
+      "name": "承诺发货时效说明",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=925549081396",
+      "file": "developer/03-数据字典/10-925549081396-承诺发货时效说明.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 934972632786,
+      "documentId": 167030563903,
+      "documentType": 2,
+      "name": "尺码规格分组",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=934972632786",
+      "file": "developer/03-数据字典/11-934972632786-尺码规格分组.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 918191803712,
+      "documentId": 150248517406,
+      "documentType": 2,
+      "name": "尺码表分类",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=918191803712",
+      "file": "developer/03-数据字典/12-918191803712-尺码表分类.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "数据字典",
+      "docId": 899323233508,
+      "documentId": 132430304308,
+      "documentType": 2,
+      "name": "货品名称长度限制规则",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=899323233508",
+      "file": "developer/03-数据字典/13-899323233508-货品名称长度限制规则.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "常见问题",
+      "docId": 881488516724,
+      "documentId": 114595649140,
+      "documentType": 2,
+      "name": "常见问题",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=881488516724",
+      "file": "developer/04-常见问题/01-881488516724-常见问题.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "入驻流程",
+      "docId": 903508418346,
+      "documentId": 136614434571,
+      "documentType": 2,
+      "name": "入驻流程说明",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=903508418346",
+      "file": "developer/05-入驻流程/01-903508418346-入驻流程说明.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "开发指南",
+      "docId": 896168820140,
+      "documentId": 129276807107,
+      "documentType": 2,
+      "name": "鉴权信息",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=896168820140",
+      "file": "developer/01-开发指南/02-896168820140-鉴权信息.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "开发指南",
+      "docId": 897215162233,
+      "documentId": 130322504140,
+      "documentType": 2,
+      "name": "基本信息",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=897215162233",
+      "file": "developer/01-开发指南/06-897215162233-基本信息.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "调用流程",
+      "docId": 896173561825,
+      "documentId": 129279166501,
+      "documentType": 2,
+      "name": "全托履约流程",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=896173561825",
+      "file": "developer/02-调用流程/01-896173561825-全托履约流程.md"
+    },
+    {
+      "catalog": "developer",
+      "group": "调用流程",
+      "docId": 896172443264,
+      "documentId": 129278535668,
+      "documentType": 2,
+      "name": "货品发布流程",
+      "desc": "",
+      "sourceUrl": "https://agentpartner.temu.com/document?cataId=875196199516&docId=896172443264",
+      "file": "developer/02-调用流程/02-896172443264-货品发布流程.md"
+    }
+  ],
+  "failures": []
+}
