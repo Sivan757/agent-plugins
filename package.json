@@ -9,7 +9,7 @@
     "src/mysql",
     "src/aliyunlog",
     "src/ecommerce-expert",
-    "src/notebook"
+    "src/config-center"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

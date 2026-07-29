@@ -1,0 +1,22 @@
+{
+  "name": "@agent-plugins/config-center",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "bash ../../scripts/build-plugin.sh src/config-center.ts ../../.build/plugin-dist/config-center/dist/config-center.mjs",
+    "dev": "tsx src/config-center.ts",
+    "test": "tsx --test src/config-center.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "*"
+  }
+}

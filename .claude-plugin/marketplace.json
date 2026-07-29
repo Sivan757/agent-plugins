@@ -17,10 +17,10 @@
       "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
     },
     {
-      "name": "augment-mcp",
-      "version": "0.1.2",
-      "source": "./plugins/augment-mcp",
-      "description": "Integrates Augment Context Engine MCP server for semantic codebase search and retrieval across repositories."
+      "name": "config-center",
+      "version": "0.1.0",
+      "source": "./plugins/config-center",
+      "description": "Local configuration center for managing plugin credentials and environment state. Agent-facing reads are redacted; modifications require the HTML UI."
     },
     {
       "name": "ecommerce-expert",
@@ -35,22 +35,10 @@
       "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
     },
     {
-      "name": "notebook",
-      "version": "0.1.2",
-      "source": "./plugins/notebook",
-      "description": "Cross-agent local notebook memory with startup bootstrap context, topic files, audits, and transcript-backed insights."
-    },
-    {
       "name": "postgresql",
       "version": "0.5.3",
       "source": "./plugins/postgresql",
       "description": "Enables AI to execute SQL queries against PostgreSQL databases via Node.js with multi-connection support for schema inspection and discovery."
-    },
-    {
-      "name": "prompt-enhancer",
-      "version": "0.1.1",
-      "source": "./plugins/prompt-enhancer",
-      "description": "Enhances vague user prompts into clear, actionable prompts for development, debugging, review, architecture, and implementation work."
     },
     {
       "name": "shopify-ai-toolkit",
