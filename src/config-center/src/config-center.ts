@@ -4,8 +4,7 @@
  *
  * Security boundary: NEVER print plaintext config values or the cache path.
  * - `get`/`show` always print redacted output.
- * - `init`/`edit` launch the HTML UI (stubbed in this task; full HTTP server
- *   lands in a later task).
+ * - `init`/`edit` launch the HTML UI (local HTTP server + React app).
  * - No `set` command. No `--plaintext` flag. No `--debug` flag.
  */
 
@@ -13,38 +12,16 @@ import { Command, CommanderError } from 'commander';
 import { pathToFileURL } from 'node:url';
 import { loadConfig } from './config-store.js';
 import { redactEntry } from './redact.js';
+import { launchUI } from './launch-ui.js';
 
-/**
- * Output interface for the CLI. Defaults to process.stdout/stderr.
- * Tests can pass in a mock to capture output without monkey-patching.
- */
-export interface CLIOutput {
-  stdout: (s: string) => void;
-  stderr: (s: string) => void;
-}
+// Re-export CLIOutput so existing importers (and tests) keep compiling.
+export type { CLIOutput } from './launch-ui.js';
+import type { CLIOutput } from './launch-ui.js';
 
 const defaultOutput: CLIOutput = {
   stdout: (s: string) => process.stdout.write(s),
   stderr: (s: string) => process.stderr.write(s),
 };
-
-/**
- * Stub for the HTML UI launcher. The full HTTP server lands in a later task.
- * Prints the UI URL to stderr (so stdout stays clean for Agent parsing) and
- * returns the port number.
- */
-export function launchUI(
-  pluginName?: string,
-  output: CLIOutput = defaultOutput
-): number {
-  // Deterministic stub port; the real implementation will bind to 0 and
-  // report the OS-assigned port. Randomized here to avoid port collisions
-  // when multiple stubs run back-to-back.
-  const port = 4321 + Math.floor(Math.random() * 1000);
-  void pluginName; // Reserved for the full UI implementation (Task 0.6).
-  output.stderr(`Open the config UI at: http://localhost:${port}\n`);
-  return port;
-}
 
 function buildProgram(output: CLIOutput): Command {
   const program = new Command();
@@ -112,15 +89,27 @@ function buildProgram(output: CLIOutput): Command {
   program
     .command('init [plugin]')
     .description('Bootstrap a plugin config directory and open the HTML UI.')
-    .action((plugin?: string) => {
-      launchUI(plugin, output);
+    .action(async (plugin?: string) => {
+      const handle = launchUI(plugin, {
+        output,
+        open: !process.env.CC_UI_NO_OPEN,
+        timeoutMs: process.env.CC_UI_TIMEOUT_MS ? Number(process.env.CC_UI_TIMEOUT_MS) : undefined,
+      });
+      await handle.ready;
+      await handle.done;
     });
 
   program
     .command('edit [plugin]')
     .description('Open the HTML UI to edit a plugin config. The sole modification path.')
-    .action((plugin?: string) => {
-      launchUI(plugin, output);
+    .action(async (plugin?: string) => {
+      const handle = launchUI(plugin, {
+        output,
+        open: !process.env.CC_UI_NO_OPEN,
+        timeoutMs: process.env.CC_UI_TIMEOUT_MS ? Number(process.env.CC_UI_TIMEOUT_MS) : undefined,
+      });
+      await handle.ready;
+      await handle.done;
     });
 
   // Apply configureOutput + exitOverride to each subcommand so their errors

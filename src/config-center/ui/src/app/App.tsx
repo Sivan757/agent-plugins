@@ -11,20 +11,29 @@ import { saveConfig } from '@shared/actions';
 import { ConfigContext } from '@shared/ConfigContext';
 import { I18nProvider } from '@shared/i18n';
 import { buildHandlers, createAppRegistry } from '@shared/registry';
+import { PluginEditor } from '@components/PluginEditor';
 
 declare global {
   interface Window {
-    __CONFIG_SPEC__: Spec;
+    __CONFIG_SPEC__: Spec | null;
     __CONFIG_STATE__: Record<string, unknown>;
     __CONFIG_PATH__: string;
     __CSRF_TOKEN__: string;
+    __PLUGIN_NAME__: string | null;
   }
 }
+
+type Tab = 'schema' | 'editor';
 
 export function App() {
   const spec = window.__CONFIG_SPEC__ ?? null;
   const initialState = window.__CONFIG_STATE__ ?? {};
   const csrfToken = window.__CSRF_TOKEN__ ?? '';
+  const pluginName = window.__PLUGIN_NAME__ ?? null;
+
+  // Default to the schema tab when a spec is injected; otherwise show the
+  // generic plugin editor.
+  const [activeTab, setActiveTab] = useState<Tab>(spec ? 'schema' : 'editor');
 
   const [state, setState] = useState<Record<string, unknown>>(initialState);
 
@@ -83,37 +92,6 @@ export function App() {
     [],
   );
 
-  if (!spec) {
-    return (
-      <div className="w-full max-w-[560px] mx-auto py-16 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger/10">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-danger"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-        </div>
-        <h1 className="mb-2 text-lg font-semibold text-text-primary">
-          Configuration Error
-        </h1>
-        <p className="text-sm text-text-muted">
-          No configuration spec was provided. This page should be opened by a
-          plugin setup script.
-        </p>
-      </div>
-    );
-  }
-
   const configCtx = useMemo(
     () => ({
       save: async () => {
@@ -129,20 +107,70 @@ export function App() {
     [csrfToken, initialState],
   );
 
+  // Render the tab bar only when both views are available (i.e. a spec exists).
+  const showTabs = spec !== null;
+
   return (
     <I18nProvider>
-      <ConfigContext.Provider value={configCtx}>
-        <StateProvider
-          initialState={initialState}
-          onStateChange={handleStateChange}
-        >
-          <VisibilityProvider>
-            <ActionProvider handlers={actionHandlers}>
-              <Renderer spec={spec} registry={appRegistry.registry} />
-            </ActionProvider>
-          </VisibilityProvider>
-        </StateProvider>
-      </ConfigContext.Provider>
+      {showTabs && (
+        <div className="w-[640px] max-w-full mx-auto flex gap-1 mb-4">
+          <TabButton
+            active={activeTab === 'schema'}
+            onClick={() => setActiveTab('schema')}
+          >
+            Schema Form
+          </TabButton>
+          <TabButton
+            active={activeTab === 'editor'}
+            onClick={() => setActiveTab('editor')}
+          >
+            Plugin Editor
+          </TabButton>
+        </div>
+      )}
+
+      {activeTab === 'editor' ? (
+        <PluginEditor csrfToken={csrfToken} initialPlugin={pluginName} />
+      ) : spec ? (
+        <ConfigContext.Provider value={configCtx}>
+          <StateProvider
+            initialState={initialState}
+            onStateChange={handleStateChange}
+          >
+            <VisibilityProvider>
+              <ActionProvider handlers={actionHandlers}>
+                <Renderer spec={spec} registry={appRegistry.registry} />
+              </ActionProvider>
+            </VisibilityProvider>
+          </StateProvider>
+        </ConfigContext.Provider>
+      ) : (
+        <PluginEditor csrfToken={csrfToken} initialPlugin={pluginName} />
+      )}
     </I18nProvider>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-4 py-2 text-[14px] font-medium rounded-md transition-colors ${
+        active
+          ? 'bg-accent-dim text-accent border border-accent/30'
+          : 'text-text-muted hover:text-text-primary hover:bg-surface-hover border border-transparent'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

@@ -18,11 +18,17 @@ let configStore: any;
 before(() => {
   tmpHome = mkdtempSync(join(tmpdir(), 'cc-cli-'));
   process.env.HOME = tmpHome;
+  // Test mode: don't open a browser, and use a short server timeout so
+  // init/edit actions resolve quickly without hanging the test runner.
+  process.env.CC_UI_NO_OPEN = '1';
+  process.env.CC_UI_TIMEOUT_MS = '20';
   // Clear require cache so stateful source modules re-evaluate with the
   // test HOME. config-store.ts captures HOME at module-load time into
   // CACHE_DIR. config-center.ts imports config-store, so it must reload too.
   for (const key of Object.keys(require.cache)) {
-    if (key.endsWith('config-center.ts') || key.endsWith('config-store.ts')) {
+    if (key.endsWith('config-center.ts') ||
+        key.endsWith('config-store.ts') ||
+        key.endsWith('launch-ui.ts')) {
       delete require.cache[key];
     }
   }
@@ -32,6 +38,8 @@ before(() => {
 
 after(() => {
   process.env.HOME = originalHome;
+  delete process.env.CC_UI_NO_OPEN;
+  delete process.env.CC_UI_TIMEOUT_MS;
   rmSync(tmpHome, { recursive: true, force: true });
 });
 
