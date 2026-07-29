@@ -17,7 +17,7 @@ Execute SQL queries via `pg` Node.js script with multi-connection support.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `~/.cache/agent-plugins/postgresql.json` directly.** Use `list`, `test`, `setup`, and `copy-connection` subcommands instead.
+**NEVER read, open, cat, or view `~/.cache/agent-plugins/postgresql/config.json` directly.** Use `list`, `test`, `setup`, and `copy-connection` subcommands instead.
 
 ## Command Path Setup
 

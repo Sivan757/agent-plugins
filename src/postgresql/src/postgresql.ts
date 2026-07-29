@@ -11,14 +11,14 @@
  *   node postgresql.mjs test [name]                     Test connection(s)
  *   node postgresql.mjs setup                            Open browser config UI
  *
- * Config: ~/.cache/agent-plugins/postgresql.json
+ * Config: ~/.cache/agent-plugins/postgresql/config.json
  */
 
 import pg from 'pg';
 import { Command } from 'commander';
 
-import { launchConfigUI, requireConfigWithSetup, saveConfig, configPath } from '@agent-plugins/core';
-import type { ConfigUIOptions } from '@agent-plugins/core';
+import { launchConfigUI, requireConfigWithSetup, saveConfig, configPath } from '@agent-plugins/config-center';
+import type { ConfigUIOptions } from '@agent-plugins/config-center';
 
 const { Client } = pg;
 

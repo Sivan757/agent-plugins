@@ -20,7 +20,7 @@ async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
 }
 
 async function writeConfig(home: string, config: Record<string, unknown>): Promise<string> {
-  const configFile = join(home, '.cache/agent-plugins/postgresql.json');
+  const configFile = join(home, '.cache/agent-plugins/postgresql/config.json');
   await mkdir(dirname(configFile), { recursive: true });
   await writeFile(configFile, JSON.stringify(config, null, 2) + '\n', 'utf8');
   return configFile;

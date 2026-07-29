@@ -1,6 +1,6 @@
 {
   "name": "postgresql",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "build": "bash ../../scripts/build-plugin.sh src/postgresql.ts ../../.build/plugin-dist/postgresql/dist/postgresql.mjs",
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agent-plugins/core": "*",
+    "@agent-plugins/config-center": "*",
     "commander": "*",
     "pg": "^8.20.0"
   },
