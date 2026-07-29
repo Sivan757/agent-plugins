@@ -158,7 +158,12 @@ For each of the 8 source skills:
 
 ## Versions
 
-All new plugins start at `0.1.0`. Rewritten existing plugins: bump patch for the refactor (e.g. ticktick 0.6.4→0.6.5) — content of the bump is the import-path + cache-layout migration.
+- New plugins (config-center + the 8 migrated skills) start at `0.1.0`.
+- Rewritten existing CLI plugins get a **minor bump** to signal the breaking-but-compatible-with-migration change (cache layout flat→directory, import source `@agent-plugins/core`→`@agent-plugins/config-center`, helper migrates legacy flat files on first read):
+  - `ticktick` 0.6.4 → 0.7.0
+  - `postgresql` 0.5.3 → 0.6.0
+  - `mysql` 0.11.2 → 0.12.0
+  - `aliyunlog` 1.6.2 → 1.7.0
 
 ## Resolved decisions
 
