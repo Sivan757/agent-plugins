@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // TickTick CLI — Direct API wrapper for AI-driven task management
 // Usage: ticktick <resource> <action> [args] [--options]
+// Config: ~/.cache/agent-plugins/ticktick/config.json
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { randomBytes } from 'crypto';
@@ -8,8 +9,8 @@ import { createServer } from 'http';
 import { tmpdir } from 'os';
 
 import { Command } from 'commander';
-import { requireConfig, requireConfigWithSetup, saveConfig, PluginError } from '@agent-plugins/core';
-import type { ConfigUIOptions } from '@agent-plugins/core';
+import { requireConfig, requireConfigWithSetup, saveConfig, PluginError } from '@agent-plugins/config-center';
+import type { ConfigUIOptions } from '@agent-plugins/config-center';
 
 // =============================================================================
 // Config
