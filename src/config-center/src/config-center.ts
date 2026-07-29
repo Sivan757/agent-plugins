@@ -135,10 +135,12 @@ function buildProgram(output: CLIOutput): Command {
 /**
  * Redact any substring that looks like a cache path from a message.
  * Used as defense-in-depth for error output so the cache path never leaks
- * even if an upstream error message happens to include it.
+ * even if an upstream error message happens to include it. Covers both the
+ * current `~/.cache/agent-plugins/` layout and the legacy `~/.cache/ap/ex-plugin/`
+ * path that migrateLegacyConfig may surface in a rename error.
  */
 function redactCachePath(message: string): string {
-  return message.replace(/\S*\.cache\/agent-plugins\S*/g, '<redacted>');
+  return message.replace(/\S*\.cache\/\S*/g, '<redacted>');
 }
 
 /**

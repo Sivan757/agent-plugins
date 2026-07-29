@@ -82,8 +82,9 @@ test('get prints redacted value', async () => {
 test('get does NOT leak plaintext (security regression)', async () => {
   const secret = 'supersecretvalue123';
   writeConfig('demo', { TOKEN: secret });
-  const { stdout } = await runMain(['get', 'demo', 'TOKEN']);
+  const { stdout, stderr } = await runMain(['get', 'demo', 'TOKEN']);
   assert.equal(stdout.includes(secret), false, 'plaintext secret leaked into stdout');
+  assert.equal(stderr.includes(secret), false, 'plaintext secret leaked into stderr');
   removeConfig('demo');
 });
 
@@ -131,8 +132,9 @@ test('show prints "# no config" when config is missing', async () => {
 test('show never leaks plaintext', async () => {
   const secret = 'plaintextleak123456';
   writeConfig('demo', { TOKEN: secret });
-  const { stdout } = await runMain(['show', 'demo']);
+  const { stdout, stderr } = await runMain(['show', 'demo']);
   assert.equal(stdout.includes(secret), false, 'plaintext secret leaked into show output');
+  assert.equal(stderr.includes(secret), false, 'plaintext secret leaked into show stderr');
   removeConfig('demo');
 });
 
@@ -151,6 +153,38 @@ test('show never prints the cache path', async () => {
   assert.equal(stdout.includes('.cache/agent-plugins'), false, 'cache path leaked into stdout');
   assert.equal(stderr.includes('.cache/agent-plugins'), false, 'cache path leaked into stderr');
   removeConfig('demo');
+});
+
+test('legacy-path rename error does not leak HOME or cache path', async () => {
+  // Place a legacy config at the OLDER ~/.cache/ap/ex-plugin/<name>.json path
+  // and make the target plugin directory read-only so migrateLegacyConfig's
+  // mkdir noops (dir exists) but rename INTO it fails with EACCES. The rename
+  // error's source path is the legacy .../.cache/ap/ex-plugin/<name>.json,
+  // which the narrow redaction regex would leak. Assert it does not.
+  const legacyOlderDir = join(tmpHome, '.cache', 'ap', 'ex-plugin');
+  mkdirSync(legacyOlderDir, { recursive: true });
+  writeFileSync(join(legacyOlderDir, 'demo.json'), JSON.stringify({ TOKEN: 'abcdefghij' }));
+
+  const fs = require('fs');
+  // Create the target plugin dir writable first, then make it read-only so
+  // rename cannot write config.json into it (mkdir with recursive:true is a
+  // noop on an existing dir, so it succeeds; rename then fails).
+  const pluginDir = configStore.configDir('demo');
+  mkdirSync(pluginDir, { recursive: true });
+  fs.chmodSync(pluginDir, 0o500);
+
+  try {
+    const { stdout, stderr, code } = await runMain(['get', 'demo', 'TOKEN']);
+    assert.equal(stderr.includes(tmpHome), false, 'tmp HOME leaked into stderr');
+    assert.equal(stderr.includes('ap/ex-plugin'), false, 'legacy cache path leaked into stderr');
+    assert.equal(stderr.includes('.cache/'), false, 'cache path leaked into stderr');
+    assert.equal(stdout.includes(tmpHome), false, 'tmp HOME leaked into stdout');
+    assert.equal(code, 1);
+  } finally {
+    fs.chmodSync(pluginDir, 0o755);
+    rmSync(join(tmpHome, '.cache', 'ap'), { recursive: true, force: true });
+    rmSync(pluginDir, { recursive: true, force: true });
+  }
 });
 
 test('init prints UI URL to stderr', async () => {
