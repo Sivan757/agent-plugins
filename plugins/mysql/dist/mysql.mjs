@@ -23574,7 +23574,7 @@ Hint: The table may exist in a different database. Find it with:`);
     if (conn) await conn.end();
   }
 });
-program2.command("init").description("Create config template at ~/.cache/agent-plugins/mysql.json").action(() => {
+program2.command("init").description("Create config template").action(() => {
   printTemplate();
 });
 program2.command("list").description("List available connections").action(async () => {

@@ -9581,7 +9581,7 @@ Hint: Check column names with:`);
     });
   }
 });
-program2.command("init").description("Create config template at ~/.cache/agent-plugins/postgresql.json").action(() => {
+program2.command("init").description("Create config template").action(() => {
   printTemplate();
 });
 program2.command("setup").description("Open the browser configuration form").action(async () => {

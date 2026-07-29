@@ -7,11 +7,11 @@
   → OpenNana API, GitHub awesome-list, 手动导入
 
 步骤 2: 抓取（spawn curator agent）
-  → 读取 agents/curator.md, spawn with source + limit + output path
+  → 读取 references/personas/curator.md, spawn with source + limit + output path
 
 步骤 3: 规范化
   → 统一字段映射：title, prompt_text, category, tags, source_url, source_type
-  → 脚本: scripts/normalize.py
+  → 脚本: pf source import（内联规范化，无外部脚本）
 
 步骤 4: 去重
   → SHA256(prompt_text) 精确去重
@@ -71,7 +71,7 @@
   → pf prompt list --rating 4 --category flat-lay --limit 100
 
 步骤 2: 提取共性
-  → spawn synthesizer agent (agents/synthesizer.md)
+  → spawn synthesizer agent (references/personas/synthesizer.md)
   → Agent 分析：结构模式、高频关键词、参数分布
 
 步骤 3: 聚类

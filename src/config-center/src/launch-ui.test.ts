@@ -2,7 +2,8 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const originalHome = homedir();
 let tmpHome: string;
@@ -12,6 +13,25 @@ let launchUI: any;
 let configStore: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let captured: any;
+
+/**
+ * The "GET / serves the bundled HTML" test depends on the Vite-built
+ * config-ui bundle (src/config-center/ui/dist/index.html), which is
+ * gitignored and only present after `npm run build:ui`. Detect the bundle
+ * the same way loadBundledHTML does so the test can skip cleanly in a fresh
+ * checkout instead of reporting a false failure.
+ */
+function bundledHtmlAvailable(): boolean {
+  const here = typeof __dirname !== 'undefined'
+    ? __dirname
+    : dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    resolve(here, 'config-ui', 'dist', 'index.html'), // packed: dist/config-ui/dist/
+    resolve(here, '..', 'ui', 'dist', 'index.html'), // dev: src/ui/dist/
+    resolve(here, '..', '..', '..', 'src', 'config-center', 'ui', 'dist', 'index.html'),
+  ];
+  return candidates.some((p) => existsSync(p));
+}
 
 before(() => {
   tmpHome = mkdtempSync(join(tmpdir(), 'cc-launch-'));
@@ -81,7 +101,7 @@ test('launchUI does not write to stdout', async () => {
   await handle.close();
 });
 
-test('GET / serves the bundled HTML', async () => {
+test('GET / serves the bundled HTML', { skip: !bundledHtmlAvailable() ? 'config-ui bundle not built (run `npm run build:ui` in src/config-center)' : false }, async () => {
   const handle = launchUI.launchUI('test-html', {
     output: mockOutput(),
     open: false,

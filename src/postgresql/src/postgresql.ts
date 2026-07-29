@@ -621,7 +621,7 @@ program
 // init command
 program
   .command('init')
-  .description('Create config template at ~/.cache/agent-plugins/postgresql.json')
+  .description('Create config template')
   .action(() => {
     printTemplate();
   });
