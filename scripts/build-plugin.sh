@@ -18,7 +18,7 @@ npx esbuild "$ENTRY" \
   --banner:js="$BANNER"
 
 # Ship config-ui HTML bundle alongside the plugin so it works from cache
-CONFIG_UI_SRC="$(cd "$(dirname "$0")/.." && pwd)/packages/config-ui/dist/index.html"
+CONFIG_UI_SRC="$(cd "$(dirname "$0")/.." && pwd)/src/config-center/ui/dist/index.html"
 CONFIG_UI_DST="$(dirname "$OUTFILE")/config-ui/dist"
 if [ -f "$CONFIG_UI_SRC" ]; then
   mkdir -p "$CONFIG_UI_DST"

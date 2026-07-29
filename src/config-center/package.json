@@ -11,12 +11,29 @@
     }
   },
   "scripts": {
-    "build": "bash ../../scripts/build-plugin.sh src/config-center.ts ../../.build/plugin-dist/config-center/dist/config-center.mjs",
+    "build": "npx vite build --config ui/vite.config.ts && bash ../../scripts/build-plugin.sh src/config-center.ts ../../.build/plugin-dist/config-center/dist/config-center.mjs",
+    "build:ui": "npx vite build --config ui/vite.config.ts",
     "dev": "tsx src/config-center.ts",
     "test": "tsx --test src/config-center.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "commander": "*"
+  },
+  "devDependencies": {
+    "@json-render/core": "latest",
+    "@json-render/react": "latest",
+    "@json-render/shadcn": "latest",
+    "@tailwindcss/vite": "^4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4",
+    "react": "^19",
+    "react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5.8",
+    "vite": "^6",
+    "vite-plugin-singlefile": "^2",
+    "zod": "^4"
   }
 }

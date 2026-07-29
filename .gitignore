@@ -12,6 +12,7 @@ external-resources/*
 node_modules/
 .build/
 src/*/dist/
+src/*/ui/dist/
 src/*/package-lock.json
 .serena/
 *.tsbuildinfo
