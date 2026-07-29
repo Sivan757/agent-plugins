@@ -1,0 +1,19 @@
+{
+  "name": "@agent-plugins/prompt-forge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bash ../../scripts/build-plugin.sh src/prompt-forge.ts ../../.build/plugin-dist/prompt-forge/dist/prompt-forge.mjs",
+    "dev": "tsx src/prompt-forge.ts",
+    "test": "node --import tsx --test src/prompt-forge.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agent-plugins/config-center": "*",
+    "commander": "*"
+  },
+  "devDependencies": {
+    "@types/node": "*"
+  }
+}

@@ -9,7 +9,8 @@
     "src/mysql",
     "src/aliyunlog",
     "src/ecommerce-expert",
-    "src/config-center"
+    "src/config-center",
+    "src/prompt-forge"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

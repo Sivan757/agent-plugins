@@ -59,6 +59,12 @@
       "description": "Enables AI to execute SQL queries against PostgreSQL databases via Node.js with multi-connection support for schema inspection and discovery."
     },
     {
+      "name": "prompt-forge",
+      "version": "0.1.0",
+      "source": "./plugins/prompt-forge",
+      "description": "Image-generation prompt engineering library with a local SQLite database of 25k+ prompts across 12 sources. Use when the user needs to search, classify, template, evaluate, or manage image generation prompts, or when synthesizing a new prompt from retrieved examples. Ships a `pf` CLI backed by node:sqlite with FTS5 search, dedup, ratings, image links, and a minimal stats server."
+    },
+    {
       "name": "real-esrgan",
       "version": "0.1.0",
       "source": "./plugins/real-esrgan",
