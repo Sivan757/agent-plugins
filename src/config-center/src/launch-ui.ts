@@ -592,6 +592,23 @@ export function launchUI(
   };
 }
 
+/**
+ * Backward-compatible wrapper around `launchUI` that matches the legacy
+ * `@agent-plugins/core` signature: launches the browser config form and
+ * resolves to `true` if the user saved, `false` on timeout/dismissal.
+ *
+ * Consumers that previously called `launchConfigUI(name, opts)` from
+ * `@agent-plugins/core` can use this unchanged after switching their import
+ * to `@agent-plugins/config-center`.
+ */
+export async function launchConfigUI(
+  pluginName: string,
+  options?: ConfigUIOptions,
+): Promise<boolean> {
+  const handle = launchUI(pluginName, options);
+  return handle.done;
+}
+
 // ── High-level config loader with auto-setup ────────────────────────────────
 
 /**
