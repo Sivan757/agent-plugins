@@ -58,10 +58,17 @@ Prints the redacted value of `<key>`, or `<key>=<not set>` if absent. With no
 this to check whether a plugin is configured before running its commands.
 
 ```bash
-# Is the TickTick token configured?
-node "$CC_BIN" get ticktick ACCESS_TOKEN
-# -> ACCESS_TOKEN=ti••••••ken   (set)
-# -> ACCESS_TOKEN=<not set>      (not set)
+# Is the TickTick token configured? (key names are plugin-specific; run
+# `get <plugin>` with no key to list every key redacted, then check a
+# specific one. TickTick uses camelCase keys like accessToken.)
+node "$CC_BIN" get ticktick
+# host=di••••••com
+# username=zi••••••com
+# accessToken=23••••••d1d   (set)
+# ...
+node "$CC_BIN" get ticktick accessToken
+# -> accessToken=23••••••d1d   (set)
+# -> accessToken=<not set>      (not set)
 
 # What keys does temu-api have?
 node "$CC_BIN" get temu-api

@@ -161,8 +161,13 @@ function cmdInit(output: CLIOutput): void {
     }
   }
   rebuildFTS(db);
+  const total = (
+    db.prepare('SELECT COUNT(*) as n FROM prompts').get() as { n: number }
+  ).n;
   db.close();
-  output.stdout(`Initialized prompt-forge: ${count} prompts imported (deduped)\n`);
+  output.stdout(
+    `Initialized prompt-forge: ${count} new prompts imported (deduped), ${total} total in database.\n`,
+  );
 }
 
 function cmdPromptList(

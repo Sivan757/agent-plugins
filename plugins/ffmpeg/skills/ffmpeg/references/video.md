@@ -52,7 +52,7 @@ Generate a cover image:
 ffmpeg -hide_banner -ss 00:00:03 -i input.mp4 -frames:v 1 -update 1 -q:v 2 cover.jpg
 ```
 
-`-update 1` suppresses the image2 muxer "does not contain an image sequence pattern" warning for single-frame outputs.
+`-update 1` suppresses the image2 muxer "does not contain an image sequence pattern" warning for single-frame outputs. The `-ss` seek time MUST be less than the input's duration (probe with `ffprobe` first) - the `00:00:03` above assumes a clip longer than 3s; for shorter clips, seek to e.g. the midpoint (`-ss <duration/2>`).
 
 Generate a synthetic test video:
 

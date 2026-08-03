@@ -3668,9 +3668,12 @@ function cmdInit(output) {
     }
   }
   rebuildFTS(db);
+  const total = db.prepare("SELECT COUNT(*) as n FROM prompts").get().n;
   db.close();
-  output.stdout(`Initialized prompt-forge: ${count} prompts imported (deduped)
-`);
+  output.stdout(
+    `Initialized prompt-forge: ${count} new prompts imported (deduped), ${total} total in database.
+`
+  );
 }
 function cmdPromptList(opts, output) {
   const db = openDB();

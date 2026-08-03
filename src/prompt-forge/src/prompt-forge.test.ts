@@ -86,7 +86,7 @@ test('pf init creates and seeds the database from fixture data', async () => {
   const { code, stdout } = await runMain(['init']);
   assert.equal(code, 0);
   // 3 records in fixture, 1 is a duplicate -> 2 imported.
-  assert.match(stdout, /Initialized prompt-forge: 2 prompts imported/);
+  assert.match(stdout, /Initialized prompt-forge: 2 new prompts imported/);
   // The DB file should exist in the artifacts dir.
   const dbPath = join(tmpHome, '.cache', 'agent-plugins', 'prompt-forge', 'artifacts', 'prompts.db');
   assert.ok(existsSync(dbPath), 'database file was not created');

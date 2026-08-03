@@ -20,22 +20,39 @@ Real-ESRGAN is not mathematically lossless. When a user says "lossless upscale" 
 
 `realesrgan-ncnn-vulkan` is required and is NOT on PATH by default after installation. ImageMagick (`magick`) is also required for verification steps.
 
-**macOS install:**
+**Important - where to get the binary AND models:** Use the releases from `xinntao/Real-ESRGAN` (the main repo), NOT `xinntao/Real-ESRGAN-ncnn-vulkan`. The main repo's releases (e.g. v0.2.5.0) bundle BOTH the binary and the `models/` folder together. The ncnn-vulkan repo's releases ship the binary ONLY, with no models, and no clear way to obtain them - this is a common pitfall.
 
-1. Download the prebuilt `realesrgan-ncnn-vulkan` binary from GitHub Releases:
-   https://github.com/xinntao/Real-ESRGAN/releases (choose the `macos` zip for your architecture).
+**macOS install (Apple Silicon example):**
 
-2. Unzip and either add the extracted directory to PATH or invoke the binary by its full path.
+```bash
+# 1. Download the macOS release that bundles binary + models (check the latest
+#    release page for the exact filename - pick the macos arm64 zip).
+curl -L -o realesrgan-macos.zip \
+  https://github.com/xinntao/Real-ESRGAN/releases/download/0.2.5.0/realesrgan-ncnn-vulkan-20220424-macos.zip
+unzip realesrgan-macos.zip -d realesrgan
+cd realesrgan
 
-3. The binary must be able to find its `models/` folder. Either run it from the directory that contains `models/`, or pass the models path explicitly:
-   ```bash
-   realesrgan-ncnn-vulkan -m /path/to/models -i input.png -o output.png
-   ```
+# 2. The binary is not executable and may be quarantined on macOS.
+chmod +x realesrgan-ncnn-vulkan
+xattr -d com.apple.quarantine realesrgan-ncnn-vulkan 2>/dev/null || true
 
-4. Verify the binary is reachable:
-   ```bash
-   command -v realesrgan-ncnn-vulkan || /full/path/to/realesrgan-ncnn-vulkan -h
-   ```
+# 3. Run from this directory (so the binary finds models/), or pass -m:
+./realesrgan-ncnn-vulkan -h
+```
+
+For Intel macOS, pick the x86_64 zip instead. On Linux/Windows, use the matching release zip and the same `chmod +x` step (no quarantine attribute on Linux).
+
+The binary must be able to find its `models/` folder. Either run it from the directory that contains `models/`, or pass the models path explicitly:
+
+```bash
+realesrgan-ncnn-vulkan -m /path/to/models -i input.png -o output.png
+```
+
+Verify the binary is reachable:
+
+```bash
+command -v realesrgan-ncnn-vulkan || /full/path/to/realesrgan-ncnn-vulkan -h
+```
 
 **ImageMagick:**
 
