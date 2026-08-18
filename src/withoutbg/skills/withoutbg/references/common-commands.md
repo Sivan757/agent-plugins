@@ -104,20 +104,11 @@ withoutbg inputs/ --batch --output-dir out --format png --verbose
 
 ## Download Reliability
 
-The local open-source mode downloads model weights from Hugging Face on first use. The main model file (`withoutbg-open-weights.onnx`) is approximately 450MB and the first run will be slow. If downloads fail or hang:
+The local open-source mode downloads model weights from Hugging Face on first use. If downloads fail or hang:
 
 ```bash
 export HF_HOME=/abs/path/to/task-cache/huggingface
 export HF_HUB_DISABLE_XET=1
-withoutbg input.jpg --output output.png --format png --verbose
-```
-
-**Manual-download fallback (stronger):** When Hugging Face connections drop repeatedly, download the model once by hand and point the CLI at the local file:
-
-```bash
-curl -L -o withoutbg-open-weights.onnx \
-  https://huggingface.co/withoutbg/withoutbg-openweights-onnx/resolve/main/withoutbg-open-weights.onnx
-export WITHOUTBG_ONNX_PATH="$(pwd)/withoutbg-open-weights.onnx"
 withoutbg input.jpg --output output.png --format png --verbose
 ```
 

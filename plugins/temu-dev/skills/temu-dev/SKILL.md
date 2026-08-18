@@ -1,13 +1,11 @@
 ---
 name: temu-dev
-description: "Use when the user needs to inspect or operationalize Temu Partner developer documentation: navigating logged-in Temu docs, capturing docs with OpenCLI/Chrome, understanding self-developed app setup, auth, region partitioning, signing rules, API lists, goods publishing flow, data dictionaries, or turning Temu docs into implementation plans/skills."
+description: "Use when Codex needs to inspect or operationalize Temu Partner developer documentation: navigating logged-in Temu docs, capturing docs with OpenCLI/Chrome, understanding self-developed app setup, auth, region partitioning, signing rules, API lists, goods publishing flow, data dictionaries, or turning Temu docs into implementation plans/skills."
 ---
 
 # Temu Dev
 
 ## Use This Workflow
-
-All `references/...` paths below are relative to this skill's directory, i.e. `${CLAUDE_PLUGIN_ROOT}/skills/temu-dev/references/...`. Resolve reference files under the plugin root, not the current working directory.
 
 Use this skill to read Temu's developer docs and turn them into safe implementation guidance.
 
@@ -39,20 +37,3 @@ When capturing Temu docs:
 - Keep API method names and document links so another agent can reopen exact schemas.
 - Treat region/gateway guidance as operationally important and re-check before production calls.
 - Prefer small, focused reference files over one large dump.
-
-## Credential Management
-
-This plugin is a **reference knowledge base**. It documents the Temu API and
-signing rules; it does not execute Temu API calls itself.
-
-Your Temu credentials (`TEMU_APPKEY`, `TEMU_APPSECRET`, `TEMU_TOKEN`) are
-managed by the **config-center** plugin, not stored in this skill:
-
-- Set or change them: run `config-center edit temu-dev` (opens a browser UI; the
-  values are entered by you, never by the agent).
-- Confirm they are configured: run `config-center get temu-dev` (output is always
-  redacted - you see only whether each key is set, never its plaintext).
-
-When your integration code calls Temu APIs, read the credential values from
-config-center's store at runtime. **Never** read, `cat`, or `Read` the
-cache file directly, and never print the cache path.

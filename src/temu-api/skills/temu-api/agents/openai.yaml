@@ -1,0 +1,4 @@
+interface:
+  display_name: "Temu API"
+  short_description: "Temu Partner API integration notes"
+  default_prompt: "Use $temu-api to design or debug a safe Temu Partner API adapter."

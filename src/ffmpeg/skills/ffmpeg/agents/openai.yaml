@@ -1,0 +1,7 @@
+interface:
+  display_name: "FFmpeg"
+  short_description: "FFmpeg workflows for media files"
+  default_prompt: "Use $ffmpeg to build and verify a media-processing command."
+
+policy:
+  allow_implicit_invocation: true

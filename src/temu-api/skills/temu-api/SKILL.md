@@ -1,13 +1,11 @@
 ---
 name: temu-api
-description: "Use when the user needs to design, implement, debug, or review Temu Partner/OpenAPI integrations: request signing, region/gateway selection, self-developed app auth, Temu Adapter calls, POD/listing publication, image upload, category/attribute lookup, size chart/model/logistics/template APIs, inventory/price APIs, or any code that calls Temu APIs."
+description: "Use when Codex needs to design, implement, debug, or review Temu Partner/OpenAPI integrations: request signing, region/gateway selection, self-developed app auth, Temu Adapter calls, POD/listing publication, image upload, category/attribute lookup, size chart/model/logistics/template APIs, inventory/price APIs, or any code that calls Temu APIs."
 ---
 
 # Temu API
 
 ## Core Rules
-
-All `references/...` paths below are relative to this skill's directory, i.e. `${CLAUDE_PLUGIN_ROOT}/skills/temu-api/references/...`. When reading a reference file, resolve the full path under the plugin root rather than the current working directory.
 
 Use this skill for Temu adapter work, especially when the task touches live shop credentials, product publication, image upload, size charts, logistics templates, model information, inventory, or price.
 
@@ -56,20 +54,3 @@ For T-shirt/POD listing automation, model the flow as:
 8. Submit publish/update only after confirmation.
 
 Keep image generation, cutout, mockup, and AI copywriting upstream of the Temu API adapter. The adapter should receive approved assets and structured payload data, not creative instructions.
-
-## Credential Management
-
-This plugin is a **reference knowledge base**. It documents the Temu API and
-signing rules; it does not execute Temu API calls itself.
-
-Your Temu credentials (`TEMU_APPKEY`, `TEMU_APPSECRET`, `TEMU_TOKEN`) are
-managed by the **config-center** plugin, not stored in this skill:
-
-- Set or change them: run `config-center edit temu-api` (opens a browser UI; the
-  values are entered by you, never by the agent).
-- Confirm they are configured: run `config-center get temu-api` (output is always
-  redacted - you see only whether each key is set, never its plaintext).
-
-When your integration code calls Temu APIs, read the credential values from
-config-center's store at runtime. **Never** read, `cat`, or `Read` the
-cache file directly, and never print the cache path.

@@ -1,6 +1,6 @@
 ---
 name: withoutbg
-description: Run and verify withoutbg AI background-removal workflows for local or API-based image cutouts. Use when the user needs to remove image backgrounds, create transparent PNG or WebP assets, batch-process product photos, people, apparel, stickers, ecommerce images, social images, or compare cutout quality; also use for alpha-channel validation, checkerboard previews, mask-style QA, and complex foreground/background workflow decomposition.
+description: Run and verify withoutbg AI background-removal workflows for local or API-based image cutouts. Use when Codex needs to remove image backgrounds, create transparent PNG or WebP assets, batch-process product photos, people, apparel, stickers, ecommerce images, social images, or compare cutout quality; also use for alpha-channel validation, checkerboard previews, mask-style QA, and complex foreground/background workflow decomposition.
 ---
 
 # withoutbg
@@ -19,10 +19,6 @@ Load only the reference needed for the current task:
 
 - Common commands: see [references/common-commands.md](references/common-commands.md) for installation, single image runs, batch runs, API mode, Python API usage, model-cache handling, alpha verification, checkerboard previews, and troubleshooting.
 - Complex workflows: see [references/complex-workflows.md](references/complex-workflows.md) for ecommerce/product pipelines, local-vs-API decisions, quality evaluation, post-processing, comparison tests, and structured task decomposition.
-
-## First Run: Model Download
-
-The local open-source mode downloads model weights from Hugging Face on first use. The main ONNX model (`withoutbg-open-weights.onnx`) is approximately 450MB. The first run will be slow while the download completes, and Hugging Face connections sometimes drop mid-download. If the automatic download fails, use the manual-download fallback documented in [references/common-commands.md](references/common-commands.md) (Download Reliability section).
 
 ## Standard Workflow
 
@@ -119,23 +115,6 @@ Consider another model or manual editing when:
 - The foreground has severe transparency, glass, smoke, hair, very low contrast, or text/ink strokes that the model damages.
 - The user needs precise human art direction, layer-aware PSD edits, vector reconstruction, or a guaranteed commercial mask.
 - The result is for final production and automated QA shows lost foreground detail or unwanted semi-transparency.
-
-## Credential Management
-
-This plugin is a **reference for the withoutbg CLI**. It documents local and
-API-based background-removal workflows; it does not run withoutbg itself.
-
-For API mode, manage your `WITHOUTBG_API_KEY` with the **config-center** plugin,
-not stored in this skill:
-
-- Set or change it: run `config-center edit withoutbg` (opens a browser UI; the
-  value is entered by you, never by the agent).
-- Confirm it is configured: run `config-center get withoutbg` (output is always
-  redacted - you see only whether the key is set, never its plaintext).
-
-When your integration uses API mode, read the credential value from
-config-center's store at runtime. **Never** read, `cat`, or `Read` the
-cache file directly, and never print the cache path.
 
 ## Safety Notes
 

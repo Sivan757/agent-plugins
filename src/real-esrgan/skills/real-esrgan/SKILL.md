@@ -1,6 +1,6 @@
 ---
 name: real-esrgan
-description: Local Real-ESRGAN image super-resolution and clarity workflows using realesrgan-ncnn-vulkan, Upscayl-adjacent outputs, and ImageMagick verification. Use when the user needs to upscale, enhance, or compare raster images, transparent cutouts, print-ready PNG artwork, product/social/ecommerce images, AI-generated images, or batch image folders while preserving alpha, DPI metadata, canvas placement, and reproducible quality checks.
+description: Local Real-ESRGAN image super-resolution and clarity workflows using realesrgan-ncnn-vulkan, Upscayl-adjacent outputs, and ImageMagick verification. Use when Codex needs to upscale, enhance, or compare raster images, transparent cutouts, print-ready PNG artwork, product/social/ecommerce images, AI-generated images, or batch image folders while preserving alpha, DPI metadata, canvas placement, and reproducible quality checks.
 ---
 
 # Real-ESRGAN
@@ -15,52 +15,6 @@ Official docs:
 - ncnn: https://github.com/Tencent/ncnn
 
 Real-ESRGAN is not mathematically lossless. When a user says "lossless upscale" or "lossless clarity", interpret the practical target as: preserve originals, use lossless/intermediate PNG when appropriate, preserve alpha/canvas/DPI metadata deliberately, and verify outputs. AI-generated detail is synthetic.
-
-## Prerequisites
-
-`realesrgan-ncnn-vulkan` is required and is NOT on PATH by default after installation. ImageMagick (`magick`) is also required for verification steps.
-
-**Important - where to get the binary AND models:** Use the releases from `xinntao/Real-ESRGAN` (the main repo), NOT `xinntao/Real-ESRGAN-ncnn-vulkan`. The main repo's releases (e.g. v0.2.5.0) bundle BOTH the binary and the `models/` folder together. The ncnn-vulkan repo's releases ship the binary ONLY, with no models, and no clear way to obtain them - this is a common pitfall.
-
-**macOS install (Apple Silicon example):**
-
-```bash
-# 1. Download the macOS release that bundles binary + models (check the latest
-#    release page for the exact filename - pick the macos arm64 zip).
-curl -L -o realesrgan-macos.zip \
-  https://github.com/xinntao/Real-ESRGAN/releases/download/0.2.5.0/realesrgan-ncnn-vulkan-20220424-macos.zip
-unzip realesrgan-macos.zip -d realesrgan
-cd realesrgan
-
-# 2. The binary is not executable and may be quarantined on macOS.
-chmod +x realesrgan-ncnn-vulkan
-xattr -d com.apple.quarantine realesrgan-ncnn-vulkan 2>/dev/null || true
-
-# 3. Run from this directory (so the binary finds models/), or pass -m:
-./realesrgan-ncnn-vulkan -h
-```
-
-For Intel macOS, pick the x86_64 zip instead. On Linux/Windows, use the matching release zip and the same `chmod +x` step (no quarantine attribute on Linux).
-
-The binary must be able to find its `models/` folder. Either run it from the directory that contains `models/`, or pass the models path explicitly:
-
-```bash
-realesrgan-ncnn-vulkan -m /path/to/models -i input.png -o output.png
-```
-
-Verify the binary is reachable:
-
-```bash
-command -v realesrgan-ncnn-vulkan || /full/path/to/realesrgan-ncnn-vulkan -h
-```
-
-**ImageMagick:**
-
-```bash
-brew install imagemagick
-```
-
-Verify: `magick -version`
 
 ## Route By Task
 

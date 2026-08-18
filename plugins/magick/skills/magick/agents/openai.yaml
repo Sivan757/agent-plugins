@@ -1,0 +1,4 @@
+interface:
+  display_name: "Magick"
+  short_description: "ImageMagick conversion, composition, and cutouts"
+  default_prompt: "Use $magick to convert, normalize, compose, watermark, chroma-key cut out, compare, or verify image files with ImageMagick."

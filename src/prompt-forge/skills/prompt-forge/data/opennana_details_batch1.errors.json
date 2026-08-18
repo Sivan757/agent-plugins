@@ -1,0 +1,7 @@
+[
+  {
+    "slug": "https://opennana.com",
+    "error": "no prompts array in data",
+    "raw_preview": "{\"status\":1003,\"msg\":\"资源不存在\",\"data\":{\"path\":\"/api/prompts/https://opennana.com\"}}"
+  }
+]
