@@ -39,7 +39,7 @@
 
 | 插件 | 作用 |
 | --- | --- |
-| [mysql](plugins/mysql) | 支持多连接配置的 MySQL 查询 |
+| [mysql](plugins/mysql) | 支持多连接配置的 MySQL 查询，内置写语句确认保护 |
 | [postgresql](plugins/postgresql) | 支持 schema 发现和参数化查询的 PostgreSQL 查询 |
 
 ### 媒体处理

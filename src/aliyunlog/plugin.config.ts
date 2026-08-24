@@ -2,7 +2,7 @@ import type { PluginConfig } from "../../scripts/plugin-config";
 
 export default {
   name: "aliyunlog",
-  version: "1.7.0",
+  version: "1.7.1",
   description: "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup.",
   author: { name: "Agent Plugins" },
   keywords: ["aliyun", "sls", "log", "aliyunlog", "query", "k8s", "cloud"],

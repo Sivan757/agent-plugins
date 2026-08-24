@@ -1,6 +1,6 @@
 # Recommended External Plugins
 
-Reference list for external plugins that complement this shared Codex + Claude Code repository.
+Reference list for external plugins that complement this Claude Code plugin repository.
 
 Local plugins in this repository are shared under `plugins/`. The install commands below are primarily Claude Code-oriented references for third-party plugin ecosystems.
 

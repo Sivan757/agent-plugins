@@ -38,7 +38,7 @@ These are the kinds of jobs this collection is built for:
 
 | Plugin | What it does |
 | --- | --- |
-| [mysql](plugins/mysql) | Run MySQL queries with multi-connection support |
+| [mysql](plugins/mysql) | Run MySQL queries with multi-connection support and a write-statement confirmation guard |
 | [postgresql](plugins/postgresql) | Run PostgreSQL queries with schema discovery and parameterized queries |
 
 ### Process media
