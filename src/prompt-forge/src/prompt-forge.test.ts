@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// Type-only import: erased at runtime, so the dynamic import in before() below
+// stays the first time the module (and config-store) actually load.
+import type { CLIOutput } from './prompt-forge.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pf: any;
@@ -65,7 +68,7 @@ interface Captured {
   stderr: string;
 }
 
-function mockOutput(): { output: pf.CLIOutput; captured: Captured } {
+function mockOutput(): { output: CLIOutput; captured: Captured } {
   const captured = { stdout: '', stderr: '' };
   return {
     captured,

@@ -243,6 +243,20 @@ function cmdPromptSearch(query: string, output: CLIOutput): void {
       `${shortId(r.id)}  ${r.rating.toFixed(1)}★  ${pad(r.category, 30)}  ${r.title}\n`,
     );
   }
+  if (rows.length === 0) {
+    // Silent zero-row output looks like a hang to an Agent; always return
+    // actionable context (AGENTS.md: error feedback must be corrective).
+    const total = (db.prepare('SELECT COUNT(*) AS n FROM prompts').get() as { n: number }).n;
+    if (total === 0) {
+      output.stdout(
+        'No prompts found — the database is empty. Run `pf init` to import prompt sources first.\n',
+      );
+    } else {
+      output.stdout(
+        `No prompts matched "${query}". Try a shorter keyword, or browse with \`pf prompt list\`.\n`,
+      );
+    }
+  }
   db.close();
 }
 

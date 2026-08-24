@@ -1,6 +1,6 @@
 {
   "name": "mysql",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "type": "module",
   "scripts": {
     "build": "bash ../../scripts/build-plugin.sh src/mysql.ts ../../.build/plugin-dist/mysql/dist/mysql.mjs",

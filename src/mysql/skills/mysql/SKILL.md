@@ -19,6 +19,12 @@ Execute SQL queries via `mysql2` Node.js script with multi-connection support.
 
 **NEVER read, open, cat, or view `~/.cache/agent-plugins/mysql/config.json` directly.** Use `list`, `test`, `init` subcommands instead.
 
+When config is missing or incomplete, the CLI automatically opens a browser
+setup form and prints the local URL to stderr — tell the user to fill it in.
+Once saved in the browser, the same command resumes on its own (no re-run
+needed). If the user skips the form, the CLI exits with
+`No config found. Run: mysql init` — run `init` to reopen the form.
+
 ## CRITICAL: Write Operations FORBIDDEN
 
 **NEVER execute INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, RENAME, or any data-modifying SQL without explicit user confirmation.** This rule has NO exceptions — even if the user's request implies a write operation, you MUST:

@@ -10769,6 +10769,7 @@ Run: cd src/config-center && npx vite build --config ui/vite.config.ts`);
 }
 async function requireConfigWithSetup(pluginName, options) {
   const { validate } = options;
+  const setupCommand = options.setupCommand ?? "setup";
   let config;
   try {
     config = await requireConfig(pluginName);
@@ -10784,7 +10785,7 @@ async function requireConfigWithSetup(pluginName, options) {
         }
       }
       throw new PluginError(
-        `No config found. Run: ${pluginName} setup (or init)`,
+        `No config found. Run: ${pluginName} ${setupCommand}`,
         "CONFIG_MISSING"
       );
     }
@@ -10803,7 +10804,7 @@ async function requireConfigWithSetup(pluginName, options) {
       }
     }
     throw new PluginError(
-      `Invalid configuration. Run: ${pluginName} setup`,
+      `Invalid configuration. Run: ${pluginName} ${setupCommand}`,
       "CONFIG_INVALID"
     );
   }

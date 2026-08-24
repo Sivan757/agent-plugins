@@ -3594,9 +3594,28 @@ function redact(value) {
   }
   return "\u2022".repeat(value.length);
 }
-function redactEntry(key, value) {
-  const str = value == null ? "" : String(value);
-  return `${key}=${redact(str)}`;
+var MAX_STRUCTURE_DEPTH = 2;
+function redactStructure(prefix, value, depth = 0) {
+  if (value === null || value === void 0) {
+    return [`${prefix}=<not set>`];
+  }
+  if (Array.isArray(value)) {
+    if (depth >= MAX_STRUCTURE_DEPTH || value.length === 0) {
+      return [`${prefix}=<array: ${value.length} item${value.length === 1 ? "" : "s"}>`];
+    }
+    return value.flatMap((item, i) => redactStructure(`${prefix}[${i}]`, item, depth + 1));
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value);
+    if (depth >= MAX_STRUCTURE_DEPTH || entries.length === 0) {
+      return [`${prefix}=<object: ${entries.length} key${entries.length === 1 ? "" : "s"}>`];
+    }
+    return entries.flatMap(([k, v]) => redactStructure(`${prefix}.${k}`, v, depth + 1));
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return [`${prefix}=${value}`];
+  }
+  return [`${prefix}=${redact(String(value))}`];
 }
 
 // src/launch-ui.ts
@@ -3968,7 +3987,7 @@ function buildProgram(output) {
   };
   configureCmd(program2);
   program2.command("get <plugin> [key]").description(
-    "Print a redacted value for the requested key, or KEY=<not set> if absent. Without a key, prints all top-level keys redacted."
+    "Print a redacted value for the requested key, or KEY=<not set> if absent. Without a key, prints all top-level keys redacted; nested objects are flattened to dotted paths so key names stay visible without plaintext."
   ).action(async (plugin, key) => {
     const config = await loadConfig(plugin);
     if (key === void 0) {
@@ -3977,13 +3996,17 @@ function buildProgram(output) {
         return;
       }
       for (const [k, v] of Object.entries(config)) {
-        output.stdout(`${redactEntry(k, v)}
+        for (const line of redactStructure(k, v)) {
+          output.stdout(`${line}
 `);
+        }
       }
       return;
     }
-    output.stdout(`${redactEntry(key, config?.[key])}
+    for (const line of redactStructure(key, config?.[key])) {
+      output.stdout(`${line}
 `);
+    }
   });
   program2.command("show <plugin>").description("Print all top-level keys redacted.").action(async (plugin) => {
     const config = await loadConfig(plugin);
@@ -3992,8 +4015,10 @@ function buildProgram(output) {
       return;
     }
     for (const [k, v] of Object.entries(config)) {
-      output.stdout(`${redactEntry(k, v)}
+      for (const line of redactStructure(k, v)) {
+        output.stdout(`${line}
 `);
+      }
     }
   });
   program2.command("init [plugin]").description("Bootstrap a plugin config directory and open the HTML UI.").action(async (plugin) => {

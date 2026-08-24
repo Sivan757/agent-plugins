@@ -3734,6 +3734,19 @@ function cmdPromptSearch(query, output) {
 `
     );
   }
+  if (rows.length === 0) {
+    const total = db.prepare("SELECT COUNT(*) AS n FROM prompts").get().n;
+    if (total === 0) {
+      output.stdout(
+        "No prompts found \u2014 the database is empty. Run `pf init` to import prompt sources first.\n"
+      );
+    } else {
+      output.stdout(
+        `No prompts matched "${query}". Try a shorter keyword, or browse with \`pf prompt list\`.
+`
+      );
+    }
+  }
   db.close();
 }
 function cmdPromptShow(id, full, output) {

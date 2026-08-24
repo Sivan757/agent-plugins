@@ -45,6 +45,13 @@ export interface ConfigUIOptions {
   spec?: ConfigSpec;
   collections?: CollectionMapping[];
   validate?: (config: Record<string, unknown>) => boolean;
+  /**
+   * Command the Agent should run to (re)open this setup form. Used verbatim in
+   * error messages when setup is skipped or yields an invalid config, so it
+   * must exist on that plugin's CLI. Default: "setup" — override for plugins
+   * whose entry point differs (e.g. mysql only ships `init`).
+   */
+  setupCommand?: string;
 }
 
 export interface CLIOutput {
@@ -623,6 +630,7 @@ export async function requireConfigWithSetup<T extends Record<string, unknown>>(
   options: ConfigUIOptions,
 ): Promise<T> {
   const { validate } = options;
+  const setupCommand = options.setupCommand ?? 'setup';
   let config: T;
 
   try {
@@ -638,7 +646,7 @@ export async function requireConfigWithSetup<T extends Record<string, unknown>>(
         } catch { /* fall through */ }
       }
       throw new PluginError(
-        `No config found. Run: ${pluginName} setup (or init)`,
+        `No config found. Run: ${pluginName} ${setupCommand}`,
         'CONFIG_MISSING',
       );
     }
@@ -657,7 +665,7 @@ export async function requireConfigWithSetup<T extends Record<string, unknown>>(
       } catch { /* fall through */ }
     }
     throw new PluginError(
-      `Invalid configuration. Run: ${pluginName} setup`,
+      `Invalid configuration. Run: ${pluginName} ${setupCommand}`,
       'CONFIG_INVALID',
     );
   }

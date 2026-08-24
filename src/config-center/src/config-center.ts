@@ -11,7 +11,7 @@
 import { Command, CommanderError } from 'commander';
 import { pathToFileURL } from 'node:url';
 import { loadConfig } from './config-store.js';
-import { redactEntry } from './redact.js';
+import { redactStructure } from './redact.js';
 import { launchUI } from './launch-ui.js';
 
 // Re-export CLIOutput so existing importers (and tests) keep compiling.
@@ -53,7 +53,8 @@ function buildProgram(output: CLIOutput): Command {
     .command('get <plugin> [key]')
     .description(
       'Print a redacted value for the requested key, or KEY=<not set> if absent. ' +
-        'Without a key, prints all top-level keys redacted.'
+        'Without a key, prints all top-level keys redacted; nested objects are ' +
+        'flattened to dotted paths so key names stay visible without plaintext.'
     )
     .action(async (plugin: string, key?: string) => {
       const config = await loadConfig<Record<string, unknown>>(plugin);
@@ -63,13 +64,17 @@ function buildProgram(output: CLIOutput): Command {
           return;
         }
         for (const [k, v] of Object.entries(config)) {
-          output.stdout(`${redactEntry(k, v)}\n`);
+          for (const line of redactStructure(k, v)) {
+            output.stdout(`${line}\n`);
+          }
         }
         return;
       }
-      // redactEntry handles absent keys (undefined -> <not set>) and absent
-      // configs (config?.[key] is undefined) in one shot.
-      output.stdout(`${redactEntry(key, config?.[key])}\n`);
+      // redactStructure handles absent keys (undefined -> <not set>), absent
+      // configs (config?.[key] is undefined), and nested objects in one shot.
+      for (const line of redactStructure(key, config?.[key])) {
+        output.stdout(`${line}\n`);
+      }
     });
 
   program
@@ -82,7 +87,9 @@ function buildProgram(output: CLIOutput): Command {
         return;
       }
       for (const [k, v] of Object.entries(config)) {
-        output.stdout(`${redactEntry(k, v)}\n`);
+        for (const line of redactStructure(k, v)) {
+          output.stdout(`${line}\n`);
+        }
       }
     });
 

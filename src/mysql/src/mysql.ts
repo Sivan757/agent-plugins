@@ -40,6 +40,8 @@ function info(msg: string): void {
 }
 
 const MYSQL_CONFIG_UI: ConfigUIOptions = {
+  // mysql ships `init`, not `setup`; error hints must point at a real command.
+  setupCommand: 'init',
   spec: {
     root: 'page',
     elements: {
