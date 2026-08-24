@@ -29,7 +29,8 @@
     "validate:codex-layout": "bun run .github/scripts/validate-codex-plugin-layout.ts",
     "validate:marketplace": "bun run .github/scripts/validate-marketplace.ts",
     "validate:versions": "bun run .github/scripts/validate-versions.ts",
-    "validate:plugins": "npm run validate:plugin-metadata && npm run validate:claude-layout && npm run validate:codex-layout && npm run validate:marketplace && npm run validate:versions",
+    "validate:no-secrets": "bun run .github/scripts/validate-no-secrets.ts",
+    "validate:plugins": "npm run validate:plugin-metadata && npm run validate:claude-layout && npm run validate:codex-layout && npm run validate:marketplace && npm run validate:versions && npm run validate:no-secrets",
     "convert-to-codex": "npx --yes tsx scripts/convert-claude-plugin-to-codex.ts"
   },
   "devDependencies": {
