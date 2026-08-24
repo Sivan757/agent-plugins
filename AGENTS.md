@@ -41,6 +41,7 @@ Some repository constraints are already enforced by scripts. Others are design-q
 | Codex manifest paths use supported root-standard locations and point at real files | `npm run validate:codex-layout` |
 | Marketplace entries exist and follow the local source/path policy | `npm run validate:marketplace` |
 | Plugin versions stay consistent across source metadata and generated manifests | `npm run validate:versions` |
+| Human-authored surfaces under `src/`, `plugins/`, and `docs/` carry no credential material | `npm run validate:no-secrets` |
 | Shared metadata generation and packing behavior stays regression-tested | `bun test ./.github/scripts/tests` |
 
 ### Scriptable Next
@@ -58,7 +59,7 @@ Some repository constraints are already enforced by scripts. Others are design-q
 
 - Local plugin implementations live under `src/`
 - Generated, installable plugin artifacts live under `plugins/`
-- Shared runtime packages live under `packages/`
+- Shared runtime code lives inside the `config-center` plugin (`src/config-center`); CLI plugins depend on it as the workspace package `@agent-plugins/config-center`. Do not recreate a top-level `packages/` tree
 - Do not keep a parallel local `plugin/` tree
 - `src/<name>/plugin.config.ts` is the source of truth for plugin metadata
 - `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and local marketplace entries are generated metadata; do not hand-edit them

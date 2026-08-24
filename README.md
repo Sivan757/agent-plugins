@@ -136,10 +136,11 @@ The shared source tree matters because it keeps the plugins easier to maintain, 
 ```text
 src/       local plugin source and metadata
 plugins/   generated installable plugin artifacts
-packages/  shared runtime code and helpers
 docs/      development notes and references
 scripts/   metadata generation, packaging, validation, and migration helpers
 ```
+
+Shared runtime code lives inside the `config-center` plugin (`src/config-center`), which CLI plugins depend on as the workspace package `@agent-plugins/config-center`.
 
 ## For Plugin Authors
 

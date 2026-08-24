@@ -1,5 +1,11 @@
 # Eight-Skill Migration + config-center Implementation Plan
 
+> **Status: COMPLETED (2026-08).** All tracks landed on branch `fix/8-skill-final-review`:
+> Track 0 config-center, Tracks 1–3 eight skill migrations, Track 4 CLI rewrites onto
+> `@agent-plugins/config-center`, plus the fresh-eyes evaluation fix rounds
+> (`0559b9f`, `04a6417`). Checkboxes below were left unticked during execution; this
+> note is the authoritative completion record.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Migrate 8 skills (`ffmpeg`, `magick`, `real-esrgan`, `withoutbg`, `temu-api`, `temu-dev`, `consulting-advisor`, `prompt-forge`) into this repo as plugins, add a `config-center` plugin that absorbs `packages/core` + `packages/config-ui`, and rewrite the 4 existing CLI plugins onto the new shared helper.

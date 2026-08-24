@@ -137,10 +137,11 @@
 ```text
 src/       本地插件源码与元数据
 plugins/   生成后的可安装插件产物
-packages/  共享运行时代码和辅助模块
 docs/      开发说明与参考资料
 scripts/   元数据生成、打包、校验与迁移脚本
 ```
+
+共享运行时代码位于 `config-center` 插件内部（`src/config-center`），各 CLI 插件以 workspace 包 `@agent-plugins/config-center` 的形式依赖它。
 
 ## 给插件作者
 
