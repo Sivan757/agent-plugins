@@ -57,13 +57,6 @@
 | --- | --- |
 | [prompt-forge](plugins/prompt-forge) | 生图提示词库，基于本地 SQLite 的 RAG 检索、合成与评分 |
 
-### Temu 集成
-
-| 插件 | 作用 |
-| --- | --- |
-| [temu-api](plugins/temu-api) | Temu Partner/OpenAPI 集成参考：签名、网关与 API 地图 |
-| [temu-dev](plugins/temu-dev) | Temu Partner 开发文档与实现规划参考 |
-
 ### 咨询建议
 
 | 插件 | 作用 |
@@ -86,7 +79,7 @@
 
 | 插件 | 作用 |
 | --- | --- |
-| [ecommerce-expert](plugins/ecommerce-expert) | 提供 SHEIN 与 Temu 集成 API 的结构化参考资料 |
+| [ecommerce-expert](plugins/ecommerce-expert) | 提供 SHEIN 与 Temu 集成 API 的结构化参考资料，内置 Temu OpenAPI 离线镜像（209 篇接口文档、23 篇开发者指南） |
 
 ## 快速开始
 

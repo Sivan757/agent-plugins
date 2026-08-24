@@ -121,7 +121,7 @@ describe("scan scope selection", () => {
   });
 
   test("keeps human-authored surfaces in scope", () => {
-    expect(isExcludedPath("plugins/temu-dev/skills/temu-dev/SKILL.md")).toBe(false);
+    expect(isExcludedPath("plugins/ecommerce-expert/skills/temu-dev/SKILL.md")).toBe(false);
     expect(isExcludedPath("src/mysql/plugin.config.ts")).toBe(false);
     expect(isScannedFile("docs/superpowers/evals/report.md")).toBe(true);
     expect(isScannedFile("src/config-center/package.json")).toBe(true);

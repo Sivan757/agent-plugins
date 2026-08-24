@@ -14,8 +14,6 @@
     "src/magick",
     "src/real-esrgan",
     "src/withoutbg",
-    "src/temu-api",
-    "src/temu-dev",
     "src/consulting-advisor"
   ],
   "scripts": {

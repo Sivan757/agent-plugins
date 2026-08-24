@@ -1,6 +1,0 @@
-{
-  "name": "@agent-plugins/temu-api",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Reference knowledge base for Temu Partner/OpenAPI integrations: request signing, region/gateway selection, self-developed app auth, Temu Adapter calls, POD/listing publication, image upload, category/attribute lookup, size chart/model/logistics/template APIs, inventory/price APIs, and any code that calls Temu APIs."
-}

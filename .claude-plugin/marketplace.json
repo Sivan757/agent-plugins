@@ -30,9 +30,9 @@
     },
     {
       "name": "ecommerce-expert",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "source": "./plugins/ecommerce-expert",
-      "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu (124 endpoints) with full parameter specs, signing algorithms, and integration patterns"
+      "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu with full parameter specs, signing algorithms, integration patterns, and offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides)"
     },
     {
       "name": "ffmpeg",
@@ -78,18 +78,6 @@
         "url": "https://github.com/Shopify/Shopify-AI-Toolkit.git"
       },
       "homepage": "https://github.com/Shopify/Shopify-AI-Toolkit"
-    },
-    {
-      "name": "temu-api",
-      "version": "0.1.0",
-      "source": "./plugins/temu-api",
-      "description": "Reference knowledge base for Temu Partner/OpenAPI integrations: request signing, region/gateway selection, self-developed app auth, Temu Adapter calls, POD/listing publication, image upload, category/attribute lookup, size chart/model/logistics/template APIs, inventory/price APIs, and any code that calls Temu APIs."
-    },
-    {
-      "name": "temu-dev",
-      "version": "0.1.0",
-      "source": "./plugins/temu-dev",
-      "description": "Reference knowledge base for Temu Partner developer documentation: navigating logged-in Temu docs, capturing docs with OpenCLI/Chrome, self-developed app setup, auth, region partitioning, signing rules, API lists, goods publishing flow, data dictionaries, and turning Temu docs into implementation plans."
     },
     {
       "name": "ticktick",

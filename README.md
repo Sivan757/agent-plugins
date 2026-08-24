@@ -56,13 +56,6 @@ These are the kinds of jobs this collection is built for:
 | --- | --- |
 | [prompt-forge](plugins/prompt-forge) | Image-generation prompt library with RAG search, synthesis, and rating over a local SQLite DB |
 
-### Work with Temu
-
-| Plugin | What it does |
-| --- | --- |
-| [temu-api](plugins/temu-api) | Reference for Temu Partner/OpenAPI integrations: signing, gateways, and API maps |
-| [temu-dev](plugins/temu-dev) | Reference for Temu Partner developer docs and implementation planning |
-
 ### Get advice
 
 | Plugin | What it does |
@@ -85,7 +78,7 @@ These are the kinds of jobs this collection is built for:
 
 | Plugin | What it does |
 | --- | --- |
-| [ecommerce-expert](plugins/ecommerce-expert) | Navigate SHEIN and Temu integration APIs with structured reference material |
+| [ecommerce-expert](plugins/ecommerce-expert) | Navigate SHEIN and Temu integration APIs with structured reference material, plus offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides) |
 
 ## Quick Start
 
