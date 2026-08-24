@@ -64,7 +64,7 @@ Every request must include a `sign` parameter. The algorithm:
 ### Example
 
 Given parameters for `bg.logistics.shipment.confirm`:
-```
+```text secret-scan: allow
 access_token = z0exampletokenz0exampletokenz0exampletokenz0exampletoken
 app_key = f00df00df00df00df00df00df00df00d
 data_type = JSON
@@ -74,8 +74,8 @@ sendRequestList = [{"orderSendInfoList":[...],"carrierId":"699272611","trackingN
 sendType = 0
 ```
 
-Sorted concatenation with app_secret `cafef00dcafef00dcafef00dcafef00dcafef00d`:
-```
+Sorted concatenation with app_secret `cafef00dcafef00dcafef00dcafef00dcafef00d`: <!-- secret-scan: allow -->
+```text secret-scan: allow
 cafef00dcafef00dcafef00dcafef00dcafef00daccess_token2nifvmpyymvy...typebg.logistics.shipment.confirmcafef00dcafef00dcafef00dcafef00dcafef00d
 ```
 

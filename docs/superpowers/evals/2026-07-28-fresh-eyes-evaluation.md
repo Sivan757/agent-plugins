@@ -24,7 +24,7 @@ Method: 13 independent agents, each given ONLY a plugin path + a task + "report 
 ## Critical findings
 
 ### 1. temu-dev: real credentials leaked in offline doc mirror (SECURITY)
-`plugins/temu-dev/skills/temu-dev/references/temu-openapi/developer/01-开发指南/01-896167235113-签名规则.md` line 49 contains a complete worked signing example with what appear to be REAL, unredacted credentials:
+`plugins/temu-dev/skills/temu-dev/references/temu-openapi/developer/01-开发指南/01-896167235113-签名规则.md` line 49 contains a complete worked signing example with what appear to be REAL, unredacted credentials: <!-- secret-scan: allow -->
 - `app_secret` = `<REDACTED_APP_SECRET>` (appears as prefix+suffix)
 - `access_token` = `<REDACTED_ACCESS_TOKEN>`
 - `app_key` = `<REDACTED_APP_KEY>`

@@ -114,9 +114,9 @@ After authorization, Temu redirects to your `redirect_uri` with:
 ### Step-by-Step Example
 
 **Given**:
-- `app_key` = `f00df00df00df00df00df00df00df00d`
-- `app_secret` = `cafef00dcafef00dcafef00dcafef00dcafef00d`
-- `access_token` = `z0exampletokenz0exampletokenz0exampletokenz0exampletoken`
+- `app_key` = `f00df00df00df00df00df00df00df00d` <!-- secret-scan: allow -->
+- `app_secret` = `cafef00dcafef00dcafef00dcafef00dcafef00d` <!-- secret-scan: allow -->
+- `access_token` = `z0exampletokenz0exampletokenz0exampletokenz0exampletoken` <!-- secret-scan: allow -->
 - `type` = `bg.logistics.shipment.confirm`
 - `timestamp` = `1711009072`
 - `data_type` = `JSON`
@@ -127,17 +127,17 @@ After authorization, Temu redirects to your `redirect_uri` with:
 `access_token`, `app_key`, `data_type`, `sendRequestList`, `sendType`, `timestamp`, `type`
 
 **Step 2** — Concatenate key+value pairs:
-```
+```text secret-scan: allow
 access_tokenz0exampletokenz0exampletokenz0exampletokenz0exampletokenapp_keyf00df00df00df00df00df00df00df00ddata_typeJSONsendRequestList[...]sendType0timestamp1711009072typebg.logistics.shipment.confirm
 ```
 
 **Step 3** — Wrap with app_secret:
-```
+```text secret-scan: allow
 cafef00dcafef00dcafef00dcafef00dcafef00d{above_string}cafef00dcafef00dcafef00dcafef00dcafef00d
 ```
 
 **Step 4** — MD5 → uppercase:
-```
+```text secret-scan: allow
 7286CF9573ACE90B570185BD97FEB438
 ```
 
