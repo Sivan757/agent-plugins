@@ -30,7 +30,7 @@
     },
     {
       "name": "dsh-agent-notes",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./plugins/dsh-agent-notes",
       "description": "Archive DeepSeek Harness Agent Notes. Use when adding, auditing, pruning, archiving, restoring, or reviewing Agent Notes in a deepseek-harness checkout."
     },

@@ -9,6 +9,24 @@ Reduce the active decision corpus without erasing history that can still guide w
 
 This skill operates on a **deepseek-harness checkout**. Paths below resolve against the workspace repository root, not against this skill's directory, and every command runs from that root.
 
+## Initialize on first contact
+
+When a SessionStart briefing reports an incomplete notes structure — or whenever you first touch `.agents/notes/` in a workspace — initialize before any classification:
+
+1. Verify the contract surfaces exist and read them: `.agents/notes/README.md` (corpus rules), `.agents/notes/archived/AGENTS.md` (archive instructions), plus `implemented/`, `proposed/`, `rejected/` lifecycle directories.
+2. Repair what is missing in this order: lifecycle directories first (empty is fine), then the two rule files. Do not invent rules — if a rule file cannot be recovered from git history or the harness upstream, stop and tell the human; fabricating contracts is worse than an empty corpus.
+3. Report the baseline: counts of implemented/proposed/rejected triplets and any structure gaps left open.
+
+Initialization is verification-first. It completes when the structure passes the checks above, not when files merely exist.
+
+## Standing maintenance duty
+
+Every session that touches a notes workspace inherits these duties, not just explicit archive requests:
+
+- Before writing ANY new note, run the supersession audit below against active notes covering the same decision.
+- When a session implements or rejects something that has an active note, reclassify that note in the same change rather than leaving drift for later.
+- Surface borderline archive candidates with word count and outcome instead of silently keeping them.
+
 ## Read the contracts
 
 Read the Agent Note rules at `.agents/notes/README.md`, the archive instructions at `.agents/notes/archived/AGENTS.md`, and the applicable active lifecycle instructions under `.agents/notes/implemented/` or `.agents/notes/proposed/` before classifying. Use current code, configuration, package docs, generated catalogs, newer Agent Notes, and inbound links to establish whether a rationale still owns or constrains anything.
