@@ -29,6 +29,12 @@
       "description": "Structured cross-domain consulting for problem solving and cognitive upgrade. Use when the user asks for advice, diagnosis, planning, strategy, career/job-search help, management, product/design/marketing, communication/PPT/writing, programming tradeoffs, decision-making, learning, or any ambiguous problem where the agent should identify domains, infer intent, select an authoritative framework, briefly teach it, ask clarifying questions before final recommendations, and apply the framework to the user's context."
     },
     {
+      "name": "dsh-agent-notes",
+      "version": "0.1.0",
+      "source": "./plugins/dsh-agent-notes",
+      "description": "Archive DeepSeek Harness Agent Notes. Use when adding, auditing, pruning, archiving, restoring, or reviewing Agent Notes in a deepseek-harness checkout; checks every new note for superseded active records, classifies implemented notes by future decision value, deletes rejected notes that no longer prevent a tempting fallacy, and applies the frozen archived/{kind} triplet and manifest rules."
+    },
+    {
       "name": "ecommerce-expert",
       "version": "1.1.0",
       "source": "./plugins/ecommerce-expert",
