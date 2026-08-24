@@ -32,7 +32,7 @@
       "name": "dsh-agent-notes",
       "version": "0.1.0",
       "source": "./plugins/dsh-agent-notes",
-      "description": "Archive DeepSeek Harness Agent Notes. Use when adding, auditing, pruning, archiving, restoring, or reviewing Agent Notes in a deepseek-harness checkout; checks every new note for superseded active records, classifies implemented notes by future decision value, deletes rejected notes that no longer prevent a tempting fallacy, and applies the frozen archived/{kind} triplet and manifest rules."
+      "description": "Archive DeepSeek Harness Agent Notes. Use when adding, auditing, pruning, archiving, restoring, or reviewing Agent Notes in a deepseek-harness checkout."
     },
     {
       "name": "ecommerce-expert",
