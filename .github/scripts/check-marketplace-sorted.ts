@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Checks that both marketplace files are sorted alphabetically by plugin name.
+ * Checks that the Claude marketplace file is sorted alphabetically by plugin name.
  *
  * Usage:
  *   bun run check-marketplace-sorted.ts
@@ -11,7 +11,6 @@ import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
 const ROOT = resolve(import.meta.dir, "../..");
-const CODEX_MARKETPLACE_PATH = resolve(ROOT, ".agents/plugins/marketplace.json");
 const CLAUDE_MARKETPLACE_PATH = resolve(ROOT, ".claude-plugin/marketplace.json");
 const shouldFix = process.argv.includes("--fix");
 
@@ -47,26 +46,23 @@ function checkSorted(filePath: string, label: string): string[] {
 }
 
 function main(): void {
-  const errors = [
-    ...checkSorted(CODEX_MARKETPLACE_PATH, "Codex marketplace"),
-    ...checkSorted(CLAUDE_MARKETPLACE_PATH, "Claude marketplace"),
-  ];
+  const errors = checkSorted(CLAUDE_MARKETPLACE_PATH, "Claude marketplace");
 
   if (errors.length > 0) {
     console.error("Marketplace ordering failed:\n");
     for (const err of errors) {
       console.error(`  - ${err}`);
     }
-    console.error('\nRun with --fix to auto-sort both marketplace files.');
+    console.error('\nRun with --fix to auto-sort the marketplace file.');
     process.exit(1);
   }
 
   if (shouldFix) {
-    console.log("Both marketplace files are sorted alphabetically.");
+    console.log("Marketplace file is sorted alphabetically.");
     return;
   }
 
-  console.log("Both marketplace files are sorted alphabetically.");
+  console.log("Marketplace file is sorted alphabetically.");
 }
 
 main();

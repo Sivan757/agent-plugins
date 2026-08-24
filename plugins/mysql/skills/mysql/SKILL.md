@@ -33,10 +33,10 @@ needed). If the user skips the form, the CLI exits with
 2. Explicitly ask the user to confirm
 3. Only after the user confirms, re-run with `--user-confirmed` flag
 
-A PreToolUse hook enforces this — write SQL will be **blocked** unless `--user-confirmed` is present.
+The `--user-confirmed` flag is the enforcement point — the CLI refuses write SQL without it. Never add the flag yourself; it must come from an explicit user confirmation.
 
 ```bash
-# BLOCKED — will be intercepted by hook
+# REFUSED — the CLI exits with an error without --user-confirmed
 node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs prod "UPDATE users SET status = 'active' WHERE id = 1"
 
 # ALLOWED — only after user explicitly confirms

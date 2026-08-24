@@ -3,9 +3,7 @@
  * Validates local plugin version consistency across:
  *   - src/<name>/plugin.config.ts
  *   - src/<name>/package.json          (if it exists)
- *   - .agents/plugins/marketplace.json
  *   - .claude-plugin/marketplace.json
- *   - plugins/<name>/.codex-plugin/plugin.json
  *   - plugins/<name>/.claude-plugin/plugin.json
  *
  * Exit 0 if all consistent, exit 1 on any mismatch.
@@ -18,17 +16,11 @@ import { pathToFileURL } from "url";
 const ROOT = resolve(import.meta.dir, "../..");
 const SOURCE_ROOT = join(ROOT, "src");
 const RELEASE_ROOT = join(ROOT, "plugins");
-const CODEX_MARKETPLACE_PATH = join(ROOT, ".agents/plugins/marketplace.json");
 const CLAUDE_MARKETPLACE_PATH = join(ROOT, ".claude-plugin/marketplace.json");
 
 interface VersionEntry {
   file: string;
   version: string;
-}
-
-interface CodexLocalEntry {
-  name: string;
-  path: string;
 }
 
 interface ClaudeLocalEntry {
@@ -65,39 +57,13 @@ async function loadPluginConfig(pluginRoot: string): Promise<PluginConfig | unde
 }
 
 async function main(): Promise<void> {
-  const codex = readJson<{ plugins?: Array<{ name: string; source?: unknown }> }>(CODEX_MARKETPLACE_PATH);
   const claude = readJson<{ plugins?: Array<{ name: string; version?: string; source?: unknown }> }>(
     CLAUDE_MARKETPLACE_PATH
   );
 
-  if (!Array.isArray(codex.plugins)) {
-    console.error("ERROR: Codex marketplace has no plugins array");
-    process.exit(1);
-  }
-
   if (!Array.isArray(claude.plugins)) {
     console.error("ERROR: Claude marketplace has no plugins array");
     process.exit(1);
-  }
-
-  const codexLocal = new Map<string, CodexLocalEntry>();
-  for (const plugin of codex.plugins) {
-    if (typeof plugin.source === "string") {
-      codexLocal.set(plugin.name, { name: plugin.name, path: plugin.source });
-      continue;
-    }
-    if (
-      typeof plugin.source === "object" &&
-      plugin.source !== null &&
-      !Array.isArray(plugin.source) &&
-      (plugin.source as Record<string, unknown>).source === "local" &&
-      typeof (plugin.source as Record<string, unknown>).path === "string"
-    ) {
-      codexLocal.set(plugin.name, {
-        name: plugin.name,
-        path: (plugin.source as Record<string, string>).path,
-      });
-    }
   }
 
   const claudeLocal = new Map<string, ClaudeLocalEntry>();
@@ -126,9 +92,8 @@ async function main(): Promise<void> {
         continue;
       }
 
-      const hasCodexManifest = existsSync(join(pluginRoot, ".codex-plugin", "plugin.json"));
       const hasClaudeManifest = existsSync(join(pluginRoot, ".claude-plugin", "plugin.json"));
-      if (hasCodexManifest || hasClaudeManifest) {
+      if (hasClaudeManifest) {
         releasePlugins.add(entry);
       }
     }
@@ -137,7 +102,6 @@ async function main(): Promise<void> {
   const pluginNames = new Set<string>([
     ...sourcePlugins,
     ...releasePlugins,
-    ...codexLocal.keys(),
     ...claudeLocal.keys(),
   ]);
   const errors: string[] = [];
@@ -149,7 +113,6 @@ async function main(): Promise<void> {
     const sourceDir = join(SOURCE_ROOT, pluginName);
     const releaseDir = join(RELEASE_ROOT, pluginName);
     const expectedPath = `./plugins/${pluginName}`;
-    const codexEntry = codexLocal.get(pluginName);
     const claudeEntry = claudeLocal.get(pluginName);
 
     if (!sourcePlugins.has(pluginName)) {
@@ -162,18 +125,11 @@ async function main(): Promise<void> {
       continue;
     }
 
-    if (!codexEntry) {
-      errors.push(`${pluginName}: missing from .agents/plugins/marketplace.json`);
-      continue;
-    }
     if (!claudeEntry) {
       errors.push(`${pluginName}: missing from .claude-plugin/marketplace.json`);
       continue;
     }
 
-    if (codexEntry.path !== expectedPath) {
-      errors.push(`${pluginName}: Codex marketplace path is ${codexEntry.path} (expected ${expectedPath})`);
-    }
     if (claudeEntry.path !== expectedPath) {
       errors.push(`${pluginName}: Claude marketplace path is ${claudeEntry.path} (expected ${expectedPath})`);
     }
@@ -207,22 +163,6 @@ async function main(): Promise<void> {
           version: pkg.version,
         });
       }
-    }
-
-    const codexManifestPath = join(releaseDir, ".codex-plugin/plugin.json");
-    if (!existsSync(codexManifestPath)) {
-      errors.push(`${pluginName}: missing ${expectedPath}/.codex-plugin/plugin.json`);
-      continue;
-    }
-    const codexManifest = readJson<{ name?: string; version?: string }>(codexManifestPath);
-    if (codexManifest.name !== pluginName) {
-      errors.push(`${pluginName}: .codex-plugin/plugin.json name is ${codexManifest.name} (expected ${pluginName})`);
-    }
-    if (typeof codexManifest.version === "string") {
-      versions.push({
-        file: `${expectedPath}/.codex-plugin/plugin.json`,
-        version: codexManifest.version,
-      });
     }
 
     const claudeManifestPath = join(releaseDir, ".claude-plugin/plugin.json");

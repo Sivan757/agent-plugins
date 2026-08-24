@@ -20,10 +20,8 @@ export default {
   },
   surfaces: {
     skills: true,
-    hooks: "native",
   },
   marketplace: {
-    codex: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
     claude: {
       description: "Manage TickTick (Dida365) tasks, projects, tags, habits, kanban columns, folders, focus sessions, and productivity statistics via the bundled CLI.",
     },

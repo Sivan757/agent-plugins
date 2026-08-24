@@ -20,13 +20,11 @@ export default {
   },
   surfaces: {
     skills: true,
-    hooks: "native",
   },
   artifact: {
     include: ["dist/sls.proto"],
   },
   marketplace: {
-    codex: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
     claude: {
       description: "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup.",
     },

@@ -15,10 +15,8 @@ export default {
   },
   surfaces: {
     skills: true,
-    hooks: "native",
   },
   marketplace: {
-    codex: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
     claude: {
       description: "Generate, execute, and verify FFmpeg and ffprobe commands for video, audio, and image media processing. Use when the user needs to compress, transcode, trim, crop, scale, extract frames, create thumbnails, watermark, concatenate, create HLS, remove or extract audio, convert formats, denoise, normalize loudness, merge media, compose complex layouts, animate overlays, or view/edit metadata for video, audio, image, WebP, GIF, or APNG files.",
     },

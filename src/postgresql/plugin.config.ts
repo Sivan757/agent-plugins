@@ -20,10 +20,8 @@ export default {
   },
   surfaces: {
     skills: true,
-    hooks: "native",
   },
   marketplace: {
-    codex: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
     claude: {
       description: "Enables AI to execute SQL queries against PostgreSQL databases via Node.js with multi-connection support for schema inspection and discovery.",
     },

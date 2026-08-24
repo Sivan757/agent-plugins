@@ -4,7 +4,7 @@
 
 一个面向真实 Agent 工作流的实用插件集合。
 
-同时支持 Codex 和 Claude Code。
+专为 Claude Code 构建。
 
 ## 你可以用它做什么
 
@@ -85,19 +85,6 @@
 
 优先使用官方客户端安装与插件管理方式，再从这个仓库安装你需要的插件。
 
-### 在 Codex 中使用
-
-1. 按照官方文档安装 Codex。
-2. 打开插件目录：
-   App：`Plugins`
-   CLI：`/plugins`
-3. 使用官方插件管理流程把这个仓库加入为插件来源。
-4. 从这个集合里安装你需要的插件。
-
-参考：
-- [Codex plugins overview](https://developers.openai.com/codex/plugins)
-- [Build Codex plugins](https://developers.openai.com/codex/plugins/build)
-
 ### 在 Claude Code 中使用
 
 1. 按照官方文档安装 Claude Code。
@@ -160,7 +147,6 @@ bun test ./.github/scripts/tests
 
 ## 延伸阅读
 
-- [Codex 插件开发说明](docs/plugin-development/codex.md)
 - [Claude Code 插件开发说明](docs/plugin-development/claude-code.md)
 - [推荐外部插件](docs/recommended-plugins.md)
 - [AGENTS.md](AGENTS.md)

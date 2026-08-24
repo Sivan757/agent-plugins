@@ -1,4 +1,0 @@
-interface:
-  display_name: "Real-ESRGAN"
-  short_description: "AI image upscaling and clarity workflows"
-  default_prompt: "Use $real-esrgan to upscale images locally with Real-ESRGAN and verify the outputs."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Temu Dev"
-  short_description: "Temu developer docs and workflow guide"
-  default_prompt: "Use $temu-dev to inspect Temu developer docs and plan the publishing workflow."

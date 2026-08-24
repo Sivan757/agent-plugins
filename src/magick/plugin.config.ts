@@ -15,10 +15,8 @@ export default {
   },
   surfaces: {
     skills: true,
-    hooks: "native",
   },
   marketplace: {
-    codex: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
     claude: {
       description: "Generate, execute, and verify ImageMagick magick, mogrify, identify, compare, composite, and montage workflows for image conversion, resizing, compression, normalization, clothing mockup overlays, watermarks, labels, contact sheets, chroma-key transparency and print cutouts, metadata, visual QA, PDF/SVG rasterization, and delegate/format troubleshooting.",
     },

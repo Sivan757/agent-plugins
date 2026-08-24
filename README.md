@@ -4,7 +4,7 @@
 
 A curated collection of useful plugins for real agent workflows.
 
-Works with Codex and Claude Code.
+Built for Claude Code.
 
 ## What You Can Do
 
@@ -84,19 +84,6 @@ These are the kinds of jobs this collection is built for:
 
 Use the official client installation and plugin management flows first, then install plugins from this collection.
 
-### Use in Codex
-
-1. Install Codex using the official docs.
-2. Open the plugin directory:
-   App: `Plugins`
-   CLI: `/plugins`
-3. Add this repository as a plugin source using the official plugin management flow.
-4. Install the plugin you want from this collection.
-
-References:
-- [Codex plugins overview](https://developers.openai.com/codex/plugins)
-- [Build Codex plugins](https://developers.openai.com/codex/plugins/build)
-
 ### Use in Claude Code
 
 1. Install Claude Code using the official docs.
@@ -159,7 +146,6 @@ bun test ./.github/scripts/tests
 
 ## Further Reading
 
-- [Codex plugin development notes](docs/plugin-development/codex.md)
 - [Claude Code plugin development notes](docs/plugin-development/claude-code.md)
 - [Recommended external plugins](docs/recommended-plugins.md)
 - [AGENTS.md](AGENTS.md)

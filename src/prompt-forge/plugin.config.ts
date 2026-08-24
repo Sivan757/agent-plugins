@@ -23,9 +23,7 @@ export default {
   },
   surfaces: {
     skills: true,
-    hooks: "native",
   },
   marketplace: {
-    codex: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
   },
 } satisfies PluginConfig;

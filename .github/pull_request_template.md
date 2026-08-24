@@ -15,4 +15,4 @@
 - [ ] Generated marketplace entries are present in `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json`
 - [ ] README.md updated if behavior changed
 - [ ] `npm run build`, `npm run pack:plugins`, and `npm run validate:plugin-packs` pass if installable artifacts changed
-- [ ] Tested with `bash scripts/dev.sh --target codex <plugin>` or `bash scripts/dev.sh --target claude <plugin>` locally
+- [ ] Tested with `bash scripts/dev.sh <plugin>` locally

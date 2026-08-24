@@ -38,7 +38,6 @@ Some repository constraints are already enforced by scripts. Others are design-q
 | Generated installable artifacts under `plugins/` match source metadata and release shape | `npm run pack:plugins`, `npm run validate:plugin-packs` |
 | Claude manifest directories stay minimal and paths stay rooted in the plugin | `npm run validate:claude-layout` |
 | Claude auto-discovery conventions for commands, agents, hooks, and MCP are respected | `npm run validate:claude-layout` |
-| Codex manifest paths use supported root-standard locations and point at real files | `npm run validate:codex-layout` |
 | Marketplace entries exist and follow the local source/path policy | `npm run validate:marketplace` |
 | Plugin versions stay consistent across source metadata and generated manifests | `npm run validate:versions` |
 | Human-authored surfaces under `src/`, `plugins/`, and `docs/` carry no credential material | `npm run validate:no-secrets` |
@@ -62,35 +61,28 @@ Some repository constraints are already enforced by scripts. Others are design-q
 - Shared runtime code lives inside the `config-center` plugin (`src/config-center`); CLI plugins depend on it as the workspace package `@agent-plugins/config-center`. Do not recreate a top-level `packages/` tree
 - Do not keep a parallel local `plugin/` tree
 - `src/<name>/plugin.config.ts` is the source of truth for plugin metadata
-- `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and local marketplace entries are generated metadata; do not hand-edit them
+- `.claude-plugin/plugin.json` and local marketplace entries are generated metadata; do not hand-edit them
 - Hooks, MCP configs, app configs, skills, commands, agents, and assets remain native runtime files; do not hide them behind generated cross-agent abstractions
 - `CLAUDE.md` is a symlink to this file; keep broad repository guidance here
 
 ## Required Plugin Shape
 
+This repository targets **Claude Code only**. Codex packaging, manifests, and marketplaces are no longer maintained.
+
 - Every local plugin must carry `plugin.config.ts`
-- Source-tree plugins must not carry generated `.codex-plugin/` or `.claude-plugin/` manifests
-- Release-tree manifest directories are generated and must stay minimal: `.codex-plugin/` and `.claude-plugin/` should contain only `plugin.json`
-- Codex bundle content belongs at plugin root: `skills/`, `hooks.json`, `.mcp.json`, `.app.json`, and `assets/` when present
-- Codex manifest paths must use the root-standard locations: `./skills/`, `./hooks.json`, `./.mcp.json`, `./.app.json`, and `./assets/...`
+- Source-tree plugins must not carry generated `.claude-plugin/` manifests
+- The release-tree `.claude-plugin/` directory is generated and must stay minimal: it contains only `plugin.json`
 - Claude auto-discovery content belongs at plugin root, not under `.claude-plugin/`: `commands/`, `agents/`, `skills/`, `hooks/`, and `.mcp.json`
 - Prefer Claude default discovery paths over manifest overrides; do not declare the standard `./hooks/hooks.json` in `.claude-plugin/plugin.json` because Claude auto-loads it
-- Claude-compatible hook config lives at `hooks/hooks.json`
-- Claude hook config must use the plugin wrapper format with a top-level `hooks` object
-- If hook config exists, keep `hooks.json` and `hooks/hooks.json` together and JSON-identical
-- Codex manifest paths must stay `./`-relative to the plugin root and point at real files or directories
+- Hook config is **optional**: add `hooks/hooks.json` (Claude wrapper format with a top-level `hooks` object) only when the plugin actually defines hooks. Do not ship empty `{"hooks": {}}` placeholders, and do not create a root-level `hooks.json`
 - Each skill directory must contain `SKILL.md` with minimal compatible frontmatter: `name` + `description`
-- Optional per-skill Codex metadata may live in `agents/openai.yaml`
-- Use `${CLAUDE_PLUGIN_ROOT}` for Claude-side path-sensitive references in hooks, MCP configs, commands, agents, and skills
+- Use `${CLAUDE_PLUGIN_ROOT}` for path-sensitive references in hooks, MCP configs, commands, agents, and skills
 
 ## Marketplace Rules
 
-- Codex registry: `.agents/plugins/marketplace.json`
-- Claude Code registry: `.claude-plugin/marketplace.json`
-- Local plugins must be registered in both marketplace files at `./plugins/<name>`
-- Codex marketplace local entries must use `{ "source": "local", "path": "./plugins/<name>" }`
-- Codex marketplace entries must always include `policy.installation`, `policy.authentication`, and `category`
-- Local marketplace entries are generated from `plugin.config.ts`
+- Claude Code registry: `.claude-plugin/marketplace.json` — the only marketplace file
+- Local plugins must be registered in the Claude marketplace at `./plugins/<name>`
+- Local marketplace entries are generated from `plugin.config.ts`; do not hand-edit them
 
 ## Repository Rules
 
@@ -105,8 +97,7 @@ Some repository constraints are already enforced by scripts. Others are design-q
 
 ## Development Commands
 
-- `bash scripts/dev.sh --target codex`
-- `bash scripts/dev.sh --target claude`
+- `bash scripts/dev.sh` (build + launch Claude Code)
 - `bash scripts/dev.sh --list`
 - `npm run generate:plugins`
 - `npm run pack:plugins`
@@ -118,10 +109,5 @@ Some repository constraints are already enforced by scripts. Others are design-q
 
 Platform-specific knowledge, migration notes, and practical experience live in reference docs instead of this file:
 
-- Codex plugin development: [docs/plugin-development/codex.md](docs/plugin-development/codex.md)
 - Claude Code plugin development: [docs/plugin-development/claude-code.md](docs/plugin-development/claude-code.md)
 
-Official upstream references:
-
-- Codex build docs: [developers.openai.com/codex/plugins/build](https://developers.openai.com/codex/plugins/build)
-- Codex skills docs: [developers.openai.com/codex/skills](https://developers.openai.com/codex/skills)

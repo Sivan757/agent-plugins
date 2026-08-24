@@ -624,10 +624,25 @@ function formatTable(rows: Record<string, unknown>[], colWidth: number): string 
 
 const program = new Command();
 
+// Write-protection guard: refuse data-modifying SQL unless the user has
+// explicitly confirmed and the caller passed --user-confirmed.
+const WRITE_STATEMENT_PATTERN = /^\s*(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|RENAME)\b/i;
+
+function assertWriteAllowed(sql: string, userConfirmed: boolean): void {
+  if (userConfirmed || !WRITE_STATEMENT_PATTERN.test(sql)) {
+    return;
+  }
+  console.error(
+    'Error: Refusing write statement without --user-confirmed. ' +
+      'Show the exact SQL to the user, get explicit confirmation, then re-run with --user-confirmed.'
+  );
+  process.exit(1);
+}
+
 program
   .name('mysql')
-  .description('MySQL query executor for Codex and Claude Code')
-  .version('0.7.0')
+  .description('MySQL query executor for Claude Code')
+  .version('0.12.1')
   .option('--user-confirmed', 'Bypass write-operation guard (after user approval)');
 
 // query command (default)
@@ -640,7 +655,7 @@ program
   .option('--params <json>', 'Parameterized query values as JSON array')
   .option('--limit <n>', 'Max rows to display (0 = unlimited)', String(DEFAULT_ROW_LIMIT))
   .option('--col-width <n>', 'Max column display width', String(DEFAULT_COL_WIDTH))
-  .action(async (connection: string, sql: string, opts: { format: string; params?: string; limit: string; colWidth: string }) => {
+  .action(async (connection: string, sql: string, opts: { format: string; params?: string; limit: string; colWidth: string; userConfirmed?: boolean }) => {
     let params: unknown[] = [];
     if (opts.params) {
       try {
@@ -658,6 +673,8 @@ program
     }
 
     const colWidth = parseInt(opts.colWidth, 10);
+
+    assertWriteAllowed(sql, Boolean(opts.userConfirmed));
 
     const config = await loadConfig();
 

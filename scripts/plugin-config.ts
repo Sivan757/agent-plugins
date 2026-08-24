@@ -27,7 +27,6 @@ export interface PluginConfig {
   };
   surfaces?: {
     skills?: boolean;
-    hooks?: false | "native";
     mcp?: boolean;
     app?: boolean;
   };
@@ -35,11 +34,6 @@ export interface PluginConfig {
     include?: string[];
   };
   marketplace?: {
-    codex?: {
-      installation?: string;
-      authentication?: string;
-      products?: string[];
-    };
     claude?: {
       description?: string;
     };
@@ -68,7 +62,6 @@ export interface ValidateOptions {
 const SOURCE_PLUGINS_DIR = "src";
 const RELEASE_PLUGINS_DIR = "plugins";
 const BUILD_STAGING_DIR = ".build/plugin-dist";
-const CODEX_MARKETPLACE_PATH = ".agents/plugins/marketplace.json";
 const CLAUDE_MARKETPLACE_PATH = ".claude-plugin/marketplace.json";
 const DEFAULT_PACK_ROOT = RELEASE_PLUGINS_DIR;
 const SOURCE_ONLY_ARTIFACT_ENTRIES = [
@@ -214,52 +207,8 @@ function commonManifestFields(config: PluginConfig): JsonObject {
   return manifest;
 }
 
-export function renderCodexManifest(config: PluginConfig): JsonObject {
-  const manifest = commonManifestFields(config);
-  const surfaces = config.surfaces ?? {};
-
-  if (surfaces.skills) {
-    manifest.skills = "./skills/";
-  }
-  if (surfaces.hooks === "native") {
-    manifest.hooks = "./hooks.json";
-  }
-  if (surfaces.mcp) {
-    manifest.mcpServers = "./.mcp.json";
-  }
-  if (surfaces.app) {
-    manifest.apps = "./.app.json";
-  }
-  if (config.interface) {
-    manifest.interface = config.interface;
-  }
-
-  return manifest;
-}
-
 export function renderClaudeManifest(config: PluginConfig): JsonObject {
   return commonManifestFields(config);
-}
-
-function codexMarketplaceEntry(config: PluginConfig): JsonObject {
-  const policy: JsonObject = {
-    installation: config.marketplace?.codex?.installation ?? "AVAILABLE",
-    authentication: config.marketplace?.codex?.authentication ?? "ON_INSTALL",
-  };
-
-  if (config.marketplace?.codex?.products) {
-    policy.products = config.marketplace.codex.products;
-  }
-
-  return {
-    name: config.name,
-    source: {
-      source: "local",
-      path: `./${RELEASE_PLUGINS_DIR}/${config.name}`,
-    },
-    policy,
-    category: config.category,
-  };
 }
 
 function claudeMarketplaceEntry(config: PluginConfig): JsonObject {
@@ -269,14 +218,6 @@ function claudeMarketplaceEntry(config: PluginConfig): JsonObject {
     source: `./${RELEASE_PLUGINS_DIR}/${config.name}`,
     description: config.marketplace?.claude?.description ?? config.description,
   };
-}
-
-function isCodexLocalPluginEntry(entry: unknown): boolean {
-  if (!isRecord(entry)) {
-    return false;
-  }
-  const source = entry.source;
-  return isRecord(source) && source.source === "local" && isNonEmptyString(source.path);
 }
 
 function isClaudeLocalPluginEntry(entry: unknown): boolean {
@@ -289,22 +230,6 @@ function sortMarketplacePlugins(plugins: unknown[]): unknown[] {
     const right = isRecord(b) && isNonEmptyString(b.name) ? b.name : "";
     return left.toLowerCase().localeCompare(right.toLowerCase());
   });
-}
-
-async function renderCodexMarketplace(root: string, configs: PluginConfig[]): Promise<MarketplaceFile> {
-  const filePath = join(root, CODEX_MARKETPLACE_PATH);
-  const marketplace = await readMarketplace(filePath, {
-    name: "agent-plugins",
-    interface: { displayName: "Agent Plugins" },
-    plugins: [],
-  });
-  const existingPlugins = Array.isArray(marketplace.plugins) ? marketplace.plugins : [];
-  const externalPlugins = existingPlugins.filter((entry) => !isCodexLocalPluginEntry(entry));
-
-  return {
-    ...marketplace,
-    plugins: sortMarketplacePlugins([...externalPlugins, ...configs.map(codexMarketplaceEntry)]),
-  };
 }
 
 async function renderClaudeMarketplace(root: string, configs: PluginConfig[]): Promise<MarketplaceFile> {
@@ -327,7 +252,6 @@ export async function generatePluginFiles(root = process.cwd()): Promise<void> {
   const loaded = await loadPluginConfigs(repoRoot);
   const configs = loaded.map((entry) => entry.config);
 
-  await writeJsonFile(join(repoRoot, CODEX_MARKETPLACE_PATH), await renderCodexMarketplace(repoRoot, configs));
   await writeJsonFile(join(repoRoot, CLAUDE_MARKETPLACE_PATH), await renderClaudeMarketplace(repoRoot, configs));
 }
 
@@ -353,9 +277,7 @@ async function compareJsonFile(filePath: string, expected: unknown, errors: stri
 async function validateSourceTree(root: string, loaded: LoadedPluginConfig[], errors: string[]): Promise<void> {
   const pluginRoots = await listPluginDirectories(root);
   for (const pluginRoot of pluginRoots) {
-    const hasManifest =
-      existsSync(join(pluginRoot, ".codex-plugin", "plugin.json")) ||
-      existsSync(join(pluginRoot, ".claude-plugin", "plugin.json"));
+    const hasManifest = existsSync(join(pluginRoot, ".claude-plugin", "plugin.json"));
     const hasConfig = existsSync(join(pluginRoot, "plugin.config.ts")) || existsSync(join(pluginRoot, "plugin.config.json"));
     if (!hasConfig) {
       errors.push(`${relative(root, pluginRoot)}: missing plugin.config.ts or plugin.config.json`);
@@ -383,14 +305,6 @@ async function validateSourceTree(root: string, loaded: LoadedPluginConfig[], er
     if (config.surfaces?.skills && !existsSync(join(pluginRoot, "skills"))) {
       errors.push(`${relative(root, pluginRoot)}: metadata declares skills but skills/ is missing`);
     }
-    if (config.surfaces?.hooks === "native") {
-      if (!existsSync(join(pluginRoot, "hooks.json"))) {
-        errors.push(`${relative(root, pluginRoot)}: metadata declares native hooks but hooks.json is missing`);
-      }
-      if (!existsSync(join(pluginRoot, "hooks", "hooks.json"))) {
-        errors.push(`${relative(root, pluginRoot)}: metadata declares native hooks but hooks/hooks.json is missing`);
-      }
-    }
     if (config.surfaces?.mcp && !existsSync(join(pluginRoot, ".mcp.json"))) {
       errors.push(`${relative(root, pluginRoot)}: metadata declares mcp but .mcp.json is missing`);
     }
@@ -400,12 +314,6 @@ async function validateSourceTree(root: string, loaded: LoadedPluginConfig[], er
   }
 
   const configs = loaded.map((entry) => entry.config);
-  await compareJsonFile(
-    join(root, CODEX_MARKETPLACE_PATH),
-    await renderCodexMarketplace(root, configs),
-    errors,
-    CODEX_MARKETPLACE_PATH
-  );
   await compareJsonFile(
     join(root, CLAUDE_MARKETPLACE_PATH),
     await renderClaudeMarketplace(root, configs),
@@ -461,15 +369,10 @@ export async function packPlugins(root = process.cwd(), options: PackOptions = {
     const packedRoot = join(outRoot, config.name);
     await rm(packedRoot, { recursive: true, force: true });
 
-    await writeJsonFile(join(packedRoot, ".codex-plugin", "plugin.json"), renderCodexManifest(config));
     await writeJsonFile(join(packedRoot, ".claude-plugin", "plugin.json"), renderClaudeManifest(config));
 
     if (config.surfaces?.skills) {
       await copyRelativePath(pluginRoot, packedRoot, "skills");
-    }
-    if (config.surfaces?.hooks === "native") {
-      await copyRelativePath(pluginRoot, packedRoot, "hooks.json");
-      await copyRelativePath(pluginRoot, packedRoot, "hooks");
     }
     if (config.surfaces?.mcp) {
       await copyRelativePath(pluginRoot, packedRoot, ".mcp.json");
@@ -481,7 +384,8 @@ export async function packPlugins(root = process.cwd(), options: PackOptions = {
       await copyRelativePath(pluginRoot, packedRoot, "README.md");
     }
 
-    for (const nativeDirectory of ["assets", "commands", "agents"] as const) {
+    // Claude Code auto-discovers hooks/hooks.json; pack it whenever present.
+    for (const nativeDirectory of ["assets", "commands", "agents", "hooks"] as const) {
       if (existsSync(join(pluginRoot, nativeDirectory))) {
         await copyRelativePath(pluginRoot, packedRoot, nativeDirectory);
       }
@@ -521,12 +425,6 @@ async function validatePackArtifacts(
     }
 
     await compareJsonFile(
-      join(packedRoot, ".codex-plugin", "plugin.json"),
-      renderCodexManifest(config),
-      errors,
-      `${relative(root, packedRoot)}/.codex-plugin/plugin.json`
-    );
-    await compareJsonFile(
       join(packedRoot, ".claude-plugin", "plugin.json"),
       renderClaudeManifest(config),
       errors,
@@ -541,14 +439,6 @@ async function validatePackArtifacts(
 
     if (config.surfaces?.skills && !existsSync(join(packedRoot, "skills"))) {
       errors.push(`${relative(root, packedRoot)}: packed artifact is missing skills/`);
-    }
-    if (config.surfaces?.hooks === "native") {
-      if (!existsSync(join(packedRoot, "hooks.json"))) {
-        errors.push(`${relative(root, packedRoot)}: packed artifact is missing hooks.json`);
-      }
-      if (!existsSync(join(packedRoot, "hooks", "hooks.json"))) {
-        errors.push(`${relative(root, packedRoot)}: packed artifact is missing hooks/hooks.json`);
-      }
     }
     if (config.surfaces?.mcp && !existsSync(join(packedRoot, ".mcp.json"))) {
       errors.push(`${relative(root, packedRoot)}: packed artifact is missing .mcp.json`);

@@ -1,7 +1,0 @@
-interface:
-  display_name: "withoutbg"
-  short_description: "Local background removal workflows"
-  default_prompt: "Use $withoutbg to remove image backgrounds and verify transparent PNG outputs."
-
-policy:
-  allow_implicit_invocation: true

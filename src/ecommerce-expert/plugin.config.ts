@@ -16,10 +16,8 @@ export default {
   },
   surfaces: {
     skills: true,
-    hooks: "native",
   },
   marketplace: {
-    codex: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
     claude: {
       description: "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu with full parameter specs, signing algorithms, integration patterns, and offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides)",
     },
