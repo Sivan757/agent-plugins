@@ -47,6 +47,12 @@
       "description": "Generate, execute, and verify FFmpeg and ffprobe commands for video, audio, and image media processing. Use when the user needs to compress, transcode, trim, crop, scale, extract frames, create thumbnails, watermark, concatenate, create HLS, remove or extract audio, convert formats, denoise, normalize loudness, merge media, compose complex layouts, animate overlays, or view/edit metadata for video, audio, image, WebP, GIF, or APNG files."
     },
     {
+      "name": "hallmark",
+      "version": "1.1.0",
+      "source": "./plugins/hallmark",
+      "description": "Anti-AI-slop design skill for greenfield pages, audits, redesigns, and design extraction from URLs or screenshots. Use when the user asks to build a new app or landing page, wants to redesign something, invokes Hallmark by name, or uses audit/redesign/study."
+    },
+    {
       "name": "magick",
       "version": "0.1.0",
       "source": "./plugins/magick",
