@@ -12,6 +12,7 @@ Built for Claude Code.
 - Query MySQL and PostgreSQL directly from your agent workflow
 - Manage TickTick tasks, habits, and focus workflows
 - Get structured guidance for SHEIN and Temu platform APIs
+- Drive the Apifox CLI to manage API projects, run automation tests, and handle branch collaboration
 - Plan, format, package, and stage Chinese new-media drafts for WeChat and Xiaohongshu
 
 ## Example Workflows
@@ -24,6 +25,7 @@ These are the kinds of jobs this collection is built for:
 - "Find where this service builds auth headers"
 - "Create a TickTick task for today's release checklist"
 - "Explain the Temu order and webhook flow"
+- "Run the Apifox test suite for the checkout API and upload the report"
 - "Turn this article into a WeChat Official Account draft package"
 
 ## Browse The Collection
@@ -68,6 +70,12 @@ These are the kinds of jobs this collection is built for:
 | --- | --- |
 | [ticktick](plugins/ticktick) | Manage TickTick tasks, projects, habits, and productivity workflows |
 
+### Manage project delivery
+
+| Plugin | What it does |
+| --- | --- |
+| [zentao](plugins/zentao) | Query and operate ZenTao (禅道) project-management data — stories, bugs, tasks, executions, test runs — through the `zentao` CLI (ported from easysoft/zentao-skills) |
+
 ### Manage credentials
 
 | Plugin | What it does |
@@ -79,6 +87,12 @@ These are the kinds of jobs this collection is built for:
 | Plugin | What it does |
 | --- | --- |
 | [ecommerce-expert](plugins/ecommerce-expert) | Navigate SHEIN and Temu integration APIs with structured reference material, plus offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides) |
+
+### Manage API projects
+
+| Plugin | What it does |
+| --- | --- |
+| [apifox](plugins/apifox) | Manage Apifox project resources, run interface automation tests, import/export API docs, and handle branch collaboration through the `apifox` CLI (official Apifox CLI skills) |
 
 ## Quick Start
 

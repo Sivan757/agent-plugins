@@ -17,6 +17,12 @@
       "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
     },
     {
+      "name": "apifox",
+      "version": "1.0.0",
+      "source": "./plugins/apifox",
+      "description": "Apifox CLI skills for managing API projects, running interface automation tests, importing/exporting API docs, and handling branch collaboration. Use when the user asks to manage Apifox project resources (endpoints, environments, schemas, mocks, branches), run test cases/scenarios/suites via the apifox CLI, import or export OpenAPI/Postman/Apifox-native formats, or debug apifox CLI behavior."
+    },
+    {
       "name": "config-center",
       "version": "0.1.1",
       "source": "./plugins/config-center",
@@ -111,6 +117,12 @@
       "version": "0.1.0",
       "source": "./plugins/withoutbg",
       "description": "Run and verify withoutbg AI background-removal workflows for local or API-based image cutouts. Use when the user needs to remove image backgrounds, create transparent PNG or WebP assets, batch-process product photos, people, apparel, stickers, ecommerce images, social images, or compare cutout quality; also use for alpha-channel validation, checkerboard previews, mask-style QA, and complex foreground/background workflow decomposition."
+    },
+    {
+      "name": "zentao",
+      "version": "0.1.7",
+      "source": "./plugins/zentao",
+      "description": "Zentao (禅道) CLI skill — query and operate Zentao project-management data (programs, products, projects, executions, stories, bugs, tasks, test cases, plans, releases, feedback, users, attachments) via the zentao command-line tool. Use when the user mentions 禅道/zentao, asks for project progress, bug lists, task creation, or story status updates."
     }
   ]
 }

@@ -13,6 +13,7 @@
 - 通过 MCP 对陌生代码库做语义搜索
 - 管理 TickTick 任务、习惯和专注流程
 - 获取 SHEIN 和 Temu 平台 API 的结构化使用指引
+- 通过 Apifox CLI 管理 API 项目、运行自动化测试、处理分支协作
 - 规划、排版、打包并安全暂存微信公众号和小红书内容草稿
 
 ## 示例工作流
@@ -25,6 +26,7 @@
 - “找一下这个服务是在哪里拼 auth header 的”
 - “给今天的发布清单创建一个 TickTick 任务”
 - “解释一下 Temu 订单接口和 webhook 流程”
+- “用 Apifox 跑一下 checkout API 的测试套件并上传报告”
 - “把这篇文章整理成微信公众号草稿包”
 
 ## 插件分类
@@ -69,6 +71,12 @@
 | --- | --- |
 | [ticktick](plugins/ticktick) | 管理 TickTick 任务、项目、习惯和效率流程 |
 
+### 项目交付管理
+
+| 插件 | 作用 |
+| --- | --- |
+| [zentao](plugins/zentao) | 通过 `zentao` CLI 查询和操作禅道项目管理数据——需求、Bug、任务、执行、测试单等（移植自 easysoft/zentao-skills） |
+
 ### 凭证管理
 
 | 插件 | 作用 |
@@ -80,6 +88,12 @@
 | 插件 | 作用 |
 | --- | --- |
 | [ecommerce-expert](plugins/ecommerce-expert) | 提供 SHEIN 与 Temu 集成 API 的结构化参考资料，内置 Temu OpenAPI 离线镜像（209 篇接口文档、23 篇开发者指南） |
+
+### 管理 API 项目
+
+| 插件 | 作用 |
+| --- | --- |
+| [apifox](plugins/apifox) | 通过 `apifox` CLI 管理 Apifox 项目资源、运行接口自动化测试、导入导出 API 文档、处理分支协作（官方 Apifox CLI Skills） |
 
 ## 快速开始
 
