@@ -14,7 +14,8 @@
     "src/magick",
     "src/real-esrgan",
     "src/withoutbg",
-    "src/consulting-advisor"
+    "src/consulting-advisor",
+    "src/zentao"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
