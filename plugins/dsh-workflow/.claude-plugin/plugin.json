@@ -1,0 +1,15 @@
+{
+  "name": "dsh-workflow",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness workflow bundle: Agent Notes corpus hygiene, PR review standards, pre-push verification, CI flake reliability, documentation lifecycle, simplification discovery, stacked-PR landing, prose standard, reasoning-leakage trimming, bilingual doc translation, performance investigation, and browser GIF demos.",
+  "author": {
+    "name": "Agent Plugins"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "workflow",
+    "review",
+    "ci",
+    "docs"
+  ]
+}

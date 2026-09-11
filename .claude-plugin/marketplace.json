@@ -35,16 +35,16 @@
       "description": "Structured cross-domain consulting for problem solving and cognitive upgrade. Use when the user asks for advice, diagnosis, planning, strategy, career/job-search help, management, product/design/marketing, communication/PPT/writing, programming tradeoffs, decision-making, learning, or any ambiguous problem where the agent should identify domains, infer intent, select an authoritative framework, briefly teach it, ask clarifying questions before final recommendations, and apply the framework to the user's context."
     },
     {
-      "name": "dsh-agent-notes",
-      "version": "0.2.0",
-      "source": "./plugins/dsh-agent-notes",
-      "description": "Archive DeepSeek Harness Agent Notes. Use when adding, auditing, pruning, archiving, restoring, or reviewing Agent Notes in a deepseek-harness checkout."
+      "name": "dsh-workflow",
+      "version": "0.1.0",
+      "source": "./plugins/dsh-workflow",
+      "description": "DeepSeek Harness workflow bundle: Agent Notes hygiene, review standards, pre-push verification, CI flake reliability, docs lifecycle, simplification discovery, stacked PRs, prose standard, CoT-leakage trimming, bilingual docs, performance work, and browser GIF demos."
     },
     {
       "name": "ecommerce-expert",
       "version": "1.1.0",
       "source": "./plugins/ecommerce-expert",
-      "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu with full parameter specs, signing algorithms, integration patterns, and offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides)"
+      "description": "E-commerce platform API knowledge base \u2014 SHEIN (173 endpoints) and Temu with full parameter specs, signing algorithms, integration patterns, and offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides)"
     },
     {
       "name": "ffmpeg",
@@ -90,7 +90,7 @@
     },
     {
       "name": "shopify-ai-toolkit",
-      "description": "Shopify development toolkit — themes, apps, Storefront API, Hydrogen, checkout extensions, Polaris, POS, and Liquid templating",
+      "description": "Shopify development toolkit \u2014 themes, apps, Storefront API, Hydrogen, checkout extensions, Polaris, POS, and Liquid templating",
       "source": {
         "source": "url",
         "url": "https://github.com/Shopify/Shopify-AI-Toolkit.git"
@@ -122,7 +122,7 @@
       "name": "zentao",
       "version": "0.1.7",
       "source": "./plugins/zentao",
-      "description": "Zentao (禅道) CLI skill — query and operate Zentao project-management data (programs, products, projects, executions, stories, bugs, tasks, test cases, plans, releases, feedback, users, attachments) via the zentao command-line tool. Use when the user mentions 禅道/zentao, asks for project progress, bug lists, task creation, or story status updates."
+      "description": "Zentao (\u7985\u9053) CLI skill \u2014 query and operate Zentao project-management data (programs, products, projects, executions, stories, bugs, tasks, test cases, plans, releases, feedback, users, attachments) via the zentao command-line tool. Use when the user mentions \u7985\u9053/zentao, asks for project progress, bug lists, task creation, or story status updates."
     }
   ]
 }
