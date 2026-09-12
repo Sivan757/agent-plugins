@@ -62,31 +62,8 @@ jobs:
       - name: Install dependencies
         run: cd .github/scripts && bun install
 
-      - name: Detect changed frontmatter files
-        id: changed-files
-        run: |
-          # Get list of changed files in the PR
-          FILES=$(gh pr diff ${{ github.event.pull_request.number }} --name-only 2>/dev/null || git diff --name-only origin/${{ github.base_ref }}...HEAD)
-
-          # Filter to frontmatter files we care about
-          FRONTMATTER_FILES=$(echo "$FILES" | grep -E '(skills/[^/]+/SKILL\.md|agents/[^/]+\.md|commands/[^/]+\.md)$' || true)
-
-          if [ -z "$FRONTMATTER_FILES" ]; then
-            echo "files=" >> "$GITHUB_OUTPUT"
-            echo "No frontmatter files changed."
-          else
-            # Join with spaces for passing as arguments
-            echo "files=$FRONTMATTER_FILES" >> "$GITHUB_OUTPUT"
-            echo "Found changed frontmatter files:"
-            echo "$FRONTMATTER_FILES"
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
       - name: Validate frontmatter
-        if: steps.changed-files.outputs.files != ''
-        run: |
-          bun run .github/scripts/validate-frontmatter.ts ${{ steps.changed-files.outputs.files }}
+        run: bun run .github/scripts/validate-frontmatter.ts --all
 
   validate-claude-layout:
     name: Validate Claude Layout

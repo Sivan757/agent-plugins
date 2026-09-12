@@ -41,6 +41,7 @@ Some repository constraints are already enforced by scripts. Others are design-q
 | Marketplace entries exist and follow the local source/path policy | `npm run validate:marketplace` |
 | Plugin versions stay consistent across source metadata and generated manifests | `npm run validate:versions` |
 | Human-authored surfaces under `src/`, `plugins/`, and `docs/` carry no credential material | `npm run validate:no-secrets` |
+| Skill, command, and agent frontmatter parses as YAML with the required fields | `npm run validate:frontmatter` |
 | Shared metadata generation and packing behavior stays regression-tested | `bun test ./.github/scripts/tests` |
 
 ### Scriptable Next
