@@ -4,8 +4,6 @@
 
 A curated collection of useful plugins for real agent workflows.
 
-Built for Claude Code.
-
 ## What You Can Do
 
 - Investigate production issues from Alibaba Cloud logs
@@ -94,6 +92,12 @@ These are the kinds of jobs this collection is built for:
 | --- | --- |
 | [apifox](plugins/apifox) | Manage Apifox project resources, run interface automation tests, import/export API docs, and handle branch collaboration through the `apifox` CLI (official Apifox CLI skills) |
 
+### Run the development-to-operations chain
+
+| Plugin | What it does |
+| --- | --- |
+| [codearts](plugins/codearts) | Drive Huawei Cloud CodeArts end to end — run pipelines and builds, execute code checks, manage merge requests, deploy applications, move artifacts, and read wiki documents — through one bundled `codearts` CLI, with 782 documented API operations reachable behind it |
+
 ## Quick Start
 
 Use the official client installation and plugin management flows first, then install plugins from this collection.
@@ -123,39 +127,38 @@ References:
 
 Most plugin repositories either focus on one client or treat the plugin code as an implementation detail hidden behind internal tooling. This repository takes the opposite approach: the plugin collection is the product.
 
-The shared source tree matters because it keeps the plugins easier to maintain, but that is not the main value proposition. The main value proposition is that this repository collects practical plugins for logs, databases, task management, code search, content operations, and API-heavy workflows in one place.
+Each plugin directory is written by hand and is exactly what Claude Code installs. Nothing is compiled, copied, or repacked to produce it, so what you read in [`plugins/`](plugins/) is what runs.
 
 ## Repository Layout
 
 ```text
-src/       local plugin source and metadata
-plugins/   generated installable plugin artifacts
+plugins/   the plugins themselves — each directory is installable as-is
 docs/      development notes and references
-scripts/   metadata generation, packaging, validation, and migration helpers
+scripts/   metadata generation, bundling, validation, and development helpers
 ```
 
-Shared runtime code lives inside the `config-center` plugin (`src/config-center`), which CLI plugins depend on as the workspace package `@agent-plugins/config-center`.
+A plugin directory holds its own native files (`skills/`, `commands/`, `agents/`, `hooks/`, `.mcp.json`, `assets/`), its metadata source `plugin.config.ts`, and — for plugins with a CLI — the TypeScript source in `src/` next to the committed bundle in `dist/`.
+
+Shared runtime code lives inside the `config-center` plugin (`plugins/config-center/src`), which CLI plugins depend on as the workspace package `@agent-plugins/config-center`.
 
 ## For Plugin Authors
 
 If you want to contribute plugins or improve the shared tooling:
 
-- Add or update plugin source in [`src/`](src/)
-- Keep shared metadata in `src/<name>/plugin.config.ts`
-- Run `npm run generate:plugins` after metadata changes
-- Run `npm run build` for buildable plugins
-- Use `npm run pack:plugins` to refresh clean installable artifacts under [`plugins/`](plugins/)
-- Run validation before submitting changes
+- Add or update the plugin directly in [`plugins/<name>/`](plugins/)
+- Keep its metadata in `plugins/<name>/plugin.config.ts`
+- Run `npm run generate:plugins` after metadata changes; it refreshes `.claude-plugin/plugin.json` and the marketplace entry
+- Run `npm run build` only when you change CLI source; the bundle lands in that plugin's own `dist/`
+- Run validation before submitting changes; [docs/plugin-development/authoring-a-plugin.md](docs/plugin-development/authoring-a-plugin.md) is the full checklist
 
 Useful commands:
 
 ```bash
 npm run generate:plugins
-npm run pack:plugins
-npm run validate:plugin-metadata
-npm run validate:plugin-packs
+npm run build
 npm run validate:plugins
 bun test ./.github/scripts/tests
+bash scripts/dev.sh --list
 ```
 
 ## Further Reading
@@ -166,4 +169,4 @@ bun test ./.github/scripts/tests
 
 ## Contributing
 
-Contributions are welcome if they improve the plugin catalog, shared tooling, or cross-client compatibility of the repository.
+Contributions are welcome if they improve the plugin catalog or the shared tooling.

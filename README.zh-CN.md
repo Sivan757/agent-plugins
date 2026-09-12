@@ -4,8 +4,6 @@
 
 一个面向真实 Agent 工作流的实用插件集合。
 
-专为 Claude Code 构建。
-
 ## 你可以用它做什么
 
 - 从阿里云日志中排查线上问题
@@ -95,6 +93,12 @@
 | --- | --- |
 | [apifox](plugins/apifox) | 通过 `apifox` CLI 管理 Apifox 项目资源、运行接口自动化测试、导入导出 API 文档、处理分支协作（官方 Apifox CLI Skills） |
 
+### 研发到运维全链路
+
+| 插件 | 作用 |
+| --- | --- |
+| [codearts](plugins/codearts) | 打通华为云 CodeArts 研发到运维全链路 —— 跑流水线与编译构建、执行代码检查、管理合并请求、部署应用、搬运制品、读取知识库文档，由一个内置的 `codearts` CLI 承载，背后是 782 个接口 |
+
 ## 快速开始
 
 优先使用官方客户端安装与插件管理方式，再从这个仓库安装你需要的插件。
@@ -124,39 +128,38 @@
 
 很多插件仓库只服务单一客户端，或者把插件本身藏在一层内部脚本之后。这个仓库的思路相反：插件集合本身就是产品。
 
-共享源码树确实有助于维护，但那不是这个仓库最重要的卖点。真正的重点是：这里集中整理了一批对日志排查、数据库查询、任务管理、代码搜索、内容运营和 API 集成有实际帮助的插件。
+每个插件目录都是手写的，并且就是 Claude Code 安装的东西。它不需要编译、拷贝或重新打包才能产出，所以你在 [`plugins/`](plugins/) 里读到的就是实际运行的。
 
 ## 仓库结构
 
 ```text
-src/       本地插件源码与元数据
-plugins/   生成后的可安装插件产物
+plugins/   插件本体——每个目录都可以直接安装
 docs/      开发说明与参考资料
-scripts/   元数据生成、打包、校验与迁移脚本
+scripts/   元数据生成、打包、校验与开发辅助脚本
 ```
 
-共享运行时代码位于 `config-center` 插件内部（`src/config-center`），各 CLI 插件以 workspace 包 `@agent-plugins/config-center` 的形式依赖它。
+一个插件目录里放着自己的原生文件（`skills/`、`commands/`、`agents/`、`hooks/`、`.mcp.json`、`assets/`）、元数据源 `plugin.config.ts`；如果带 CLI，还有 `src/` 下的 TypeScript 源码和已提交的 `dist/` 产物。
+
+共享运行时代码位于 `config-center` 插件内部（`plugins/config-center/src`），各 CLI 插件以 workspace 包 `@agent-plugins/config-center` 的形式依赖它。
 
 ## 给插件作者
 
 如果你想贡献插件或改进共享工具：
 
-- 在 [`src/`](src/) 中新增或修改插件源码
-- 在 `src/<name>/plugin.config.ts` 中维护共享元数据
-- 元数据变化后运行 `npm run generate:plugins`
-- 对可构建插件运行 `npm run build`
-- 使用 `npm run pack:plugins` 刷新 [`plugins/`](plugins/) 下干净的可安装产物
-- 提交前先运行校验
+- 直接在 [`plugins/<name>/`](plugins/) 中新增或修改插件
+- 在 `plugins/<name>/plugin.config.ts` 中维护它的元数据
+- 元数据变化后运行 `npm run generate:plugins`，它会刷新 `.claude-plugin/plugin.json` 与 marketplace 条目
+- 只有改动 CLI 源码时才需要 `npm run build`；产物落在该插件自己的 `dist/`
+- 提交前先运行校验；完整清单见 [docs/plugin-development/authoring-a-plugin.md](docs/plugin-development/authoring-a-plugin.md)
 
 常用命令：
 
 ```bash
 npm run generate:plugins
-npm run pack:plugins
-npm run validate:plugin-metadata
-npm run validate:plugin-packs
+npm run build
 npm run validate:plugins
 bun test ./.github/scripts/tests
+bash scripts/dev.sh --list
 ```
 
 ## 延伸阅读
@@ -167,4 +170,4 @@ bun test ./.github/scripts/tests
 
 ## 贡献
 
-如果你的改动能提升插件集合、共享工具，或者改善仓库的跨客户端兼容性，欢迎贡献。
+如果你的改动能提升插件集合或共享工具，欢迎贡献。
