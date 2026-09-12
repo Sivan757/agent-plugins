@@ -14,7 +14,7 @@
  *   - an element unreachable from `spec.root` renders nothing.
  *
  * It also checks the other half of the contract: a plugin ships the shared HTML
- * exactly when its bundle actually serves it. Shipping it otherwise is 348 KB of
+ * exactly when its bundle actually serves it. Shipping it otherwise is ~340 KB of
  * dead weight per plugin; not shipping it means the form cannot open.
  *
  * Exit 0 on success, exit 1 on any finding.

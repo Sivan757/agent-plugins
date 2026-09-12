@@ -35,14 +35,13 @@ Some repository constraints are already enforced by scripts. Others are design-q
 | Constraint | Script gate |
 | --- | --- |
 | `plugin.config.ts` is the metadata source of truth | `npm run generate:plugins`, `npm run validate:plugin-metadata` |
-| Generated manifests and marketplace entries match the metadata sources | `npm run validate:plugin-metadata` |
+| Generated manifests and marketplace entries match the metadata sources, and the versions declared in `package.json` and by the CLI's own `.version()` agree with it | `npm run validate:plugin-metadata` |
 | Claude manifest directories stay minimal and paths stay rooted in the plugin | `npm run validate:claude-layout` |
 | Claude auto-discovery conventions for commands, agents, hooks, and MCP are respected | `npm run validate:claude-layout` |
 | Agent-facing text only names `${CLAUDE_PLUGIN_ROOT}` paths the plugin actually ships | `npm run validate:claude-layout` |
 | A plugin's config form only names components and field types the shared UI can draw, and ships the shared UI exactly when the plugin serves it | `npm run validate:config-ui` |
-| A committed artifact under `plugins/*/dist` matches its source | CI job `validate-committed-bundles` (`npm run build` + `git diff`) |
-| Marketplace entries exist and follow the local source/path policy | `npm run validate:marketplace` |
-| Plugin versions stay consistent across metadata, `package.json`, generated manifests, marketplace entries, and the CLI's own `--version` | `npm run validate:versions` |
+| A committed artifact under `plugins/*/dist` matches its source, including every copy of the shared config form | CI job `validate-generated` (`npm run build`, then any working-tree change under `plugins/` fails the job) |
+| Marketplace entries exist, follow the local source/path policy, and stay ordered by name | `npm run validate:marketplace` |
 | Human-authored surfaces under `plugins/` and `docs/` carry no credential material | `npm run validate:no-secrets` |
 | Skill, command, and agent frontmatter parses as YAML with the required fields | `npm run validate:frontmatter` |
 | Shared metadata generation and validation behavior stays regression-tested | `bun test ./.github/scripts/tests` |
@@ -94,7 +93,7 @@ Codex packaging, manifests, and marketplaces are no longer maintained, and there
 
 ## Repository Rules
 
-- Store credentials in `~/.cache/agent-plugins/<plugin>.json`, never in project-local files
+- Store credentials in `~/.cache/agent-plugins/<plugin>/config.json`, never in project-local files
 - Version bumps must update `plugins/<name>/plugin.config.ts`, `plugins/<name>/package.json` when the plugin has one, and the CLI's own `.version('…')` string when it declares one; then run `npm run generate:plugins`
 - Run `npm run build` for the plugin whose CLI source changed; the bundle lands in that plugin's own `dist/` and is committed. `npm run build` reuses the shared config UI, whose own build runs first
 - Run `npm run validate:plugins` before submitting changes that affect manifests, marketplaces, bundles, or skill metadata

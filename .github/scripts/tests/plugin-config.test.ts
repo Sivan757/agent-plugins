@@ -44,7 +44,8 @@ function createPlugin(root: string, name = "sample-plugin"): string {
   writeJson(join(pluginRoot, "hooks", "hooks.json"), { hooks: { SessionStart: [] } });
   writeJson(join(pluginRoot, ".mcp.json"), { mcpServers: { sample: { command: "node", args: ["dist/sample.mjs"] } } });
   writeText(join(pluginRoot, "README.md"), "# Sample Plugin\n");
-  writeText(join(pluginRoot, "src", "sample.ts"), "console.log('source');\n");
+  writeJson(join(pluginRoot, "package.json"), { name, version: "1.2.3", type: "module" });
+  writeText(join(pluginRoot, "src", "sample.ts"), "program.version('1.2.3');\n");
   writeText(join(pluginRoot, "dist", "sample.mjs"), "console.log('dist');\n");
   writeText(
     join(pluginRoot, "plugin.config.ts"),
@@ -174,6 +175,37 @@ describe("plugin metadata validation", () => {
     const errors = await validatePluginMetadata(root);
 
     expect(errors.some((error) => error.includes("missing generated file"))).toBe(true);
+  });
+
+  test("reports a package.json version that drifts from the metadata", async () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root);
+    await generatePluginFiles(root);
+
+    const packageJsonPath = join(pluginRoot, "package.json");
+    const pkg = readJson<Record<string, unknown>>(packageJsonPath);
+    pkg.version = "9.9.9";
+    writeJson(packageJsonPath, pkg);
+
+    const errors = await validatePluginMetadata(root);
+
+    const mismatch = errors.find((error) => error.includes("version mismatch"));
+    expect(mismatch).toBeDefined();
+    expect(mismatch).toContain("package.json: 9.9.9");
+  });
+
+  test("reports a CLI that prints a version the metadata disagrees with", async () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root);
+    await generatePluginFiles(root);
+
+    writeText(join(pluginRoot, "src", "sample.ts"), "program.version('9.9.9');\n");
+
+    const errors = await validatePluginMetadata(root);
+
+    const mismatch = errors.find((error) => error.includes("version mismatch"));
+    expect(mismatch).toBeDefined();
+    expect(mismatch).toContain("src/sample.ts: 9.9.9");
   });
 
   test("reports a marketplace that no longer matches the plugin metadata", async () => {

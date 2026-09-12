@@ -104,8 +104,10 @@ asking the user to edit JSON.
 | `author`, `keywords` | optional |
 | `marketplace.description` | optional longer wording for the marketplace listing; omit it when `description` already reads well there |
 
-`npm run validate:versions` compares every place a version appears and fails on
-any mismatch.
+A version is declared by hand in `plugin.config.ts`, in `package.json` when the
+plugin has one, and in the CLI's own `.version()` when it declares one.
+`npm run validate:plugin-metadata` compares all of them, along with the generated
+manifest and marketplace entry, and fails on any mismatch.
 
 ## Commands
 
@@ -121,14 +123,13 @@ bash scripts/dev.sh <name> # launch Claude Code against the plugin directory
 
 | Gate | Catches |
 | --- | --- |
-| `validate:plugin-metadata` | a manifest or marketplace entry that no longer matches `plugin.config.ts` |
+| `validate:plugin-metadata` | a manifest, marketplace entry or version that no longer matches `plugin.config.ts` |
 | `validate:claude-layout` | a missing/extra file in `.claude-plugin/`, malformed hooks or MCP config, and any `${CLAUDE_PLUGIN_ROOT}` path the plugin does not ship |
 | `validate:config-ui` | a form spec the renderer cannot draw, a plugin that serves the form without shipping the HTML (or ships it without serving it), and stale HTML copies |
-| `validate:marketplace` | a local entry that points somewhere other than `./plugins/<name>`, or at a directory that does not exist |
-| `validate:versions` | a version that disagrees between `plugin.config.ts`, `package.json`, the CLI, the manifest and the marketplace |
+| `validate:marketplace` | a local entry that points somewhere other than `./plugins/<name>`, at a directory that does not exist, or out of name order |
 | `validate:frontmatter` | skill/command/agent frontmatter that is not valid YAML with the required fields |
 | `validate:no-secrets` | credential material in any human-authored surface |
-| CI `validate-committed-bundles` | a committed artifact under `plugins/*/dist` that no longer matches its source |
+| CI `validate-generated` | a committed artifact under `plugins/*/dist` that no longer matches its source |
 
 ## Before you publish
 

@@ -18,9 +18,12 @@ on:
       - '**/commands/*.md'
       - '**/assets/**'
 
+# Two jobs, each installing its dependencies once. The steps inside them are the
+# same npm scripts a developer runs locally, so CI and `npm run validate:plugins`
+# cannot drift apart.
 jobs:
-  validate-plugin-metadata:
-    name: Validate Plugin Metadata
+  validate-generated:
+    name: Validate Generated Files And Bundles
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,111 +35,49 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check generated manifests and marketplace match plugin metadata
+      - name: Check manifests, marketplace entries and versions match plugin metadata
         run: npm run validate:plugin-metadata
-
-  validate-committed-bundles:
-    name: Validate Committed Bundles
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Rebuild plugin bundles
         run: npm run build
 
-      - name: Fail when a committed bundle is stale
+      - name: Fail when a committed artifact is stale
         run: |
-          # config-ui copies are compared against each other by
-          # validate-config-ui-contract instead, so they are excluded here.
-          if ! git diff --exit-code -- plugins ':(exclude)*config-ui*'; then
+          # Covers every committed artifact under plugins/: the CLI bundles and
+          # the config-ui copies alike, all of which `npm run build` regenerates.
+          # Nothing verifies a copy against ui/src otherwise, so a copy that was
+          # never rebuilt after a form change would ship silently.
+          if [ -n "$(git status --porcelain -- plugins)" ]; then
+            git status --porcelain -- plugins
             echo "::error::A committed artifact under plugins/*/dist no longer matches its source. Run 'npm run build' and commit the result."
             exit 1
           fi
 
-  validate-script-tests:
-    name: Validate Script Tests
+  validate-repo-checks:
+    name: Validate Repo Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v2
 
-      - name: Install dependencies
+      - name: Install validator dependencies
         run: cd .github/scripts && bun install
 
       - name: Run validator tests
         run: bun test ./.github/scripts/tests
 
-  validate-marketplace:
-    name: Validate Marketplace
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: cd .github/scripts && bun install
-
-      - name: Validate marketplace structure
-        run: bun run .github/scripts/validate-marketplace.ts
-
-      - name: Check marketplace sorted
-        run: bun run .github/scripts/check-marketplace-sorted.ts
-
-  validate-frontmatter:
-    name: Validate Frontmatter
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: cd .github/scripts && bun install
-
-      - name: Validate frontmatter
-        run: bun run .github/scripts/validate-frontmatter.ts --all
-
-  validate-claude-layout:
-    name: Validate Claude Layout
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: cd .github/scripts && bun install
-
       - name: Validate Claude plugin layout
-        run: bun run .github/scripts/validate-claude-plugin-layout.ts
+        run: npm run validate:claude-layout
 
-  validate-config-ui-contract:
-    name: Validate Config UI Contract
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - name: Validate config UI contract
+        run: npm run validate:config-ui
 
-      - uses: oven-sh/setup-bun@v2
+      - name: Validate skill, command and agent frontmatter
+        run: npm run validate:frontmatter
 
-      - name: Validate plugin config forms against the UI catalog
-        run: bun run .github/scripts/validate-config-ui-contract.ts
+      - name: Validate marketplace
+        run: npm run validate:marketplace
 
-  validate-versions:
-    name: Validate Versions
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-
-      - name: Validate version consistency
-        run: bun run .github/scripts/validate-versions.ts
+      - name: Scan for credential material
+        run: npm run validate:no-secrets

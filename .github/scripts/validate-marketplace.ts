@@ -1,12 +1,17 @@
 #!/usr/bin/env bun
 /**
- * Validates the Claude Code marketplace file:
- *   - .claude-plugin/marketplace.json
+ * Validates the Claude Code marketplace file, `.claude-plugin/marketplace.json`:
+ * its structure, and that its entries stay ordered by plugin name. The order
+ * matters because the file is generated read-only; a hand edit is how it drifts.
+ *
+ * Usage:
+ *   bun run validate-marketplace.ts
+ *   bun run validate-marketplace.ts --fix   # rewrite in sorted order
  *
  * Exit 0 on success, exit 1 on any validation error.
  */
 
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
 const ROOT = resolve(import.meta.dir, "../..");
@@ -25,11 +30,15 @@ function readJson(filePath: string): unknown {
   }
 }
 
-function validateClaudeMarketplace(data: unknown): { errors: string[]; count: number } {
+function validateClaudeMarketplace(data: unknown): {
+  errors: string[];
+  count: number;
+  plugins: Array<{ name: string; [k: string]: unknown }>;
+} {
   const errors: string[] = [];
 
   if (!isRecord(data)) {
-    return { errors: ["Root of Claude marketplace must be a JSON object"], count: 0 };
+    return { errors: ["Root of Claude marketplace must be a JSON object"], count: 0, plugins: [] };
   }
 
   const root = data;
@@ -37,7 +46,7 @@ function validateClaudeMarketplace(data: unknown): { errors: string[]; count: nu
     errors.push('Claude marketplace: top-level "name" must be a non-empty string');
   }
   if (!Array.isArray(root.plugins)) {
-    return { errors: ['Claude marketplace: "plugins" must be an array'], count: 0 };
+    return { errors: ['Claude marketplace: "plugins" must be an array'], count: 0, plugins: [] };
   }
 
   const plugins = root.plugins as unknown[];
@@ -92,19 +101,58 @@ function validateClaudeMarketplace(data: unknown): { errors: string[]; count: nu
     }
   }
 
-  return { errors, count: plugins.length };
+  return { errors, count: plugins.length, plugins: (plugins as Array<{ name: string }>) };
+}
+
+/** The generator emits entries in this order; a manual edit is how it drifts. */
+function checkPluginOrder(data: unknown, errors: string[]): void {
+  if (!isRecord(data) || !Array.isArray(data.plugins)) {
+    return;
+  }
+
+  const names = data.plugins.map((plugin) =>
+    isRecord(plugin) && typeof plugin.name === "string" ? plugin.name : ""
+  );
+  const expected = [...names].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+
+  if (names.some((name, index) => name !== expected[index])) {
+    errors.push(`plugins are not ordered by name`);
+    errors.push(`  current:  ${names.join(", ")}`);
+    errors.push(`  expected: ${expected.join(", ")}`);
+  }
 }
 
 function main(): void {
-  const claudeResult = validateClaudeMarketplace(readJson(CLAUDE_MARKETPLACE_PATH));
+  const shouldFix = process.argv.includes("--fix");
+  const marketplace = readJson(CLAUDE_MARKETPLACE_PATH);
+  const claudeResult = validateClaudeMarketplace(marketplace);
 
-  if (claudeResult.errors.length > 0) {
+  // --fix repairs ordering, so only its findings block that mode.
+  const orderErrors: string[] = [];
+  checkPluginOrder(marketplace, orderErrors);
+  const errors = shouldFix ? claudeResult.errors : [...claudeResult.errors, ...orderErrors];
+
+  if (errors.length > 0) {
     console.error("Marketplace validation failed:\n");
-    for (const err of claudeResult.errors) {
-      console.error(`  - ${err}`);
+    for (const err of errors) {
+      console.error(err.startsWith("  ") ? err : `  - ${err}`);
     }
-    console.error(`\n${claudeResult.errors.length} error(s) found.`);
+    console.error(`\n${errors.length} error(s) found.`);
+    console.error("Run with --fix to rewrite the file in sorted order.");
     process.exit(1);
+  }
+
+  if (shouldFix) {
+    const ordered = [...claudeResult.plugins].sort((a, b) =>
+      a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    );
+    writeFileSync(
+      CLAUDE_MARKETPLACE_PATH,
+      `${JSON.stringify({ ...(marketplace as Record<string, unknown>), plugins: ordered }, null, 2)}\n`,
+      "utf-8"
+    );
+    console.log(`Marketplace validation passed and rewritten in order: claude=${claudeResult.count} plugin(s).`);
+    return;
   }
 
   console.log(`Marketplace validation passed: claude=${claudeResult.count} plugin(s).`);

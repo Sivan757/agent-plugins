@@ -49,7 +49,7 @@ Repository-specific knowledge for building and maintaining plugins for Claude Co
 
 ## Practical Lessons
 
-- Version numbers are declared in up to four places — `plugin.config.ts`, `package.json`, the generated manifest and marketplace entry, and the CLI's own `.version()` string. `npm run validate:versions` reads all of them, because the CLI's `--version` is what an agent reads back when diagnosing an install
+- Version numbers are declared in up to four places — `plugin.config.ts`, `package.json`, the generated manifest and marketplace entry, and the CLI's own `.version()` string. `npm run validate:plugin-metadata` reads all of them, because the CLI's `--version` is what an agent reads back when diagnosing an install
 - An instruction that names a path the plugin does not ship sends the agent to a command that cannot run. Three shipped skills pointed at `${CLAUDE_PLUGIN_ROOT}/scripts/<name>.mjs` after the bundle had moved to `dist/`; `npm run validate:claude-layout` now fails on that
 - Stripping a client from the repository leaves traces in prose, not just code: "for Codex and Claude Code" survived in CLI descriptions, skill troubleshooting sections and READMEs
 

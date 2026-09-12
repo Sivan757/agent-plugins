@@ -217,6 +217,61 @@ export async function generatePluginFiles(root = process.cwd()): Promise<void> {
   );
 }
 
+interface VersionEntry {
+  file: string;
+  version: string;
+}
+
+async function listTypeScriptFiles(directory: string): Promise<string[]> {
+  const files: string[] = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listTypeScriptFiles(path)));
+    } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
+      files.push(path);
+    }
+  }
+  return files;
+}
+
+/**
+ * A version is declared in several places on purpose. The generated files are
+ * already compared byte-for-byte above, so what remains are the hand-written
+ * declarations: `package.json`, and the CLI's own `.version()` — the value an
+ * agent reads back when diagnosing an install.
+ */
+async function readDeclaredVersions(
+  repoRoot: string,
+  pluginRoot: string,
+  config: PluginConfig
+): Promise<VersionEntry[]> {
+  const pluginRel = relative(repoRoot, pluginRoot);
+  const entries: VersionEntry[] = [
+    { file: `${pluginRel}/plugin.config.ts`, version: config.version },
+  ];
+
+  const packageJsonPath = join(pluginRoot, "package.json");
+  if (existsSync(packageJsonPath)) {
+    const pkg = JSON.parse(await readFile(packageJsonPath, "utf-8")) as { version?: unknown };
+    if (typeof pkg.version === "string") {
+      entries.push({ file: `${pluginRel}/package.json`, version: pkg.version });
+    }
+  }
+
+  const srcRoot = join(pluginRoot, "src");
+  if (existsSync(srcRoot)) {
+    const pattern = /\.version\(\s*["']([^"']+)["']\s*\)/g;
+    for (const file of await listTypeScriptFiles(srcRoot)) {
+      for (const match of (await readFile(file, "utf-8")).matchAll(pattern)) {
+        entries.push({ file: relative(repoRoot, file), version: match[1] });
+      }
+    }
+  }
+
+  return entries;
+}
+
 async function compareJsonFile(filePath: string, expected: unknown, errors: string[], label: string): Promise<void> {
   if (!existsSync(filePath)) {
     errors.push(`${label}: missing generated file`);
@@ -236,7 +291,12 @@ async function compareJsonFile(filePath: string, expected: unknown, errors: stri
   }
 }
 
-/** Metadata-only check. The plugin tree is authored by hand, so nothing is emitted here. */
+/**
+ * Checks every file derived from `plugin.config.ts`, plus the version
+ * declarations that are written by hand: the generated `.claude-plugin/plugin.json`
+ * and marketplace must match the metadata byte for byte, and `package.json` and
+ * the CLI's own `.version()` must agree with it. Nothing is emitted here.
+ */
 export async function validatePluginMetadata(root = process.cwd()): Promise<string[]> {
   const repoRoot = resolve(root);
   const errors: string[] = [];
@@ -248,13 +308,19 @@ export async function validatePluginMetadata(root = process.cwd()): Promise<stri
     return [(err as Error).message];
   }
 
-  for (const { config } of loaded) {
+  for (const { config, pluginRoot } of loaded) {
     await compareJsonFile(
       renderClaudeManifestPath(repoRoot, config.name),
       renderClaudeManifest(config),
       errors,
       `${PLUGINS_DIR}/${config.name}/.claude-plugin/plugin.json`
     );
+
+    const declared = await readDeclaredVersions(repoRoot, pluginRoot, config);
+    if (new Set(declared.map((entry) => entry.version)).size > 1) {
+      const details = declared.map((entry) => `      ${entry.file}: ${entry.version}`).join("\n");
+      errors.push(`${PLUGINS_DIR}/${config.name}: version mismatch across declarations\n${details}`);
+    }
   }
 
   await compareJsonFile(
