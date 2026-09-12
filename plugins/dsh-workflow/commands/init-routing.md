@@ -1,6 +1,6 @@
 ---
 description: Initialize dsh-workflow skill routing in this project's AGENTS.md
-argument-hint: [target-file] [--dry-run]
+argument-hint: "[target-file] [--dry-run]"
 allowed-tools: Bash(node:*), Read, Bash(test:*), Bash(git:*)
 ---
 
