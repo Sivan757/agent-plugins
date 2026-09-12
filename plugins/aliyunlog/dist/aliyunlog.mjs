@@ -10543,18 +10543,42 @@ function stateToConfig(state, collections) {
     const arr = getAtPath(state, keys);
     if (Array.isArray(arr)) {
       const obj = {};
-      for (const item of arr) {
-        if (isPlainObject(item)) {
-          const name = String(item[nameKey] ?? "");
-          if (!name) continue;
-          const { [nameKey]: _ignored, ...rest } = item;
-          obj[name] = rest;
+      arr.forEach((item, index) => {
+        if (!isPlainObject(item)) return;
+        const name = String(item[nameKey] ?? "");
+        if (!name) {
+          throw new PluginError(
+            `Entry ${index + 1} at ${mapping.statePath} has no "${nameKey}", so it cannot be written to the config file. Give every entry a name in the form and save again.`,
+            "CONFIG_INVALID"
+          );
         }
-      }
+        const { [nameKey]: _ignored, ...rest } = item;
+        obj[name] = rest;
+      });
       setAtPath(config, keys, obj);
     }
   }
   return config;
+}
+function mergeSubmittedConfig(current, submitted, collections) {
+  let base = current;
+  for (const mapping of collections ?? []) {
+    base = withoutPath(base, pointerToKeys(mapping.statePath));
+  }
+  return deepMerge(base, submitted);
+}
+function withoutPath(obj, keys) {
+  const [head, ...rest] = keys;
+  if (head === void 0 || !(head in obj)) return obj;
+  const result = { ...obj };
+  if (rest.length === 0) {
+    delete result[head];
+    return result;
+  }
+  const child = result[head];
+  if (!isPlainObject(child)) return obj;
+  result[head] = withoutPath(child, rest);
+  return result;
 }
 function readConfigSync(name) {
   if (!name) return {};
@@ -10752,7 +10776,7 @@ Run: cd src/config-center && npx vite build --config ui/vite.config.ts`);
         const submittedState = JSON.parse(body);
         const configData = stateToConfig(submittedState, collections);
         const currentExisting = readConfigSync(pluginName);
-        const finalConfig = deepMerge(currentExisting, configData);
+        const finalConfig = mergeSubmittedConfig(currentExisting, configData, collections);
         await saveConfig(pluginName, finalConfig, { merge: false });
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true }));

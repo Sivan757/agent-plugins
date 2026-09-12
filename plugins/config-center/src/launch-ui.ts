@@ -173,6 +173,11 @@ export function configToState(
 /**
  * Convert UI state format (arrays with `_name`) -> config-file format (keyed
  * objects with `_name` stripped).
+ *
+ * The config file addresses a collection entry by name, so an entry without one
+ * cannot be represented. That is reported rather than skipped: dropping the entry
+ * would delete it from the file the next time the form is saved, and the person
+ * who could fix it is the one who is looking at the form right now.
  */
 export function stateToConfig(
   state: Record<string, unknown>,
@@ -189,19 +194,62 @@ export function stateToConfig(
 
     if (Array.isArray(arr)) {
       const obj: Record<string, unknown> = {};
-      for (const item of arr) {
-        if (isPlainObject(item)) {
-          const name = String(item[nameKey] ?? '');
-          if (!name) continue;
-          const { [nameKey]: _ignored, ...rest } = item;
-          obj[name] = rest;
+      arr.forEach((item, index) => {
+        if (!isPlainObject(item)) return;
+        const name = String(item[nameKey] ?? '');
+        if (!name) {
+          throw new PluginError(
+            `Entry ${index + 1} at ${mapping.statePath} has no "${nameKey}", so it cannot be ` +
+              `written to the config file. Give every entry a name in the form and save again.`,
+            'CONFIG_INVALID',
+          );
         }
-      }
+        const { [nameKey]: _ignored, ...rest } = item;
+        obj[name] = rest;
+      });
       setAtPath(config, keys, obj);
     }
   }
 
   return config;
+}
+
+/**
+ * Merge a submitted form into the stored config.
+ *
+ * Keys the form never showed are preserved, so a change made through the plugin
+ * selector between launch and save survives. A collection path is the exception:
+ * the form is showing the whole list, so what it submitted replaces what is on
+ * disk. Merging it entry by entry instead would keep an entry the user deleted —
+ * the submitted list simply does not mention it.
+ */
+export function mergeSubmittedConfig(
+  current: Record<string, unknown>,
+  submitted: Record<string, unknown>,
+  collections?: CollectionMapping[],
+): Record<string, unknown> {
+  let base = current;
+  for (const mapping of collections ?? []) {
+    base = withoutPath(base, pointerToKeys(mapping.statePath));
+  }
+  return deepMerge(base, submitted);
+}
+
+/** A copy of `obj` with the value at `keys` removed; `obj` itself is untouched. */
+function withoutPath(obj: Record<string, unknown>, keys: string[]): Record<string, unknown> {
+  const [head, ...rest] = keys;
+  if (head === undefined || !(head in obj)) return obj;
+
+  const result = { ...obj };
+  if (rest.length === 0) {
+    delete result[head];
+    return result;
+  }
+
+  const child = result[head];
+  if (!isPlainObject(child)) return obj;
+  result[head] = withoutPath(child, rest);
+  return result;
 }
 
 // ── Sync config read (for initial HTML injection) ───────────────────────────
@@ -523,10 +571,10 @@ export function launchUI(
       try {
         const submittedState = JSON.parse(body) as Record<string, unknown>;
         const configData = stateToConfig(submittedState, collections);
-        // Re-read current config to preserve keys not in the form (the user
-        // may have edited via the plugin selector between launch and save).
+        // Re-read the current config so keys the form never showed survive, while
+        // the collections the form owns are replaced by what it submitted.
         const currentExisting = readConfigSync(pluginName);
-        const finalConfig = deepMerge(currentExisting, configData);
+        const finalConfig = mergeSubmittedConfig(currentExisting, configData, collections);
         await saveConfig(pluginName, finalConfig, { merge: false });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });

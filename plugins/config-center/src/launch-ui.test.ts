@@ -36,9 +36,9 @@ function bundledHtmlAvailable(): boolean {
 }
 
 before(() => {
-  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect everything, and the
-  // root sits inside a scratch directory so the legacy homes resolved relative to
-  // it — and the sentinel the traversal test plants — stay inside it too.
+  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect everything, and
+  // the root sits inside a scratch directory so the sentinel the traversal test
+  // plants stays inside the scratch directory too.
   sandbox = mkdtempSync(join(tmpdir(), 'cc-launch-'));
   cacheRootDir = join(sandbox, 'cache', 'agent-plugins');
   previousOverride = process.env.AGENT_PLUGINS_CACHE_DIR;
@@ -329,6 +329,93 @@ test('POST /save writes config for schema-driven form (with collections)', async
     });
   } finally {
     // Cleanup
+    await handle.close();
+    rmSync(configStore.configDir('test-schema'), { recursive: true, force: true });
+  }
+});
+
+test('POST /save replaces a collection and keeps the keys the form never showed', async () => {
+  const spec = { root: 'root', elements: {}, state: {} };
+  const collections = [{ statePath: '/connections' }];
+
+  // What the file already holds: two connections, plus a key no form field shows.
+  await configStore.saveConfig('test-schema', {
+    gateway: 'https://kept.example',
+    connections: { prod: { host: 'db.prod' }, staging: { host: 'db.staging' } },
+  });
+
+  const handle = launchUI.launchUI('test-schema', {
+    spec,
+    collections,
+    output: mockOutput(),
+    open: false,
+    timeoutMs: 5000,
+  });
+  await handle.ready;
+
+  try {
+    // The form deleted `staging`; its submitted list therefore does not mention it.
+    const formState = { connections: [{ _name: 'prod', host: 'db.prod' }] };
+
+    const res = await get(`${handle.url}/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': handle.csrfToken,
+      },
+      body: JSON.stringify(formState),
+    });
+    assert.equal(res.status, 200);
+    await handle.done;
+
+    const loaded = await configStore.loadConfig('test-schema');
+    // The deletion took effect: merging entry by entry would have resurrected it.
+    assert.deepEqual(loaded?.connections, { prod: { host: 'db.prod' } });
+    // A key the form never showed is still there.
+    assert.equal(loaded?.gateway, 'https://kept.example');
+  } finally {
+    await handle.close();
+    rmSync(configStore.configDir('test-schema'), { recursive: true, force: true });
+  }
+});
+
+test('POST /save refuses an entry the config file cannot address by name', async () => {
+  const spec = { root: 'root', elements: {}, state: {} };
+  const collections = [{ statePath: '/connections' }];
+
+  await configStore.saveConfig('test-schema', {
+    connections: { prod: { host: 'db.prod' } },
+  });
+
+  const handle = launchUI.launchUI('test-schema', {
+    spec,
+    collections,
+    output: mockOutput(),
+    open: false,
+    timeoutMs: 5000,
+  });
+  await handle.ready;
+
+  try {
+    // An entry with no `_name` cannot be keyed in the file. Saving it must fail
+    // with something the person at the form can act on, not drop the entry.
+    const formState = { connections: [{ host: 'no-name.example' }] };
+
+    const res = await get(`${handle.url}/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': handle.csrfToken,
+      },
+      body: JSON.stringify(formState),
+    });
+    assert.equal(res.status, 400);
+    assert.match(JSON.parse(res.body).error, /has no "_name"/);
+
+    // The stored config is untouched.
+    const loaded = await configStore.loadConfig('test-schema');
+    assert.deepEqual(loaded?.connections, { prod: { host: 'db.prod' } });
+  } finally {
     await handle.close();
     rmSync(configStore.configDir('test-schema'), { recursive: true, force: true });
   }

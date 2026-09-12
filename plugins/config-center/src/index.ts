@@ -2,7 +2,7 @@
 // Other plugins import from this package instead of @agent-plugins/core.
 
 export { CACHE_DIR, cacheRoot, configDir, configPath, artifactsDir, pluginFilePath, ensurePrivateConfigDir, ensurePrivateConfigDirSync, ensurePrivatePluginDirSync, writePluginFile, deepMerge, loadConfig, saveConfig, requireConfig } from './config-store.js';
-export { launchUI, launchConfigUI, requireConfigWithSetup, configToState, stateToConfig } from './launch-ui.js';
+export { launchUI, launchConfigUI, requireConfigWithSetup, configToState, stateToConfig, mergeSubmittedConfig } from './launch-ui.js';
 export type { ConfigSpec, ConfigUIOptions, CollectionMapping, LaunchUIOptions, LaunchHandle, CLIOutput } from './launch-ui.js';
 export { openConfigUI, reconfigure, summarizeConfig } from './config-flow.js';
 export type { ConfigIntent, OpenConfigOptions, OpenConfigResult } from './config-flow.js';
