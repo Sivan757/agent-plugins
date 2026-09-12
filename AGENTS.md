@@ -122,7 +122,7 @@ Platform-specific knowledge, migration notes, and practical experience live in r
 
 Four rules from that guide are worth stating here:
 
-- Anything that reads stored plugin configuration (previews, tests, screenshots) must redirect the cache with `AGENT_PLUGINS_CACHE_DIR`; setting `HOME` inside a script does not isolate it, and an unisolated config form renders real credentials into tool output. The override moves the whole tree, the legacy locations included, and both halves are enforced by tests.
+- Anything that reads stored plugin configuration (previews, tests, screenshots) must redirect the cache with `AGENT_PLUGINS_CACHE_DIR`; setting `HOME` inside a script does not isolate it, and an unisolated config form renders real credentials into tool output. The override moves every path a plugin builds, and both halves are enforced by tests.
 - A plugin's own data is written through `writePluginFile()` and its paths are built with `pluginFilePath()`, so it lands in the plugin's directory in the shared cache root whatever the platform. `npm run validate:persistence` fails on a source that takes a storage location from the temporary directory, the home directory or the working directory instead.
 - Shipped skill text, READMEs and CLI help must not carry deployment-specific identifiers (regions, domains, project UUIDs, tenant names); use placeholders and keep the shape of real output.
 - Upstream error text is untrusted input. Never print a response body, error message or exception through verbatim: vendors echo submitted credentials back (a gateway answers an unknown key with `ak <AK> not exist`), which puts a live secret into terminal output, logs and an agent's context. Scrub any configured secret from that text first.

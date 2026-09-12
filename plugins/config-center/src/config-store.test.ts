@@ -27,16 +27,13 @@ let configStore: {
   pluginFilePath: (name: string, ...segments: string[]) => string;
   ensurePrivateConfigDirSync: (name: string) => string;
   writePluginFile: (name: string, segments: string[], data: string) => Promise<string>;
-  migrateLegacyConfig: (name: string) => Promise<void>;
   loadConfig: <T extends Record<string, unknown>>(name: string) => Promise<T | null>;
   saveConfig: (name: string, data: Record<string, unknown>, options?: { merge?: boolean }) => Promise<void>;
   requireConfig: <T extends Record<string, unknown>>(name: string) => Promise<T>;
 };
 
 before(() => {
-  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect everything. The
-  // root sits inside a scratch directory, so the legacy homes resolved relative
-  // to it stay inside the same scratch directory too.
+  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect everything.
   sandbox = mkdtempSync(join(tmpdir(), 'cc-'));
   cacheRootDir = join(sandbox, 'cache', 'agent-plugins');
   previousOverride = process.env.AGENT_PLUGINS_CACHE_DIR;
@@ -76,63 +73,6 @@ test('CACHE_DIR keeps the default root while cacheRoot follows the override', ()
   assert.equal(configStore.cacheRoot(), cacheRootDir);
 });
 
-test('migrateLegacyConfig migrates flat legacy file to directory layout', async () => {
-  const legacyFlat = join(cacheRootDir, 'demo.json');
-  mkdirSync(cacheRootDir, { recursive: true });
-  writeFileSync(legacyFlat, JSON.stringify({ key: 'legacy' }), 'utf-8');
-
-  assert.equal(existsSync(configStore.configPath('demo')), false);
-
-  await configStore.migrateLegacyConfig('demo');
-
-  assert.equal(existsSync(configStore.configPath('demo')), true);
-  assert.equal(existsSync(legacyFlat), false);
-
-  // Cleanup
-  rmSync(configStore.configDir('demo'), { recursive: true, force: true });
-});
-
-test('migrateLegacyConfig migrates even-older legacy path (~/.cache/ap/ex-plugin/<name>.json)', async () => {
-  const olderLegacy = join(sandbox, 'cache', 'ap', 'ex-plugin', 'demo.json');
-  mkdirSync(join(sandbox, 'cache', 'ap', 'ex-plugin'), { recursive: true });
-  writeFileSync(olderLegacy, JSON.stringify({ key: 'older' }), 'utf-8');
-
-  assert.equal(existsSync(configStore.configPath('demo')), false);
-
-  await configStore.migrateLegacyConfig('demo');
-
-  assert.equal(existsSync(configStore.configPath('demo')), true);
-  assert.equal(existsSync(olderLegacy), false);
-
-  // Cleanup
-  rmSync(configStore.configDir('demo'), { recursive: true, force: true });
-  rmSync(join(sandbox, 'cache', 'ap'), { recursive: true, force: true });
-});
-
-test('migrateLegacyConfig is idempotent (directory layout already exists)', async () => {
-  const dir = configStore.configDir('demo');
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(configStore.configPath('demo'), JSON.stringify({ key: 'already' }), 'utf-8');
-
-  // Also create a stale legacy flat file — migration should NOT overwrite
-  const legacyFlat = join(cacheRootDir, 'demo.json');
-  writeFileSync(legacyFlat, JSON.stringify({ key: 'stale' }), 'utf-8');
-
-  await configStore.migrateLegacyConfig('demo');
-
-  // Directory-layout file should still be the original
-  const { readFile } = await import('fs/promises');
-  const content = JSON.parse(await readFile(configStore.configPath('demo'), 'utf-8'));
-  assert.equal(content.key, 'already');
-
-  // Legacy flat file should still exist (migration skipped)
-  assert.equal(existsSync(legacyFlat), true);
-
-  // Cleanup
-  rmSync(dir, { recursive: true, force: true });
-  rmSync(legacyFlat, { force: true });
-});
-
 test('loadConfig returns parsed config from directory layout', async () => {
   mkdirSync(configStore.configDir('demo'), { recursive: true });
   writeFileSync(
@@ -152,22 +92,6 @@ test('loadConfig returns parsed config from directory layout', async () => {
 test('loadConfig returns null when no config exists', async () => {
   const config = await configStore.loadConfig('nonexistent');
   assert.equal(config, null);
-});
-
-test('loadConfig migrates legacy flat file before reading (auto-migration)', async () => {
-  const legacyFlat = join(cacheRootDir, 'demo.json');
-  mkdirSync(cacheRootDir, { recursive: true });
-  writeFileSync(legacyFlat, JSON.stringify({ migrated: true }), 'utf-8');
-
-  const config = await configStore.loadConfig<{ migrated: boolean }>('demo');
-  assert.notEqual(config, null);
-  assert.equal(config!.migrated, true);
-
-  assert.equal(existsSync(legacyFlat), false);
-  assert.equal(existsSync(configStore.configPath('demo')), true);
-
-  // Cleanup
-  rmSync(configStore.configDir('demo'), { recursive: true, force: true });
 });
 
 test('loadConfig throws CONFIG_INVALID on bad JSON', async () => {

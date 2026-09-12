@@ -17,9 +17,7 @@ let configCenter: any;
 let configStore: any;
 
 before(() => {
-  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect everything. The root
-  // sits inside a scratch directory so the legacy home resolved relative to it
-  // stays inside the same scratch directory.
+  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect everything.
   sandbox = mkdtempSync(join(tmpdir(), 'cc-cli-'));
   cacheRootDir = join(sandbox, 'cache', 'agent-plugins');
   previousOverride = process.env.AGENT_PLUGINS_CACHE_DIR;
@@ -157,44 +155,31 @@ test('get never prints the cache path', async () => {
   removeConfig('demo');
 });
 
+test('a path inside the cache is scrubbed from an error message', () => {
+  // Error text can come from anywhere below the CLI, and an fs error names the
+  // file it touched. The default root contains `.cache/`; an override need not,
+  // which is why the configured root is scrubbed by prefix too.
+  const root = cacheRootDir;
+  const fromFsError = `EACCES: permission denied, open '${join(root, 'demo', 'config.json')}'`;
+  assert.equal(configCenter.redactCachePath(fromFsError).includes(root), false);
+  assert.equal(configCenter.redactCachePath(fromFsError).includes('.cache/'), false);
+
+  const defaultShaped = `EACCES: permission denied, open '${join(
+    require('os').homedir(),
+    '.cache/agent-plugins/demo/config.json',
+  )}'`;
+  assert.equal(configCenter.redactCachePath(defaultShaped).includes('.cache/'), false);
+
+  // A message with nothing path-shaped is left alone.
+  assert.equal(configCenter.redactCachePath('Failed to parse config'), 'Failed to parse config');
+});
+
 test('show never prints the cache path', async () => {
   writeConfig('demo', { TOKEN: 'abcdefghij' });
   const { stdout, stderr } = await runMain(['show', 'demo']);
   assert.equal(stdout.includes('.cache/agent-plugins'), false, 'cache path leaked into stdout');
   assert.equal(stderr.includes('.cache/agent-plugins'), false, 'cache path leaked into stderr');
   removeConfig('demo');
-});
-
-test('legacy-path rename error does not leak HOME or cache path', async () => {
-  // Place a legacy config at the OLDER ~/.cache/ap/ex-plugin/<name>.json path
-  // and make the target plugin directory read-only so migrateLegacyConfig's
-  // mkdir noops (dir exists) but rename INTO it fails with EACCES. The rename
-  // error's source path is the legacy .../.cache/ap/ex-plugin/<name>.json,
-  // which the narrow redaction regex would leak. Assert it does not.
-  const legacyOlderDir = join(sandbox, 'cache', 'ap', 'ex-plugin');
-  mkdirSync(legacyOlderDir, { recursive: true });
-  writeFileSync(join(legacyOlderDir, 'demo.json'), JSON.stringify({ TOKEN: 'abcdefghij' }));
-
-  const fs = require('fs');
-  // Create the target plugin dir writable first, then make it read-only so
-  // rename cannot write config.json into it (mkdir with recursive:true is a
-  // noop on an existing dir, so it succeeds; rename then fails).
-  const pluginDir = configStore.configDir('demo');
-  mkdirSync(pluginDir, { recursive: true });
-  fs.chmodSync(pluginDir, 0o500);
-
-  try {
-    const { stdout, stderr, code } = await runMain(['get', 'demo', 'TOKEN']);
-    assert.equal(stderr.includes(sandbox), false, 'tmp HOME leaked into stderr');
-    assert.equal(stderr.includes('ap/ex-plugin'), false, 'legacy cache path leaked into stderr');
-    assert.equal(stderr.includes('.cache/'), false, 'cache path leaked into stderr');
-    assert.equal(stdout.includes(sandbox), false, 'tmp HOME leaked into stdout');
-    assert.equal(code, 1);
-  } finally {
-    fs.chmodSync(pluginDir, 0o755);
-    rmSync(join(sandbox, 'cache', 'ap'), { recursive: true, force: true });
-    rmSync(pluginDir, { recursive: true, force: true });
-  }
 });
 
 test('init prints UI URL to stderr', async () => {

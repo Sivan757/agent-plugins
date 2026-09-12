@@ -48,7 +48,6 @@ import {
   saveConfig,
   summarizeConfig,
   configPath,
-  cacheRoot,
   pluginFilePath,
   writePluginFile,
   PluginError,
@@ -70,13 +69,9 @@ const CONFIG_PATH = configPath('aliyunlog');
 
 // Everything this plugin persists lives under its own directory in the shared
 // cache root, and every path is built by the same helpers the store uses, so the
-// whole tree follows AGENT_PLUGINS_CACHE_DIR. The two flat files directly in the
-// cache root are where the mappings and the last query context used to live; a
-// leftover copy is read once and adopted into the plugin directory.
+// whole tree follows AGENT_PLUGINS_CACHE_DIR.
 const MAPPINGS_CACHE_FILE = 'mappings.json';
 const CONTEXT_FILE = 'context.json';
-const PREVIOUS_MAPPINGS_CACHE_PATH = path.join(cacheRoot(), 'aliyunlog-mappings.json');
-const PREVIOUS_CONTEXT_PATH = path.join(cacheRoot(), 'aliyunlog-context.json');
 const TEMP_DIR = pluginFilePath('aliyunlog', 'tmp');
 const AUTO_TEMP_THRESHOLD = 2000; // chars
 
@@ -137,29 +132,11 @@ function info(msg: string): void {
   process.stderr.write(`[SLS] ${msg}\n`);
 }
 
-/**
- * Read one of this plugin's cache files, adopting the copy that an installation
- * made before this plugin kept its data under its own directory wrote to the
- * cache root. The adopted copy is rewritten through the shared writer — private
- * directory, atomic, 0600 — and the old one is removed, so nothing of this
- * plugin's is left outside its directory.
- */
-async function readPluginCache<T>(file: string, previous: string): Promise<T | null> {
-  const current = pluginFilePath('aliyunlog', file);
-
-  if (!fs.existsSync(current)) {
-    if (!fs.existsSync(previous)) return null;
-    const text = fs.readFileSync(previous, 'utf-8');
-    await writePluginFile('aliyunlog', [file], text);
-    try {
-      fs.unlinkSync(previous);
-    } catch {
-      // The stale copy is unreadable now; failing the read over it would not help.
-    }
-    return JSON.parse(text) as T;
-  }
-
-  return JSON.parse(fs.readFileSync(current, 'utf-8')) as T;
+/** Read one of this plugin's cache files, or null when it is not there yet. */
+function readPluginCache<T>(file: string): T | null {
+  const path = pluginFilePath('aliyunlog', file);
+  if (!fs.existsSync(path)) return null;
+  return JSON.parse(fs.readFileSync(path, 'utf-8')) as T;
 }
 
 // ── SDK Loader ───────────────────────────────────────────────────────────────
@@ -195,7 +172,7 @@ function validateCredentials(config: AliyunLogConfig): void {
 
 async function loadContext(): Promise<QueryContext | null> {
   try {
-    return await readPluginCache<QueryContext>(CONTEXT_FILE, PREVIOUS_CONTEXT_PATH);
+    return readPluginCache<QueryContext>(CONTEXT_FILE);
   } catch (e) {
     info(`Warning: Failed to load context: ${(e as Error).message}`);
   }
@@ -212,7 +189,7 @@ async function saveContext(context: QueryContext): Promise<void> {
 
 function clearContext(): void {
   try {
-    for (const file of [pluginFilePath('aliyunlog', CONTEXT_FILE), PREVIOUS_CONTEXT_PATH]) {
+    for (const file of [pluginFilePath('aliyunlog', CONTEXT_FILE)]) {
       if (fs.existsSync(file)) {
         fs.unlinkSync(file);
       }
@@ -226,10 +203,7 @@ function clearContext(): void {
 
 async function loadMappingsCache(): Promise<MappingsCache> {
   try {
-    const cache = await readPluginCache<MappingsCache>(
-      MAPPINGS_CACHE_FILE,
-      PREVIOUS_MAPPINGS_CACHE_PATH
-    );
+    const cache = readPluginCache<MappingsCache>(MAPPINGS_CACHE_FILE);
     if (cache) return cache;
   } catch (e) {
     info(`Warning: Failed to load mappings cache: ${(e as Error).message}`);

@@ -38,20 +38,6 @@ export function cacheRoot(): string {
 /** The default cache root, captured at import time. Prefer {@link cacheRoot}. */
 export const CACHE_DIR = join(homeDir(), '.cache', 'agent-plugins');
 
-/**
- * Where a plugin's config lived before it moved into the plugin directory. Both
- * older homes are resolved relative to {@link cacheRoot}, so redirecting the root
- * isolates the whole tree: a preview that read them from the real home would
- * carry real credentials into its scratch directory.
- */
-function legacyFlatPath(name: string): string {
-  return join(cacheRoot(), `${name}.json`);
-}
-
-function legacyOlderPath(name: string): string {
-  return join(cacheRoot(), '..', 'ap', 'ex-plugin', `${name}.json`);
-}
-
 /** The plugin's own directory. Everything the plugin persists lives under it. */
 export function configDir(name: string): string {
   return join(cacheRoot(), name);
@@ -267,21 +253,6 @@ export function deepMerge(
   return result;
 }
 
-
-export async function migrateLegacyConfig(name: string): Promise<void> {
-  const target = configPath(name);
-  if (existsSync(target)) return;
-
-  // Both legacy homes are beside the plugin directory, never inside it.
-  for (const from of [legacyFlatPath(name), legacyOlderPath(name)]) {
-    if (!existsSync(from)) continue;
-    ensurePrivateConfigDirSync(name);
-    await rename(from, target);
-    tightenModeSync(target, 0o600, 'the stored configuration');
-    return;
-  }
-}
-
 async function readConfigRaw<T extends Record<string, unknown>>(
   name: string
 ): Promise<T | null> {
@@ -298,8 +269,6 @@ async function readConfigRaw<T extends Record<string, unknown>>(
 export async function loadConfig<T extends Record<string, unknown>>(
   name: string
 ): Promise<T | null> {
-  await migrateLegacyConfig(name);
-
   const path = configPath(name);
   if (!existsSync(path)) return null;
 

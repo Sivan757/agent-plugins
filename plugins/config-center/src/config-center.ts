@@ -136,17 +136,14 @@ function buildProgram(output: CLIOutput): Command {
  * even if an upstream error message happens to include it.
  *
  * Two passes, because the root is configurable: matching `.cache/` covers the
- * default `~/.cache/agent-plugins/` and the legacy `~/.cache/ap/ex-plugin/` path,
- * and scrubbing anything that starts at the configured root covers an override
- * such as a scratch directory, whose paths contain no `.cache/`. The legacy homes
- * sit beside the root, so the root's parent is scrubbed too.
+ * default `~/.cache/agent-plugins/` shape, and scrubbing anything that starts at
+ * the configured root covers an override such as a scratch directory, whose paths
+ * contain no `.cache/` at all.
  */
-function redactCachePath(message: string): string {
+export function redactCachePath(message: string): string {
   let safe = message.replace(/\S*\.cache[/\\]\S*/g, '<redacted>');
-  const root = cacheRoot();
-  for (const prefix of [resolve(root), resolve(root, '..')]) {
-    safe = safe.replace(new RegExp(`${escapeRegExp(prefix)}\\S*`, 'g'), '<redacted>');
-  }
+  const root = resolve(cacheRoot());
+  safe = safe.replace(new RegExp(`${escapeRegExp(root)}\\S*`, 'g'), '<redacted>');
   return safe;
 }
 

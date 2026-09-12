@@ -10336,12 +10336,6 @@ function cacheRoot() {
   return override || join(homeDir(), ".cache", "agent-plugins");
 }
 var CACHE_DIR = join(homeDir(), ".cache", "agent-plugins");
-function legacyFlatPath(name) {
-  return join(cacheRoot(), `${name}.json`);
-}
-function legacyOlderPath(name) {
-  return join(cacheRoot(), "..", "ap", "ex-plugin", `${name}.json`);
-}
 function configDir(name) {
   return join(cacheRoot(), name);
 }
@@ -10382,14 +10376,6 @@ function ensurePrivateDirSync(dir) {
   mkdirSync(dir, { recursive: true, mode: 448 });
   tightenModeSync(dir, 448, "the plugin cache directory");
   return dir;
-}
-function ensurePrivatePluginDirSync(name, ...segments) {
-  const dir = ensurePrivateDirSync(configDir(name));
-  if (segments.length === 0) return dir;
-  return ensurePrivateDirSync(pluginFilePath(name, ...segments));
-}
-function ensurePrivateConfigDirSync(name) {
-  return ensurePrivatePluginDirSync(name);
 }
 function tightenStoredConfig(name) {
   tightenModeSync(configDir(name), 448, "the plugin cache directory");
@@ -10451,17 +10437,6 @@ function deepMerge(target, source) {
   }
   return result;
 }
-async function migrateLegacyConfig(name) {
-  const target = configPath(name);
-  if (existsSync(target)) return;
-  for (const from of [legacyFlatPath(name), legacyOlderPath(name)]) {
-    if (!existsSync(from)) continue;
-    ensurePrivateConfigDirSync(name);
-    await rename(from, target);
-    tightenModeSync(target, 384, "the stored configuration");
-    return;
-  }
-}
 async function readConfigRaw(name) {
   const path2 = configPath(name);
   try {
@@ -10473,7 +10448,6 @@ async function readConfigRaw(name) {
   }
 }
 async function loadConfig(name) {
-  await migrateLegacyConfig(name);
   const path2 = configPath(name);
   if (!existsSync(path2)) return null;
   tightenStoredConfig(name);
@@ -11060,8 +11034,6 @@ var CONFIG_UI = {
 var CONFIG_PATH = configPath("aliyunlog");
 var MAPPINGS_CACHE_FILE = "mappings.json";
 var CONTEXT_FILE = "context.json";
-var PREVIOUS_MAPPINGS_CACHE_PATH = path.join(cacheRoot(), "aliyunlog-mappings.json");
-var PREVIOUS_CONTEXT_PATH = path.join(cacheRoot(), "aliyunlog-context.json");
 var TEMP_DIR = pluginFilePath("aliyunlog", "tmp");
 var AUTO_TEMP_THRESHOLD = 2e3;
 function die(msg) {
@@ -11073,19 +11045,10 @@ function info(msg) {
   process.stderr.write(`[SLS] ${msg}
 `);
 }
-async function readPluginCache(file, previous) {
-  const current = pluginFilePath("aliyunlog", file);
-  if (!fs.existsSync(current)) {
-    if (!fs.existsSync(previous)) return null;
-    const text = fs.readFileSync(previous, "utf-8");
-    await writePluginFile("aliyunlog", [file], text);
-    try {
-      fs.unlinkSync(previous);
-    } catch {
-    }
-    return JSON.parse(text);
-  }
-  return JSON.parse(fs.readFileSync(current, "utf-8"));
+function readPluginCache(file) {
+  const path2 = pluginFilePath("aliyunlog", file);
+  if (!fs.existsSync(path2)) return null;
+  return JSON.parse(fs.readFileSync(path2, "utf-8"));
 }
 function createClient(config, timeout) {
   return new import_log.default({
@@ -11108,7 +11071,7 @@ function validateCredentials(config) {
 }
 async function loadContext() {
   try {
-    return await readPluginCache(CONTEXT_FILE, PREVIOUS_CONTEXT_PATH);
+    return readPluginCache(CONTEXT_FILE);
   } catch (e) {
     info(`Warning: Failed to load context: ${e.message}`);
   }
@@ -11123,7 +11086,7 @@ async function saveContext(context) {
 }
 function clearContext() {
   try {
-    for (const file of [pluginFilePath("aliyunlog", CONTEXT_FILE), PREVIOUS_CONTEXT_PATH]) {
+    for (const file of [pluginFilePath("aliyunlog", CONTEXT_FILE)]) {
       if (fs.existsSync(file)) {
         fs.unlinkSync(file);
       }
@@ -11134,10 +11097,7 @@ function clearContext() {
 }
 async function loadMappingsCache() {
   try {
-    const cache = await readPluginCache(
-      MAPPINGS_CACHE_FILE,
-      PREVIOUS_MAPPINGS_CACHE_PATH
-    );
+    const cache = readPluginCache(MAPPINGS_CACHE_FILE);
     if (cache) return cache;
   } catch (e) {
     info(`Warning: Failed to load mappings cache: ${e.message}`);

@@ -3507,12 +3507,6 @@ function cacheRoot() {
   return override || join(homeDir(), ".cache", "agent-plugins");
 }
 var CACHE_DIR = join(homeDir(), ".cache", "agent-plugins");
-function legacyFlatPath(name) {
-  return join(cacheRoot(), `${name}.json`);
-}
-function legacyOlderPath(name) {
-  return join(cacheRoot(), "..", "ap", "ex-plugin", `${name}.json`);
-}
 function configDir(name) {
   return join(cacheRoot(), name);
 }
@@ -3625,17 +3619,6 @@ function deepMerge(target, source) {
   }
   return result;
 }
-async function migrateLegacyConfig(name) {
-  const target = configPath(name);
-  if (existsSync(target)) return;
-  for (const from of [legacyFlatPath(name), legacyOlderPath(name)]) {
-    if (!existsSync(from)) continue;
-    ensurePrivateConfigDirSync(name);
-    await rename(from, target);
-    tightenModeSync(target, 384, "the stored configuration");
-    return;
-  }
-}
 async function readConfigRaw(name) {
   const path = configPath(name);
   try {
@@ -3647,7 +3630,6 @@ async function readConfigRaw(name) {
   }
 }
 async function loadConfig(name) {
-  await migrateLegacyConfig(name);
   const path = configPath(name);
   if (!existsSync(path)) return null;
   tightenStoredConfig(name);
