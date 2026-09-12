@@ -11,7 +11,8 @@
 
 import { Command, CommanderError } from 'commander';
 import { pathToFileURL } from 'node:url';
-import { loadConfig } from './config-store.js';
+import { resolve } from 'node:path';
+import { cacheRoot, loadConfig } from './config-store.js';
 import { redactStructure } from './redact.js';
 import { launchUI } from './launch-ui.js';
 
@@ -132,12 +133,25 @@ function buildProgram(output: CLIOutput): Command {
 /**
  * Redact any substring that looks like a cache path from a message.
  * Used as defense-in-depth for error output so the cache path never leaks
- * even if an upstream error message happens to include it. Covers both the
- * current `~/.cache/agent-plugins/` layout and the legacy `~/.cache/ap/ex-plugin/`
- * path that migrateLegacyConfig may surface in a rename error.
+ * even if an upstream error message happens to include it.
+ *
+ * Two passes, because the root is configurable: matching `.cache/` covers the
+ * default `~/.cache/agent-plugins/` and the legacy `~/.cache/ap/ex-plugin/` path,
+ * and scrubbing anything that starts at the configured root covers an override
+ * such as a scratch directory, whose paths contain no `.cache/`. The legacy homes
+ * sit beside the root, so the root's parent is scrubbed too.
  */
 function redactCachePath(message: string): string {
-  return message.replace(/\S*\.cache\/\S*/g, '<redacted>');
+  let safe = message.replace(/\S*\.cache[/\\]\S*/g, '<redacted>');
+  const root = cacheRoot();
+  for (const prefix of [resolve(root), resolve(root, '..')]) {
+    safe = safe.replace(new RegExp(`${escapeRegExp(prefix)}\\S*`, 'g'), '<redacted>');
+  }
+  return safe;
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**

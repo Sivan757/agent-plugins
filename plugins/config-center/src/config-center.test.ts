@@ -8,39 +8,36 @@ import { maskFully } from './redact.ts';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CLIOutput = any;
 
-const originalHome = homedir();
-let tmpHome: string;
+let sandbox: string;
+let cacheRootDir: string;
+let previousOverride: string | undefined;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let configCenter: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let configStore: any;
 
 before(() => {
-  tmpHome = mkdtempSync(join(tmpdir(), 'cc-cli-'));
-  process.env.HOME = tmpHome;
+  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect everything. The root
+  // sits inside a scratch directory so the legacy home resolved relative to it
+  // stays inside the same scratch directory.
+  sandbox = mkdtempSync(join(tmpdir(), 'cc-cli-'));
+  cacheRootDir = join(sandbox, 'cache', 'agent-plugins');
+  previousOverride = process.env.AGENT_PLUGINS_CACHE_DIR;
+  process.env.AGENT_PLUGINS_CACHE_DIR = cacheRootDir;
   // Test mode: don't open a browser, and use a short server timeout so
   // init/edit actions resolve quickly without hanging the test runner.
   process.env.CC_UI_NO_OPEN = '1';
   process.env.CC_UI_TIMEOUT_MS = '20';
-  // Clear require cache so stateful source modules re-evaluate with the
-  // test HOME. config-store.ts captures HOME at module-load time into
-  // CACHE_DIR. config-center.ts imports config-store, so it must reload too.
-  for (const key of Object.keys(require.cache)) {
-    if (key.endsWith('config-center.ts') ||
-        key.endsWith('config-store.ts') ||
-        key.endsWith('launch-ui.ts')) {
-      delete require.cache[key];
-    }
-  }
   configCenter = require('./config-center.ts');
   configStore = require('./config-store.ts');
 });
 
 after(() => {
-  process.env.HOME = originalHome;
+  if (previousOverride === undefined) delete process.env.AGENT_PLUGINS_CACHE_DIR;
+  else process.env.AGENT_PLUGINS_CACHE_DIR = previousOverride;
   delete process.env.CC_UI_NO_OPEN;
   delete process.env.CC_UI_TIMEOUT_MS;
-  rmSync(tmpHome, { recursive: true, force: true });
+  rmSync(sandbox, { recursive: true, force: true });
 });
 
 /**
@@ -155,7 +152,7 @@ test('get never prints the cache path', async () => {
   writeConfig('demo', { TOKEN: 'abcdefghij' });
   const { stdout, stderr } = await runMain(['get', 'demo', 'TOKEN']);
   assert.equal(stdout.includes('.cache/agent-plugins'), false, 'cache path leaked into stdout');
-  assert.equal(stdout.includes(tmpHome), false, 'tmp home path leaked into stdout');
+  assert.equal(stdout.includes(sandbox), false, 'tmp home path leaked into stdout');
   assert.equal(stderr.includes('.cache/agent-plugins'), false, 'cache path leaked into stderr');
   removeConfig('demo');
 });
@@ -174,7 +171,7 @@ test('legacy-path rename error does not leak HOME or cache path', async () => {
   // mkdir noops (dir exists) but rename INTO it fails with EACCES. The rename
   // error's source path is the legacy .../.cache/ap/ex-plugin/<name>.json,
   // which the narrow redaction regex would leak. Assert it does not.
-  const legacyOlderDir = join(tmpHome, '.cache', 'ap', 'ex-plugin');
+  const legacyOlderDir = join(sandbox, 'cache', 'ap', 'ex-plugin');
   mkdirSync(legacyOlderDir, { recursive: true });
   writeFileSync(join(legacyOlderDir, 'demo.json'), JSON.stringify({ TOKEN: 'abcdefghij' }));
 
@@ -188,14 +185,14 @@ test('legacy-path rename error does not leak HOME or cache path', async () => {
 
   try {
     const { stdout, stderr, code } = await runMain(['get', 'demo', 'TOKEN']);
-    assert.equal(stderr.includes(tmpHome), false, 'tmp HOME leaked into stderr');
+    assert.equal(stderr.includes(sandbox), false, 'tmp HOME leaked into stderr');
     assert.equal(stderr.includes('ap/ex-plugin'), false, 'legacy cache path leaked into stderr');
     assert.equal(stderr.includes('.cache/'), false, 'cache path leaked into stderr');
-    assert.equal(stdout.includes(tmpHome), false, 'tmp HOME leaked into stdout');
+    assert.equal(stdout.includes(sandbox), false, 'tmp HOME leaked into stdout');
     assert.equal(code, 1);
   } finally {
     fs.chmodSync(pluginDir, 0o755);
-    rmSync(join(tmpHome, '.cache', 'ap'), { recursive: true, force: true });
+    rmSync(join(sandbox, 'cache', 'ap'), { recursive: true, force: true });
     rmSync(pluginDir, { recursive: true, force: true });
   }
 });
@@ -216,10 +213,10 @@ test('init does not leak cache path, HOME, or plaintext config', async () => {
   try {
     const { stdout, stderr } = await runMain(['init', 'demo']);
     assert.equal(stdout.includes('.cache/agent-plugins'), false, 'cache path leaked into init stdout');
-    assert.equal(stdout.includes(tmpHome), false, 'tmp HOME leaked into init stdout');
+    assert.equal(stdout.includes(sandbox), false, 'tmp HOME leaked into init stdout');
     assert.equal(stdout.includes(secret), false, 'plaintext leaked into init stdout');
     assert.equal(stderr.includes('.cache/agent-plugins'), false, 'cache path leaked into init stderr');
-    assert.equal(stderr.includes(tmpHome), false, 'tmp HOME leaked into init stderr');
+    assert.equal(stderr.includes(sandbox), false, 'tmp HOME leaked into init stderr');
     assert.equal(stderr.includes(secret), false, 'plaintext leaked into init stderr');
   } finally {
     removeConfig('demo');
@@ -232,10 +229,10 @@ test('edit does not leak cache path, HOME, or plaintext config', async () => {
   try {
     const { stdout, stderr } = await runMain(['edit', 'demo']);
     assert.equal(stdout.includes('.cache/agent-plugins'), false, 'cache path leaked into edit stdout');
-    assert.equal(stdout.includes(tmpHome), false, 'tmp HOME leaked into edit stdout');
+    assert.equal(stdout.includes(sandbox), false, 'tmp HOME leaked into edit stdout');
     assert.equal(stdout.includes(secret), false, 'plaintext leaked into edit stdout');
     assert.equal(stderr.includes('.cache/agent-plugins'), false, 'cache path leaked into edit stderr');
-    assert.equal(stderr.includes(tmpHome), false, 'tmp HOME leaked into edit stderr');
+    assert.equal(stderr.includes(sandbox), false, 'tmp HOME leaked into edit stderr');
     assert.equal(stderr.includes(secret), false, 'plaintext leaked into edit stderr');
   } finally {
     removeConfig('demo');
@@ -287,7 +284,7 @@ test('error output never includes the cache path', async () => {
   writeFileSync(configStore.configPath('demo'), 'not valid json {{{', 'utf-8');
   const { stderr } = await runMain(['get', 'demo', 'TOKEN']);
   assert.equal(stderr.includes('.cache/agent-plugins'), false, 'cache path leaked into stderr');
-  assert.equal(stderr.includes(tmpHome), false, 'tmp home leaked into stderr');
+  assert.equal(stderr.includes(sandbox), false, 'tmp home leaked into stderr');
   removeConfig('demo');
 });
 

@@ -4438,7 +4438,7 @@ var require_lib2 = __commonJS({
   "../../node_modules/kitx/lib/index.js"(exports2) {
     "use strict";
     var fs2 = __require("fs");
-    var os2 = __require("os");
+    var os = __require("os");
     var crypto = __require("crypto");
     exports2.loadJSONSync = function(filename) {
       var content = fs2.readFileSync(filename, "utf8");
@@ -4479,7 +4479,7 @@ var require_lib2 = __commonJS({
     exports2.makeNonce = (function() {
       var counter = 0;
       var last;
-      const machine = os2.hostname();
+      const machine = os.hostname();
       const pid = process.pid;
       return function() {
         var val = Math.floor(Math.random() * 1e12);
@@ -4519,7 +4519,7 @@ var require_lib2 = __commonJS({
       });
     };
     exports2.getIPv4 = function() {
-      var interfaces = os2.networkInterfaces();
+      var interfaces = os.networkInterfaces();
       var keys = Object.keys(interfaces);
       for (var i = 0; i < keys.length; i++) {
         var key = keys[i];
@@ -4534,7 +4534,7 @@ var require_lib2 = __commonJS({
       return "";
     };
     exports2.getMac = function() {
-      var interfaces = os2.networkInterfaces();
+      var interfaces = os.networkInterfaces();
       var keys = Object.keys(interfaces);
       for (var i = 0; i < keys.length; i++) {
         var key = keys[i];
@@ -10288,7 +10288,6 @@ var require_log = __commonJS({
 // src/aliyunlog.ts
 import fs from "fs";
 import path from "path";
-import os from "os";
 import readline from "readline";
 
 // ../../node_modules/commander/esm.mjs
@@ -10309,10 +10308,10 @@ var {
 } = import_index.default;
 
 // ../config-center/src/config-store.ts
-import { readFile, rename, mkdir, chmod, open, stat, unlink } from "fs/promises";
-import { existsSync } from "fs";
+import { readFile, rename, open, unlink } from "fs/promises";
+import { chmodSync, existsSync, mkdirSync, statSync } from "fs";
 import { randomUUID } from "crypto";
-import { join } from "path";
+import { dirname, join } from "path";
 import { homedir } from "os";
 
 // ../config-center/src/errors.ts
@@ -10328,18 +10327,20 @@ var PluginError = class extends Error {
 };
 
 // ../config-center/src/config-store.ts
-var home = process.env.HOME || homedir();
+function homeDir() {
+  return homedir();
+}
 var CACHE_DIR_ENV = "AGENT_PLUGINS_CACHE_DIR";
 function cacheRoot() {
   const override = (process.env[CACHE_DIR_ENV] ?? "").trim();
-  return override || join(home, ".cache", "agent-plugins");
+  return override || join(homeDir(), ".cache", "agent-plugins");
 }
-var CACHE_DIR = join(home, ".cache", "agent-plugins");
+var CACHE_DIR = join(homeDir(), ".cache", "agent-plugins");
 function legacyFlatPath(name) {
   return join(cacheRoot(), `${name}.json`);
 }
 function legacyOlderPath(name) {
-  return join(home, ".cache", "ap", "ex-plugin", `${name}.json`);
+  return join(cacheRoot(), "..", "ap", "ex-plugin", `${name}.json`);
 }
 function configDir(name) {
   return join(cacheRoot(), name);
@@ -10347,51 +10348,94 @@ function configDir(name) {
 function configPath(name) {
   return join(configDir(name), "config.json");
 }
+function pluginFilePath(name, ...segments) {
+  return join(configDir(name), ...segments);
+}
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 var POSIX_MODES = process.platform !== "win32";
+var OTHERS_BITS = 63;
 function permissionsMessage(what, detail) {
   return `Refusing to continue: ${what} is readable by other users and could not be restricted (${detail}). Run 'chmod 700' on the plugin cache directory and 'chmod 600' on its config file.`;
 }
-async function tightenMode(path2, mode, what) {
+function tightenModeSync(path2, mode, what) {
   if (!POSIX_MODES) return;
+  let current;
   try {
-    if (((await stat(path2)).mode & 63) === 0) return;
-    await chmod(path2, mode);
-    if (((await stat(path2)).mode & 63) === 0) return;
+    current = statSync(path2);
   } catch (e) {
     if (e.code === "ENOENT") return;
     throw new PluginError(permissionsMessage(what, e.code ?? e.message), "CONFIG_PERMISSIONS");
   }
-  throw new PluginError(permissionsMessage(what, "the mode did not change"), "CONFIG_PERMISSIONS");
+  if ((current.mode & OTHERS_BITS) === 0) return;
+  try {
+    chmodSync(path2, mode);
+  } catch (e) {
+    throw new PluginError(permissionsMessage(what, e.code ?? e.message), "CONFIG_PERMISSIONS");
+  }
+  if ((statSync(path2).mode & OTHERS_BITS) !== 0) {
+    throw new PluginError(permissionsMessage(what, "the mode did not change"), "CONFIG_PERMISSIONS");
+  }
 }
-async function ensurePrivateConfigDir(name) {
-  const dir = configDir(name);
-  await mkdir(dir, { recursive: true, mode: 448 });
-  await tightenMode(dir, 448, "the plugin cache directory");
+function ensurePrivateDirSync(dir) {
+  mkdirSync(dir, { recursive: true, mode: 448 });
+  tightenModeSync(dir, 448, "the plugin cache directory");
   return dir;
 }
-async function tightenStoredConfig(name) {
-  await tightenMode(configDir(name), 448, "the plugin cache directory");
-  await tightenMode(configPath(name), 384, "the stored configuration");
+function ensurePrivatePluginDirSync(name, ...segments) {
+  const dir = ensurePrivateDirSync(configDir(name));
+  if (segments.length === 0) return dir;
+  return ensurePrivateDirSync(pluginFilePath(name, ...segments));
 }
-async function writeConfigAtomic(path2, data) {
+function ensurePrivateConfigDirSync(name) {
+  return ensurePrivatePluginDirSync(name);
+}
+function tightenStoredConfig(name) {
+  tightenModeSync(configDir(name), 448, "the plugin cache directory");
+  tightenModeSync(configPath(name), 384, "the stored configuration");
+}
+function delay(ms) {
+  return new Promise((resolve2) => setTimeout(resolve2, ms));
+}
+var REPLACE_RETRY_CODES = /* @__PURE__ */ new Set(["EACCES", "EBUSY", "EPERM"]);
+var REPLACE_RETRY_LIMIT = 6;
+async function replaceFile(tmp, path2) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await rename(tmp, path2);
+      return;
+    } catch (e) {
+      if (!REPLACE_RETRY_CODES.has(e.code) || attempt >= REPLACE_RETRY_LIMIT) {
+        await unlink(tmp).catch(() => {
+        });
+        throw e;
+      }
+      await delay(5 * 2 ** attempt);
+    }
+  }
+}
+async function writePrivateFile(path2, data) {
   const tmp = `${path2}.tmp-${process.pid}-${randomUUID().slice(0, 8)}`;
   const handle = await open(tmp, "wx", 384);
   try {
     await handle.writeFile(data, "utf-8");
     await handle.sync();
-  } finally {
-    await handle.close();
-  }
-  try {
-    await rename(tmp, path2);
   } catch (e) {
+    await handle.close().catch(() => {
+    });
     await unlink(tmp).catch(() => {
     });
     throw e;
   }
+  await handle.close();
+  await replaceFile(tmp, path2);
+}
+async function writePluginFile(name, segments, data) {
+  const path2 = pluginFilePath(name, ...segments);
+  ensurePrivateDirSync(dirname(path2));
+  await writePrivateFile(path2, data);
+  return path2;
 }
 function deepMerge(target, source) {
   const result = { ...target };
@@ -10410,19 +10454,11 @@ function deepMerge(target, source) {
 async function migrateLegacyConfig(name) {
   const target = configPath(name);
   if (existsSync(target)) return;
-  const dir = configDir(name);
-  const flat = legacyFlatPath(name);
-  if (existsSync(flat)) {
-    await mkdir(dir, { recursive: true, mode: 448 });
-    await rename(flat, target);
-    await tightenMode(target, 384, "the stored configuration");
-    return;
-  }
-  const older = legacyOlderPath(name);
-  if (existsSync(older)) {
-    await mkdir(dir, { recursive: true, mode: 448 });
-    await rename(older, target);
-    await tightenMode(target, 384, "the stored configuration");
+  for (const from of [legacyFlatPath(name), legacyOlderPath(name)]) {
+    if (!existsSync(from)) continue;
+    ensurePrivateConfigDirSync(name);
+    await rename(from, target);
+    tightenModeSync(target, 384, "the stored configuration");
     return;
   }
 }
@@ -10440,7 +10476,7 @@ async function loadConfig(name) {
   await migrateLegacyConfig(name);
   const path2 = configPath(name);
   if (!existsSync(path2)) return null;
-  await tightenStoredConfig(name);
+  tightenStoredConfig(name);
   try {
     const raw = await readFile(path2, "utf-8");
     return JSON.parse(raw);
@@ -10450,7 +10486,6 @@ async function loadConfig(name) {
   }
 }
 async function saveConfig(name, data, options = {}) {
-  await ensurePrivateConfigDir(name);
   let finalData = data;
   if (options.merge === true) {
     const existing = await readConfigRaw(name);
@@ -10458,10 +10493,7 @@ async function saveConfig(name, data, options = {}) {
       finalData = deepMerge(existing, data);
     }
   }
-  await writeConfigAtomic(
-    configPath(name),
-    JSON.stringify(finalData, null, 2) + "\n"
-  );
+  await writePluginFile(name, ["config.json"], JSON.stringify(finalData, null, 2) + "\n");
 }
 async function requireConfig(name) {
   const config = await loadConfig(name);
@@ -10474,7 +10506,7 @@ async function requireConfig(name) {
 // ../config-center/src/launch-ui.ts
 import { createServer } from "node:http";
 import { readFileSync, existsSync as existsSync2, readdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname as dirname2, resolve } from "node:path";
 import { exec } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -10563,7 +10595,7 @@ function readConfigSync(name) {
   }
 }
 function loadBundledHTML() {
-  const thisDir = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
+  const thisDir = typeof __dirname !== "undefined" ? __dirname : dirname2(fileURLToPath(import.meta.url));
   const candidates = [
     // Bundled plugin: <plugin>/dist/config-ui/dist/index.html
     resolve(thisDir, "config-ui", "dist", "index.html"),
@@ -11026,13 +11058,11 @@ var CONFIG_UI = {
 
 // src/aliyunlog.ts
 var CONFIG_PATH = configPath("aliyunlog");
-var CACHE_DIR2 = path.join(os.homedir(), ".cache", "agent-plugins");
-var LEGACY_CACHE_DIR = path.join(os.homedir(), ".cache", ["ap", "ex-plugin"].join(""));
-var MAPPINGS_CACHE_PATH = path.join(CACHE_DIR2, "aliyunlog-mappings.json");
-var LEGACY_MAPPINGS_CACHE_PATH = path.join(LEGACY_CACHE_DIR, "aliyunlog-mappings.json");
-var CONTEXT_PATH = path.join(CACHE_DIR2, "aliyunlog-context.json");
-var LEGACY_CONTEXT_PATH = path.join(LEGACY_CACHE_DIR, "aliyunlog-context.json");
-var TEMP_DIR = path.join(os.tmpdir(), "claude-sls");
+var MAPPINGS_CACHE_FILE = "mappings.json";
+var CONTEXT_FILE = "context.json";
+var PREVIOUS_MAPPINGS_CACHE_PATH = path.join(cacheRoot(), "aliyunlog-mappings.json");
+var PREVIOUS_CONTEXT_PATH = path.join(cacheRoot(), "aliyunlog-context.json");
+var TEMP_DIR = pluginFilePath("aliyunlog", "tmp");
 var AUTO_TEMP_THRESHOLD = 2e3;
 function die(msg) {
   process.stderr.write(`ERROR: ${msg}
@@ -11043,9 +11073,19 @@ function info(msg) {
   process.stderr.write(`[SLS] ${msg}
 `);
 }
-function resolveCachePath(primaryPath, legacyPath) {
-  if (fs.existsSync(primaryPath)) return primaryPath;
-  return fs.existsSync(legacyPath) ? legacyPath : primaryPath;
+async function readPluginCache(file, previous) {
+  const current = pluginFilePath("aliyunlog", file);
+  if (!fs.existsSync(current)) {
+    if (!fs.existsSync(previous)) return null;
+    const text = fs.readFileSync(previous, "utf-8");
+    await writePluginFile("aliyunlog", [file], text);
+    try {
+      fs.unlinkSync(previous);
+    } catch {
+    }
+    return JSON.parse(text);
+  }
+  return JSON.parse(fs.readFileSync(current, "utf-8"));
 }
 function createClient(config, timeout) {
   return new import_log.default({
@@ -11066,29 +11106,24 @@ function validateCredentials(config) {
   if (!c.endpoint)
     die(`Missing endpoint in config. Run: aliyunlog config --ui`);
 }
-function loadContext() {
+async function loadContext() {
   try {
-    const contextPath = resolveCachePath(CONTEXT_PATH, LEGACY_CONTEXT_PATH);
-    if (fs.existsSync(contextPath)) {
-      return JSON.parse(fs.readFileSync(contextPath, "utf-8"));
-    }
+    return await readPluginCache(CONTEXT_FILE, PREVIOUS_CONTEXT_PATH);
   } catch (e) {
     info(`Warning: Failed to load context: ${e.message}`);
   }
   return null;
 }
-function saveContext(context) {
+async function saveContext(context) {
   try {
-    const dir = path.dirname(CONTEXT_PATH);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(CONTEXT_PATH, JSON.stringify(context, null, 2));
+    await writePluginFile("aliyunlog", [CONTEXT_FILE], JSON.stringify(context, null, 2));
   } catch (e) {
     info(`Warning: Failed to save context: ${e.message}`);
   }
 }
 function clearContext() {
   try {
-    for (const file of [CONTEXT_PATH, LEGACY_CONTEXT_PATH]) {
+    for (const file of [pluginFilePath("aliyunlog", CONTEXT_FILE), PREVIOUS_CONTEXT_PATH]) {
       if (fs.existsSync(file)) {
         fs.unlinkSync(file);
       }
@@ -11097,22 +11132,21 @@ function clearContext() {
     info(`Warning: Failed to clear context: ${e.message}`);
   }
 }
-function loadMappingsCache() {
+async function loadMappingsCache() {
   try {
-    const mappingsPath = resolveCachePath(MAPPINGS_CACHE_PATH, LEGACY_MAPPINGS_CACHE_PATH);
-    if (fs.existsSync(mappingsPath)) {
-      return JSON.parse(fs.readFileSync(mappingsPath, "utf-8"));
-    }
+    const cache = await readPluginCache(
+      MAPPINGS_CACHE_FILE,
+      PREVIOUS_MAPPINGS_CACHE_PATH
+    );
+    if (cache) return cache;
   } catch (e) {
     info(`Warning: Failed to load mappings cache: ${e.message}`);
   }
   return {};
 }
-function saveMappingsCache(cache) {
+async function saveMappingsCache(cache) {
   try {
-    const dir = path.dirname(MAPPINGS_CACHE_PATH);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(MAPPINGS_CACHE_PATH, JSON.stringify(cache, null, 2));
+    await writePluginFile("aliyunlog", [MAPPINGS_CACHE_FILE], JSON.stringify(cache, null, 2));
   } catch (e) {
     info(`Warning: Failed to save mappings cache: ${e.message}`);
   }
@@ -11208,12 +11242,12 @@ Available logstores:`);
   for (const { logstore, count } of candidates) {
     console.log(`${logstore} (${count} logs in last 2h)`);
   }
-  const cache = loadMappingsCache();
+  const cache = await loadMappingsCache();
   if (!cache[project]) cache[project] = {};
   for (const { logstore } of candidates) {
     cache[project][serviceName] = logstore;
   }
-  saveMappingsCache(cache);
+  await saveMappingsCache(cache);
   info(`Cached: ${serviceName} -> ${candidates[0].logstore}`);
   info(`Query example: node aliyunlog.mjs --service=${serviceName} --project=${project} --query="ERROR" --from=-1h`);
 }
@@ -11534,24 +11568,21 @@ function cleanupOldTempFiles() {
     for (const f of fs.readdirSync(TEMP_DIR)) {
       const fp = path.join(TEMP_DIR, f);
       try {
-        const stat2 = fs.statSync(fp);
-        if (stat2.mtimeMs < cutoff) fs.unlinkSync(fp);
+        const stat = fs.statSync(fp);
+        if (stat.mtimeMs < cutoff) fs.unlinkSync(fp);
       } catch {
       }
     }
   } catch {
   }
 }
-function outputWithTokenOptimization(output) {
+async function outputWithTokenOptimization(output) {
   if (output.length <= AUTO_TEMP_THRESHOLD) {
     console.log(output);
     return;
   }
   cleanupOldTempFiles();
-  fs.mkdirSync(TEMP_DIR, { recursive: true });
-  const timestamp = Date.now();
-  const tempFile = path.join(TEMP_DIR, `sls-${timestamp}.txt`);
-  fs.writeFileSync(tempFile, output, "utf-8");
+  const tempFile = await writePluginFile("aliyunlog", ["tmp", `sls-${Date.now()}.txt`], output);
   const lineCount = output.split("\n").length;
   console.log(`[Output too large for inline display (${output.length} chars, ${lineCount} lines)]`);
   console.log(`Written to: ${tempFile}`);
@@ -11763,9 +11794,9 @@ async function getLogsWithRetry(client, project, logstore, from, to, query, limi
       const msg = err.message || "";
       const isTimeout = msg.includes("Timeout") || msg.includes("ReadTimeout") || msg.includes("ConnectTimeout");
       if (isTimeout && attempt < maxRetries) {
-        const delay = 1e3 * (attempt + 1);
-        info(`Timeout on attempt ${attempt + 1}, retrying in ${delay}ms...`);
-        await new Promise((r) => setTimeout(r, delay));
+        const delay2 = 1e3 * (attempt + 1);
+        info(`Timeout on attempt ${attempt + 1}, retrying in ${delay2}ms...`);
+        await new Promise((r) => setTimeout(r, delay2));
         continue;
       }
       throw err;
@@ -11784,7 +11815,7 @@ async function runQuery(env, service, opts) {
   let contextOverride = null;
   const standaloneFullOutput = opts.full && !opts.project && !opts.service && !opts.logstore && !env;
   if (opts.more || opts.refine || standaloneFullOutput) {
-    const prevContext = loadContext();
+    const prevContext = await loadContext();
     if (!prevContext) {
       if (standaloneFullOutput) {
         die("No previous context found for standalone --full. Run a query first (context is auto-saved), or rerun the original query with --full.");
@@ -11813,7 +11844,7 @@ async function runQuery(env, service, opts) {
     serviceName = opts.service;
     project = project || config.default_project || "";
     if (!project) die("--service requires a project. Use --project or set default_project in config.");
-    const cache = loadMappingsCache();
+    const cache = await loadMappingsCache();
     const projectCache = cache[project] || {};
     if (projectCache[serviceName]) {
       logstore = projectCache[serviceName];
@@ -11829,7 +11860,7 @@ async function runQuery(env, service, opts) {
           info(`Fast-discovered: ${serviceName} -> ${logstore}`);
           if (!cache[project]) cache[project] = {};
           cache[project][serviceName] = logstore;
-          saveMappingsCache(cache);
+          await saveMappingsCache(cache);
         } else {
           die(`Service "${serviceName}" not found in any logstore in project "${project}".
 Try: node ${__filename} find-service ${serviceName} --project ${project}`);
@@ -11839,7 +11870,7 @@ Try: node ${__filename} find-service ${serviceName} --project ${project}`);
         info(`Discovered: ${serviceName} -> ${logstore}`);
         if (!cache[project]) cache[project] = {};
         cache[project][serviceName] = logstore;
-        saveMappingsCache(cache);
+        await saveMappingsCache(cache);
       } else {
         console.log(`Service "${serviceName}" found in multiple logstores:`);
         for (let i = 0; i < candidates.length; i++) {
@@ -11938,7 +11969,7 @@ Available: ${Object.keys(QUERY_TEMPLATES).join(", ")}`);
     };
     if (n === 0) {
       if (persistContext) {
-        saveContext(contextPayload);
+        await saveContext(contextPayload);
       }
       if (autoBroaden && searchLevel > 0) {
         console.log("(no results found even after broadening search)");
@@ -11970,7 +12001,7 @@ Available: ${Object.keys(QUERY_TEMPLATES).join(", ")}`);
       const summary = summarizeData(data);
       console.log(summary);
       if (persistContext) {
-        saveContext(contextPayload);
+        await saveContext(contextPayload);
         info("Context saved. Use --more for next page or --refine to add filters.");
       }
       return;
@@ -11978,10 +12009,10 @@ Available: ${Object.keys(QUERY_TEMPLATES).join(", ")}`);
     if (fullOutput) {
       console.log(output);
     } else {
-      outputWithTokenOptimization(output);
+      await outputWithTokenOptimization(output);
     }
     if (persistContext) {
-      saveContext(contextPayload);
+      await saveContext(contextPayload);
       info("Context saved. Use --more for next page or --refine to add filters.");
     }
   } catch (err) {

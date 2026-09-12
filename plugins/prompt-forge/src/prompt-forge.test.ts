@@ -10,16 +10,20 @@ import type { CLIOutput } from './prompt-forge.ts';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pf: any;
 
-const originalHome = process.env.HOME;
-let tmpHome: string;
+let sandbox: string;
+/** The root the tests expect while AGENT_PLUGINS_CACHE_DIR is pointed at them. */
+let cacheRootDir: string;
+let previousOverride: string | undefined;
 let tmpDataDir: string;
 
 before(async () => {
-  // Set HOME before importing the module so config-center's artifactsDir
-  // resolves to a temp directory. config-store.ts captures HOME at module
-  // load time, so the dynamic import must be the first time the module loads.
-  tmpHome = mkdtempSync(join(tmpdir(), 'pf-test-'));
-  process.env.HOME = tmpHome;
+  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect the cache, and it
+  // has to be set before the module under test is imported so nothing resolves
+  // the operator's real cache.
+  sandbox = mkdtempSync(join(tmpdir(), 'pf-test-'));
+  cacheRootDir = join(sandbox, 'cache', 'agent-plugins');
+  previousOverride = process.env.AGENT_PLUGINS_CACHE_DIR;
+  process.env.AGENT_PLUGINS_CACHE_DIR = cacheRootDir;
 
   // Create a tiny fixture data dir so `pf init` seeds from a small known
   // corpus instead of the full 4.3MB bundled data.
@@ -52,14 +56,14 @@ before(async () => {
   // Override the data dir for the CLI.
   process.env.PF_DATA_DIR = tmpDataDir;
 
-  // Dynamic import so config-store captures the temp HOME.
   pf = await import('./prompt-forge.ts');
 });
 
 after(() => {
-  process.env.HOME = originalHome;
+  if (previousOverride === undefined) delete process.env.AGENT_PLUGINS_CACHE_DIR;
+  else process.env.AGENT_PLUGINS_CACHE_DIR = previousOverride;
   delete process.env.PF_DATA_DIR;
-  rmSync(tmpHome, { recursive: true, force: true });
+  rmSync(sandbox, { recursive: true, force: true });
   rmSync(tmpDataDir, { recursive: true, force: true });
 });
 
@@ -91,7 +95,7 @@ test('pf init creates and seeds the database from fixture data', async () => {
   // 3 records in fixture, 1 is a duplicate -> 2 imported.
   assert.match(stdout, /Initialized prompt-forge: 2 new prompts imported/);
   // The DB file should exist in the artifacts dir.
-  const dbPath = join(tmpHome, '.cache', 'agent-plugins', 'prompt-forge', 'artifacts', 'prompts.db');
+  const dbPath = join(cacheRootDir, 'prompt-forge', 'artifacts', 'prompts.db');
   assert.ok(existsSync(dbPath), 'database file was not created');
 });
 
@@ -243,5 +247,5 @@ test('pf output never leaks the cache path', async () => {
   const { stdout, stderr } = await runMain(['prompt', 'list', '--limit', '1']);
   assert.equal(stdout.includes('.cache/agent-plugins'), false, 'cache path leaked into stdout');
   assert.equal(stderr.includes('.cache/agent-plugins'), false, 'cache path leaked into stderr');
-  assert.equal(stdout.includes(tmpHome), false, 'tmp HOME leaked into stdout');
+  assert.equal(stdout.includes(sandbox), false, 'tmp HOME leaked into stdout');
 });

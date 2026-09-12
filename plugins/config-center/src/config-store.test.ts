@@ -9,17 +9,24 @@ import {
   statSync,
   chmodSync,
   readdirSync,
+  readFileSync,
 } from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join } from 'path';
 
-const originalHome = homedir();
-let tmpHome: string;
+let sandbox: string;
+/** The root the tests expect while AGENT_PLUGINS_CACHE_DIR is pointed at them. */
+let cacheRootDir: string;
+let previousOverride: string | undefined;
 let configStore: {
   CACHE_DIR: string;
+  cacheRoot: () => string;
   configDir: (name: string) => string;
   configPath: (name: string) => string;
   artifactsDir: (name: string) => string;
+  pluginFilePath: (name: string, ...segments: string[]) => string;
+  ensurePrivateConfigDirSync: (name: string) => string;
+  writePluginFile: (name: string, segments: string[], data: string) => Promise<string>;
   migrateLegacyConfig: (name: string) => Promise<void>;
   loadConfig: <T extends Record<string, unknown>>(name: string) => Promise<T | null>;
   saveConfig: (name: string, data: Record<string, unknown>, options?: { merge?: boolean }) => Promise<void>;
@@ -27,48 +34,51 @@ let configStore: {
 };
 
 before(() => {
-  tmpHome = mkdtempSync(join(tmpdir(), 'cc-'));
-  process.env.HOME = tmpHome;
-  // Clear require cache so the module evaluates with the test HOME
-  for (const key of Object.keys(require.cache)) {
-    if (key.endsWith('config-store.ts')) delete require.cache[key];
-  }
+  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect everything. The
+  // root sits inside a scratch directory, so the legacy homes resolved relative
+  // to it stay inside the same scratch directory too.
+  sandbox = mkdtempSync(join(tmpdir(), 'cc-'));
+  cacheRootDir = join(sandbox, 'cache', 'agent-plugins');
+  previousOverride = process.env.AGENT_PLUGINS_CACHE_DIR;
+  process.env.AGENT_PLUGINS_CACHE_DIR = cacheRootDir;
   configStore = require('./config-store.ts');
 });
 
 after(() => {
-  process.env.HOME = originalHome;
-  rmSync(tmpHome, { recursive: true, force: true });
+  if (previousOverride === undefined) delete process.env.AGENT_PLUGINS_CACHE_DIR;
+  else process.env.AGENT_PLUGINS_CACHE_DIR = previousOverride;
+  rmSync(sandbox, { recursive: true, force: true });
 });
 
 test('configPath returns directory-layout path', () => {
   assert.equal(
     configStore.configPath('demo'),
-    join(tmpHome, '.cache', 'agent-plugins', 'demo', 'config.json')
+    join(cacheRootDir, 'demo', 'config.json')
   );
 });
 
 test('configDir returns the per-plugin configuration directory', () => {
   assert.equal(
     configStore.configDir('demo'),
-    join(tmpHome, '.cache', 'agent-plugins', 'demo')
+    join(cacheRootDir, 'demo')
   );
 });
 
 test('artifactsDir returns the per-plugin artifacts directory', () => {
   assert.equal(
     configStore.artifactsDir('demo'),
-    join(tmpHome, '.cache', 'agent-plugins', 'demo', 'artifacts')
+    join(cacheRootDir, 'demo', 'artifacts')
   );
 });
 
-test('CACHE_DIR is a constant under homedir/.cache/agent-plugins', () => {
-  assert.equal(configStore.CACHE_DIR, join(tmpHome, '.cache', 'agent-plugins'));
+test('CACHE_DIR keeps the default root while cacheRoot follows the override', () => {
+  assert.equal(configStore.CACHE_DIR, join(homedir(), '.cache', 'agent-plugins'));
+  assert.equal(configStore.cacheRoot(), cacheRootDir);
 });
 
 test('migrateLegacyConfig migrates flat legacy file to directory layout', async () => {
-  const legacyFlat = join(tmpHome, '.cache', 'agent-plugins', 'demo.json');
-  mkdirSync(join(tmpHome, '.cache', 'agent-plugins'), { recursive: true });
+  const legacyFlat = join(cacheRootDir, 'demo.json');
+  mkdirSync(cacheRootDir, { recursive: true });
   writeFileSync(legacyFlat, JSON.stringify({ key: 'legacy' }), 'utf-8');
 
   assert.equal(existsSync(configStore.configPath('demo')), false);
@@ -83,8 +93,8 @@ test('migrateLegacyConfig migrates flat legacy file to directory layout', async 
 });
 
 test('migrateLegacyConfig migrates even-older legacy path (~/.cache/ap/ex-plugin/<name>.json)', async () => {
-  const olderLegacy = join(tmpHome, '.cache', 'ap', 'ex-plugin', 'demo.json');
-  mkdirSync(join(tmpHome, '.cache', 'ap', 'ex-plugin'), { recursive: true });
+  const olderLegacy = join(sandbox, 'cache', 'ap', 'ex-plugin', 'demo.json');
+  mkdirSync(join(sandbox, 'cache', 'ap', 'ex-plugin'), { recursive: true });
   writeFileSync(olderLegacy, JSON.stringify({ key: 'older' }), 'utf-8');
 
   assert.equal(existsSync(configStore.configPath('demo')), false);
@@ -96,7 +106,7 @@ test('migrateLegacyConfig migrates even-older legacy path (~/.cache/ap/ex-plugin
 
   // Cleanup
   rmSync(configStore.configDir('demo'), { recursive: true, force: true });
-  rmSync(join(tmpHome, '.cache', 'ap'), { recursive: true, force: true });
+  rmSync(join(sandbox, 'cache', 'ap'), { recursive: true, force: true });
 });
 
 test('migrateLegacyConfig is idempotent (directory layout already exists)', async () => {
@@ -105,7 +115,7 @@ test('migrateLegacyConfig is idempotent (directory layout already exists)', asyn
   writeFileSync(configStore.configPath('demo'), JSON.stringify({ key: 'already' }), 'utf-8');
 
   // Also create a stale legacy flat file — migration should NOT overwrite
-  const legacyFlat = join(tmpHome, '.cache', 'agent-plugins', 'demo.json');
+  const legacyFlat = join(cacheRootDir, 'demo.json');
   writeFileSync(legacyFlat, JSON.stringify({ key: 'stale' }), 'utf-8');
 
   await configStore.migrateLegacyConfig('demo');
@@ -145,8 +155,8 @@ test('loadConfig returns null when no config exists', async () => {
 });
 
 test('loadConfig migrates legacy flat file before reading (auto-migration)', async () => {
-  const legacyFlat = join(tmpHome, '.cache', 'agent-plugins', 'demo.json');
-  mkdirSync(join(tmpHome, '.cache', 'agent-plugins'), { recursive: true });
+  const legacyFlat = join(cacheRootDir, 'demo.json');
+  mkdirSync(cacheRootDir, { recursive: true });
   writeFileSync(legacyFlat, JSON.stringify({ migrated: true }), 'utf-8');
 
   const config = await configStore.loadConfig<{ migrated: boolean }>('demo');
@@ -331,4 +341,35 @@ test('saveConfig leaves no temporary file behind', async () => {
   // Cleanup
   rmSync(dir, { recursive: true, force: true });
 });
+
+// ── Anchored plugin files ───────────────────────────────────────────────────
+
+test('pluginFilePath always resolves inside the plugin directory', () => {
+  assert.equal(
+    configStore.pluginFilePath('demo', 'tmp', 'sls-1.txt'),
+    join(cacheRootDir, 'demo', 'tmp', 'sls-1.txt')
+  );
+  // Nested segments are joined, never concatenated with a literal separator, so
+  // the same call produces a correct path on Windows.
+  assert.equal(configStore.pluginFilePath('demo', 'session.json'), join(cacheRootDir, 'demo', 'session.json'));
+  assert.ok(configStore.pluginFilePath('demo', 'x').startsWith(configStore.configDir('demo')));
+});
+
+test('writePluginFile creates missing parents privately and returns the path', { skip: !POSIX }, async () => {
+  const path = await configStore.writePluginFile(
+    'demo',
+    ['tmp', 'nested', 'out.txt'],
+    'log output'
+  );
+
+  assert.equal(path, join(cacheRootDir, 'demo', 'tmp', 'nested', 'out.txt'));
+  assert.equal(readFileSync(path, 'utf-8'), 'log output');
+  assert.equal(modeOf(path).toString(8), '600');
+  assert.equal(modeOf(configStore.configDir('demo')).toString(8), '700');
+  assert.equal(modeOf(join(cacheRootDir, 'demo', 'tmp')).toString(8), '700');
+
+  // Cleanup
+  rmSync(configStore.configDir('demo'), { recursive: true, force: true });
+});
+
 

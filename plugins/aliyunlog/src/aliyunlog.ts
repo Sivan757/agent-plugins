@@ -38,7 +38,6 @@
 
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { Command } from 'commander';
@@ -49,6 +48,9 @@ import {
   saveConfig,
   summarizeConfig,
   configPath,
+  cacheRoot,
+  pluginFilePath,
+  writePluginFile,
   PluginError,
 } from '@agent-plugins/config-center';
 import type { ConfigUIOptions } from '@agent-plugins/config-center';
@@ -65,13 +67,17 @@ type ALYClient = InstanceType<typeof ALY>;
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const CONFIG_PATH = configPath('aliyunlog');
-const CACHE_DIR = path.join(os.homedir(), '.cache', 'agent-plugins');
-const LEGACY_CACHE_DIR = path.join(os.homedir(), '.cache', ['ap', 'ex-plugin'].join(''));
-const MAPPINGS_CACHE_PATH = path.join(CACHE_DIR, 'aliyunlog-mappings.json');
-const LEGACY_MAPPINGS_CACHE_PATH = path.join(LEGACY_CACHE_DIR, 'aliyunlog-mappings.json');
-const CONTEXT_PATH = path.join(CACHE_DIR, 'aliyunlog-context.json');
-const LEGACY_CONTEXT_PATH = path.join(LEGACY_CACHE_DIR, 'aliyunlog-context.json');
-const TEMP_DIR = path.join(os.tmpdir(), 'claude-sls');
+
+// Everything this plugin persists lives under its own directory in the shared
+// cache root, and every path is built by the same helpers the store uses, so the
+// whole tree follows AGENT_PLUGINS_CACHE_DIR. The two flat files directly in the
+// cache root are where the mappings and the last query context used to live; a
+// leftover copy is read once and adopted into the plugin directory.
+const MAPPINGS_CACHE_FILE = 'mappings.json';
+const CONTEXT_FILE = 'context.json';
+const PREVIOUS_MAPPINGS_CACHE_PATH = path.join(cacheRoot(), 'aliyunlog-mappings.json');
+const PREVIOUS_CONTEXT_PATH = path.join(cacheRoot(), 'aliyunlog-context.json');
+const TEMP_DIR = pluginFilePath('aliyunlog', 'tmp');
 const AUTO_TEMP_THRESHOLD = 2000; // chars
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -131,9 +137,29 @@ function info(msg: string): void {
   process.stderr.write(`[SLS] ${msg}\n`);
 }
 
-function resolveCachePath(primaryPath: string, legacyPath: string): string {
-  if (fs.existsSync(primaryPath)) return primaryPath;
-  return fs.existsSync(legacyPath) ? legacyPath : primaryPath;
+/**
+ * Read one of this plugin's cache files, adopting the copy that an installation
+ * made before this plugin kept its data under its own directory wrote to the
+ * cache root. The adopted copy is rewritten through the shared writer — private
+ * directory, atomic, 0600 — and the old one is removed, so nothing of this
+ * plugin's is left outside its directory.
+ */
+async function readPluginCache<T>(file: string, previous: string): Promise<T | null> {
+  const current = pluginFilePath('aliyunlog', file);
+
+  if (!fs.existsSync(current)) {
+    if (!fs.existsSync(previous)) return null;
+    const text = fs.readFileSync(previous, 'utf-8');
+    await writePluginFile('aliyunlog', [file], text);
+    try {
+      fs.unlinkSync(previous);
+    } catch {
+      // The stale copy is unreadable now; failing the read over it would not help.
+    }
+    return JSON.parse(text) as T;
+  }
+
+  return JSON.parse(fs.readFileSync(current, 'utf-8')) as T;
 }
 
 // ── SDK Loader ───────────────────────────────────────────────────────────────
@@ -167,23 +193,18 @@ function validateCredentials(config: AliyunLogConfig): void {
 
 // ── Session Context Preservation ─────────────────────────────────────────────
 
-function loadContext(): QueryContext | null {
+async function loadContext(): Promise<QueryContext | null> {
   try {
-    const contextPath = resolveCachePath(CONTEXT_PATH, LEGACY_CONTEXT_PATH);
-    if (fs.existsSync(contextPath)) {
-      return JSON.parse(fs.readFileSync(contextPath, 'utf-8')) as QueryContext;
-    }
+    return await readPluginCache<QueryContext>(CONTEXT_FILE, PREVIOUS_CONTEXT_PATH);
   } catch (e) {
     info(`Warning: Failed to load context: ${(e as Error).message}`);
   }
   return null;
 }
 
-function saveContext(context: QueryContext): void {
+async function saveContext(context: QueryContext): Promise<void> {
   try {
-    const dir = path.dirname(CONTEXT_PATH);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(CONTEXT_PATH, JSON.stringify(context, null, 2));
+    await writePluginFile('aliyunlog', [CONTEXT_FILE], JSON.stringify(context, null, 2));
   } catch (e) {
     info(`Warning: Failed to save context: ${(e as Error).message}`);
   }
@@ -191,7 +212,7 @@ function saveContext(context: QueryContext): void {
 
 function clearContext(): void {
   try {
-    for (const file of [CONTEXT_PATH, LEGACY_CONTEXT_PATH]) {
+    for (const file of [pluginFilePath('aliyunlog', CONTEXT_FILE), PREVIOUS_CONTEXT_PATH]) {
       if (fs.existsSync(file)) {
         fs.unlinkSync(file);
       }
@@ -203,23 +224,22 @@ function clearContext(): void {
 
 // ── Service Discovery & Mapping Cache ────────────────────────────────────────
 
-function loadMappingsCache(): MappingsCache {
+async function loadMappingsCache(): Promise<MappingsCache> {
   try {
-    const mappingsPath = resolveCachePath(MAPPINGS_CACHE_PATH, LEGACY_MAPPINGS_CACHE_PATH);
-    if (fs.existsSync(mappingsPath)) {
-      return JSON.parse(fs.readFileSync(mappingsPath, 'utf-8')) as MappingsCache;
-    }
+    const cache = await readPluginCache<MappingsCache>(
+      MAPPINGS_CACHE_FILE,
+      PREVIOUS_MAPPINGS_CACHE_PATH
+    );
+    if (cache) return cache;
   } catch (e) {
     info(`Warning: Failed to load mappings cache: ${(e as Error).message}`);
   }
   return {};
 }
 
-function saveMappingsCache(cache: MappingsCache): void {
+async function saveMappingsCache(cache: MappingsCache): Promise<void> {
   try {
-    const dir = path.dirname(MAPPINGS_CACHE_PATH);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(MAPPINGS_CACHE_PATH, JSON.stringify(cache, null, 2));
+    await writePluginFile('aliyunlog', [MAPPINGS_CACHE_FILE], JSON.stringify(cache, null, 2));
   } catch (e) {
     info(`Warning: Failed to save mappings cache: ${(e as Error).message}`);
   }
@@ -349,12 +369,12 @@ async function cmdFindService(config: AliyunLogConfig, project: string, serviceN
   }
 
   // Auto-cache the mapping
-  const cache = loadMappingsCache();
+  const cache = await loadMappingsCache();
   if (!cache[project]) cache[project] = {};
   for (const { logstore } of candidates) {
     cache[project][serviceName] = logstore;
   }
-  saveMappingsCache(cache);
+  await saveMappingsCache(cache);
   info(`Cached: ${serviceName} -> ${candidates[0].logstore}`);
   info(`Query example: node aliyunlog.mjs --service=${serviceName} --project=${project} --query="ERROR" --from=-1h`);
 }
@@ -789,7 +809,7 @@ function cleanupOldTempFiles(): void {
   } catch { /* ignore cleanup errors */ }
 }
 
-function outputWithTokenOptimization(output: string): void {
+async function outputWithTokenOptimization(output: string): Promise<void> {
   if (output.length <= AUTO_TEMP_THRESHOLD) {
     console.log(output);
     return;
@@ -798,11 +818,8 @@ function outputWithTokenOptimization(output: string): void {
   // Clean up temp files older than 24 hours
   cleanupOldTempFiles();
 
-  // Write to temp file
-  fs.mkdirSync(TEMP_DIR, { recursive: true });
-  const timestamp = Date.now();
-  const tempFile = path.join(TEMP_DIR, `sls-${timestamp}.txt`);
-  fs.writeFileSync(tempFile, output, 'utf-8');
+  // Written under the plugin's own directory, like everything else it persists.
+  const tempFile = await writePluginFile('aliyunlog', ['tmp', `sls-${Date.now()}.txt`], output);
 
   const lineCount = output.split('\n').length;
   console.log(`[Output too large for inline display (${output.length} chars, ${lineCount} lines)]`);
@@ -1164,7 +1181,7 @@ async function runQuery(
   let contextOverride: QueryContext | null = null;
   const standaloneFullOutput = opts.full && !opts.project && !opts.service && !opts.logstore && !env;
   if (opts.more || opts.refine || standaloneFullOutput) {
-    const prevContext = loadContext();
+    const prevContext = await loadContext();
     if (!prevContext) {
       if (standaloneFullOutput) {
         die('No previous context found for standalone --full. Run a query first (context is auto-saved), or rerun the original query with --full.');
@@ -1201,7 +1218,7 @@ async function runQuery(
     if (!project) die('--service requires a project. Use --project or set default_project in config.');
 
     // Check cache first
-    const cache = loadMappingsCache();
+    const cache = await loadMappingsCache();
     const projectCache = cache[project] || {};
 
     if (projectCache[serviceName]) {
@@ -1222,7 +1239,7 @@ async function runQuery(
           info(`Fast-discovered: ${serviceName} -> ${logstore}`);
           if (!cache[project]) cache[project] = {};
           cache[project][serviceName] = logstore;
-          saveMappingsCache(cache);
+          await saveMappingsCache(cache);
         } else {
           die(`Service "${serviceName}" not found in any logstore in project "${project}".\nTry: node ${__filename} find-service ${serviceName} --project ${project}`);
         }
@@ -1232,7 +1249,7 @@ async function runQuery(
         // Cache the result
         if (!cache[project]) cache[project] = {};
         cache[project][serviceName] = logstore;
-        saveMappingsCache(cache);
+        await saveMappingsCache(cache);
       } else {
         // Multiple candidates - need user input
         console.log(`Service "${serviceName}" found in multiple logstores:`);
@@ -1358,7 +1375,7 @@ async function runQuery(
 
     if (n === 0) {
       if (persistContext) {
-        saveContext(contextPayload);
+        await saveContext(contextPayload);
       }
       if (autoBroaden && searchLevel > 0) {
         console.log('(no results found even after broadening search)');
@@ -1394,7 +1411,7 @@ async function runQuery(
       console.log(summary);
 
       if (persistContext) {
-        saveContext(contextPayload);
+        await saveContext(contextPayload);
         info('Context saved. Use --more for next page or --refine to add filters.');
       }
 
@@ -1404,11 +1421,11 @@ async function runQuery(
     if (fullOutput) {
       console.log(output);
     } else {
-      outputWithTokenOptimization(output);
+      await outputWithTokenOptimization(output);
     }
 
     if (persistContext) {
-      saveContext(contextPayload);
+      await saveContext(contextPayload);
       info('Context saved. Use --more for next page or --refine to add filters.');
     }
   } catch (err) {

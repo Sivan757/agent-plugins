@@ -5,8 +5,10 @@ import { tmpdir, homedir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const originalHome = homedir();
-let tmpHome: string;
+let sandbox: string;
+// The root the tests expect while AGENT_PLUGINS_CACHE_DIR is pointed at them.
+let cacheRootDir: string;
+let previousOverride: string | undefined;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let launchUI: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,17 +36,14 @@ function bundledHtmlAvailable(): boolean {
 }
 
 before(() => {
-  tmpHome = mkdtempSync(join(tmpdir(), 'cc-launch-'));
-  process.env.HOME = tmpHome;
-  // Clear require cache so stateful source modules re-evaluate with the
-  // test HOME. config-store.ts captures HOME at module-load time into CACHE_DIR.
-  for (const key of Object.keys(require.cache)) {
-    if (key.endsWith('launch-ui.ts') ||
-        key.endsWith('config-store.ts') ||
-        key.endsWith('config-center.ts')) {
-      delete require.cache[key];
-    }
-  }
+  // AGENT_PLUGINS_CACHE_DIR is the documented way to redirect everything, and the
+  // root sits inside a scratch directory so the legacy homes resolved relative to
+  // it — and the sentinel the traversal test plants — stay inside it too.
+  sandbox = mkdtempSync(join(tmpdir(), 'cc-launch-'));
+  cacheRootDir = join(sandbox, 'cache', 'agent-plugins');
+  previousOverride = process.env.AGENT_PLUGINS_CACHE_DIR;
+  process.env.AGENT_PLUGINS_CACHE_DIR = cacheRootDir;
+
   launchUI = require('./launch-ui.ts');
   configStore = require('./config-store.ts');
 
@@ -52,8 +51,9 @@ before(() => {
 });
 
 after(() => {
-  process.env.HOME = originalHome;
-  rmSync(tmpHome, { recursive: true, force: true });
+  if (previousOverride === undefined) delete process.env.AGENT_PLUGINS_CACHE_DIR;
+  else process.env.AGENT_PLUGINS_CACHE_DIR = previousOverride;
+  rmSync(sandbox, { recursive: true, force: true });
 });
 
 function mockOutput() {
@@ -185,10 +185,10 @@ test('GET /api/config/<plugin> returns existing config (plaintext to browser)', 
 });
 
 test('GET /api/config/<plugin> rejects path traversal via %2F encoding', async () => {
-  // Create a sentinel file OUTSIDE the cache dir that the traversal would
-  // reach if validation were missing. configPath('..%2F..%2Fconfig') decodes
-  // to '../../config' which resolves to <tmpHome>/config/config.json.
-  const sentinelDir = join(tmpHome, 'config');
+  // Create a sentinel file OUTSIDE the cache dir that the traversal would reach
+  // if validation were missing. configPath('..%2F..%2Fconfig') decodes to
+  // '../../config', which resolves beside the scratch root the tests use.
+  const sentinelDir = join(cacheRootDir, '..', '..', 'config');
   mkdirSync(sentinelDir, { recursive: true });
   const sentinelSecret = 'TRAVERSAL_SENTINEL_98765';
   writeFileSync(

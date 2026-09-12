@@ -3612,8 +3612,8 @@ var require_lib = __commonJS({
     var helper = require_helper();
     module.exports = function(connInfo, cb) {
       var file = helper.getFileName();
-      fs.stat(file, function(err, stat2) {
-        if (err || !helper.usePgPass(stat2, file)) {
+      fs.stat(file, function(err, stat) {
+        if (err || !helper.usePgPass(stat, file)) {
           return cb(void 0);
         }
         var st = fs.createReadStream(file);
@@ -8595,10 +8595,10 @@ var {
 } = import_index.default;
 
 // ../config-center/src/config-store.ts
-import { readFile, rename, mkdir, chmod, open, stat, unlink } from "fs/promises";
-import { existsSync } from "fs";
+import { readFile, rename, open, unlink } from "fs/promises";
+import { chmodSync, existsSync, mkdirSync, statSync } from "fs";
 import { randomUUID } from "crypto";
-import { join } from "path";
+import { dirname, join } from "path";
 import { homedir } from "os";
 
 // ../config-center/src/errors.ts
@@ -8614,18 +8614,20 @@ var PluginError = class extends Error {
 };
 
 // ../config-center/src/config-store.ts
-var home = process.env.HOME || homedir();
+function homeDir() {
+  return homedir();
+}
 var CACHE_DIR_ENV = "AGENT_PLUGINS_CACHE_DIR";
 function cacheRoot() {
   const override = (process.env[CACHE_DIR_ENV] ?? "").trim();
-  return override || join(home, ".cache", "agent-plugins");
+  return override || join(homeDir(), ".cache", "agent-plugins");
 }
-var CACHE_DIR = join(home, ".cache", "agent-plugins");
+var CACHE_DIR = join(homeDir(), ".cache", "agent-plugins");
 function legacyFlatPath(name) {
   return join(cacheRoot(), `${name}.json`);
 }
 function legacyOlderPath(name) {
-  return join(home, ".cache", "ap", "ex-plugin", `${name}.json`);
+  return join(cacheRoot(), "..", "ap", "ex-plugin", `${name}.json`);
 }
 function configDir(name) {
   return join(cacheRoot(), name);
@@ -8633,51 +8635,94 @@ function configDir(name) {
 function configPath(name) {
   return join(configDir(name), "config.json");
 }
+function pluginFilePath(name, ...segments) {
+  return join(configDir(name), ...segments);
+}
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 var POSIX_MODES = process.platform !== "win32";
+var OTHERS_BITS = 63;
 function permissionsMessage(what, detail) {
   return `Refusing to continue: ${what} is readable by other users and could not be restricted (${detail}). Run 'chmod 700' on the plugin cache directory and 'chmod 600' on its config file.`;
 }
-async function tightenMode(path, mode, what) {
+function tightenModeSync(path, mode, what) {
   if (!POSIX_MODES) return;
+  let current;
   try {
-    if (((await stat(path)).mode & 63) === 0) return;
-    await chmod(path, mode);
-    if (((await stat(path)).mode & 63) === 0) return;
+    current = statSync(path);
   } catch (e) {
     if (e.code === "ENOENT") return;
     throw new PluginError(permissionsMessage(what, e.code ?? e.message), "CONFIG_PERMISSIONS");
   }
-  throw new PluginError(permissionsMessage(what, "the mode did not change"), "CONFIG_PERMISSIONS");
+  if ((current.mode & OTHERS_BITS) === 0) return;
+  try {
+    chmodSync(path, mode);
+  } catch (e) {
+    throw new PluginError(permissionsMessage(what, e.code ?? e.message), "CONFIG_PERMISSIONS");
+  }
+  if ((statSync(path).mode & OTHERS_BITS) !== 0) {
+    throw new PluginError(permissionsMessage(what, "the mode did not change"), "CONFIG_PERMISSIONS");
+  }
 }
-async function ensurePrivateConfigDir(name) {
-  const dir = configDir(name);
-  await mkdir(dir, { recursive: true, mode: 448 });
-  await tightenMode(dir, 448, "the plugin cache directory");
+function ensurePrivateDirSync(dir) {
+  mkdirSync(dir, { recursive: true, mode: 448 });
+  tightenModeSync(dir, 448, "the plugin cache directory");
   return dir;
 }
-async function tightenStoredConfig(name) {
-  await tightenMode(configDir(name), 448, "the plugin cache directory");
-  await tightenMode(configPath(name), 384, "the stored configuration");
+function ensurePrivatePluginDirSync(name, ...segments) {
+  const dir = ensurePrivateDirSync(configDir(name));
+  if (segments.length === 0) return dir;
+  return ensurePrivateDirSync(pluginFilePath(name, ...segments));
 }
-async function writeConfigAtomic(path, data) {
+function ensurePrivateConfigDirSync(name) {
+  return ensurePrivatePluginDirSync(name);
+}
+function tightenStoredConfig(name) {
+  tightenModeSync(configDir(name), 448, "the plugin cache directory");
+  tightenModeSync(configPath(name), 384, "the stored configuration");
+}
+function delay(ms) {
+  return new Promise((resolve2) => setTimeout(resolve2, ms));
+}
+var REPLACE_RETRY_CODES = /* @__PURE__ */ new Set(["EACCES", "EBUSY", "EPERM"]);
+var REPLACE_RETRY_LIMIT = 6;
+async function replaceFile(tmp, path) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await rename(tmp, path);
+      return;
+    } catch (e) {
+      if (!REPLACE_RETRY_CODES.has(e.code) || attempt >= REPLACE_RETRY_LIMIT) {
+        await unlink(tmp).catch(() => {
+        });
+        throw e;
+      }
+      await delay(5 * 2 ** attempt);
+    }
+  }
+}
+async function writePrivateFile(path, data) {
   const tmp = `${path}.tmp-${process.pid}-${randomUUID().slice(0, 8)}`;
   const handle = await open(tmp, "wx", 384);
   try {
     await handle.writeFile(data, "utf-8");
     await handle.sync();
-  } finally {
-    await handle.close();
-  }
-  try {
-    await rename(tmp, path);
   } catch (e) {
+    await handle.close().catch(() => {
+    });
     await unlink(tmp).catch(() => {
     });
     throw e;
   }
+  await handle.close();
+  await replaceFile(tmp, path);
+}
+async function writePluginFile(name, segments, data) {
+  const path = pluginFilePath(name, ...segments);
+  ensurePrivateDirSync(dirname(path));
+  await writePrivateFile(path, data);
+  return path;
 }
 function deepMerge(target, source) {
   const result = { ...target };
@@ -8696,19 +8741,11 @@ function deepMerge(target, source) {
 async function migrateLegacyConfig(name) {
   const target = configPath(name);
   if (existsSync(target)) return;
-  const dir = configDir(name);
-  const flat = legacyFlatPath(name);
-  if (existsSync(flat)) {
-    await mkdir(dir, { recursive: true, mode: 448 });
-    await rename(flat, target);
-    await tightenMode(target, 384, "the stored configuration");
-    return;
-  }
-  const older = legacyOlderPath(name);
-  if (existsSync(older)) {
-    await mkdir(dir, { recursive: true, mode: 448 });
-    await rename(older, target);
-    await tightenMode(target, 384, "the stored configuration");
+  for (const from of [legacyFlatPath(name), legacyOlderPath(name)]) {
+    if (!existsSync(from)) continue;
+    ensurePrivateConfigDirSync(name);
+    await rename(from, target);
+    tightenModeSync(target, 384, "the stored configuration");
     return;
   }
 }
@@ -8726,7 +8763,7 @@ async function loadConfig(name) {
   await migrateLegacyConfig(name);
   const path = configPath(name);
   if (!existsSync(path)) return null;
-  await tightenStoredConfig(name);
+  tightenStoredConfig(name);
   try {
     const raw = await readFile(path, "utf-8");
     return JSON.parse(raw);
@@ -8736,7 +8773,6 @@ async function loadConfig(name) {
   }
 }
 async function saveConfig(name, data, options = {}) {
-  await ensurePrivateConfigDir(name);
   let finalData = data;
   if (options.merge === true) {
     const existing = await readConfigRaw(name);
@@ -8744,10 +8780,7 @@ async function saveConfig(name, data, options = {}) {
       finalData = deepMerge(existing, data);
     }
   }
-  await writeConfigAtomic(
-    configPath(name),
-    JSON.stringify(finalData, null, 2) + "\n"
-  );
+  await writePluginFile(name, ["config.json"], JSON.stringify(finalData, null, 2) + "\n");
 }
 async function requireConfig(name) {
   const config = await loadConfig(name);
@@ -8760,7 +8793,7 @@ async function requireConfig(name) {
 // ../config-center/src/launch-ui.ts
 import { createServer } from "node:http";
 import { readFileSync, existsSync as existsSync2, readdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname as dirname2, resolve } from "node:path";
 import { exec } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -8849,7 +8882,7 @@ function readConfigSync(name) {
   }
 }
 function loadBundledHTML() {
-  const thisDir = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
+  const thisDir = typeof __dirname !== "undefined" ? __dirname : dirname2(fileURLToPath(import.meta.url));
   const candidates = [
     // Bundled plugin: <plugin>/dist/config-ui/dist/index.html
     resolve(thisDir, "config-ui", "dist", "index.html"),

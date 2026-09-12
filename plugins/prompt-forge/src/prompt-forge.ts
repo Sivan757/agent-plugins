@@ -12,10 +12,10 @@ import { Command, CommanderError } from 'commander';
 import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { mkdirSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import { artifactsDir } from '@agent-plugins/config-center';
+import { artifactsDir, ensurePrivatePluginDirSync } from '@agent-plugins/config-center';
 import { SCHEMA_SQL } from './schema.js';
 
 export interface CLIOutput {
@@ -50,7 +50,9 @@ function nowISO(): string {
 }
 
 function openDB(): DatabaseSync {
-  mkdirSync(artifactsDir('prompt-forge'), { recursive: true });
+  // The prompt database is the user's own writing, so the directory it lives in is
+  // created owner-only instead of with the default mode.
+  ensurePrivatePluginDirSync('prompt-forge', 'artifacts');
   const db = new DatabaseSync(dbPath());
   db.exec(SCHEMA_SQL);
   return db;

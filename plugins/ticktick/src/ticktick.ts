@@ -3,10 +3,9 @@
 // Usage: ticktick <resource> <action> [args] [--options]
 // Config: ~/.cache/agent-plugins/ticktick/config.json
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { randomBytes } from 'crypto';
 import { createServer } from 'http';
-import { tmpdir } from 'os';
 
 import { Command } from 'commander';
 import {
@@ -17,6 +16,8 @@ import {
   saveConfig,
   summarizeConfig,
   configPath,
+  pluginFilePath,
+  writePluginFile,
   PluginError,
 } from '@agent-plugins/config-center';
 import type { ConfigUIOptions } from '@agent-plugins/config-center';
@@ -37,7 +38,10 @@ interface TickTickConfig extends Record<string, unknown> {
   clientSecret?: string;
 }
 
-const SESSION_CACHE = `${tmpdir()}/ticktick-session.json`;
+// The signon token is a credential, so it is cached in the plugin's own private
+// directory rather than in the shared temporary directory, where any account on
+// the machine could read it.
+const SESSION_CACHE = pluginFilePath('ticktick', 'session.json');
 const SESSION_TTL_MS = 3600_000; // 1 hour
 
 
@@ -147,7 +151,7 @@ async function getV2Token(config: TickTickConfig, HOST: string, X_DEVICE: string
 
   const data = await resp.json() as V2SignonResponse;
   const session: V2Session = { token: data.token, inboxId: data.inboxId, userId: data.userId, ts: Date.now() };
-  writeFileSync(SESSION_CACHE, JSON.stringify(session));
+  await writePluginFile('ticktick', ['session.json'], JSON.stringify(session));
   return session;
 }
 

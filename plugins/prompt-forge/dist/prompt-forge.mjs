@@ -3478,28 +3478,81 @@ var {
 // src/prompt-forge.ts
 import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL, fileURLToPath } from "node:url";
-import { dirname, join as join2, resolve } from "node:path";
-import { mkdirSync, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname as dirname2, join as join2, resolve } from "node:path";
+import { existsSync as existsSync2, readdirSync, readFileSync, statSync as statSync2 } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 
 // ../config-center/src/config-store.ts
-import { join } from "path";
+import { chmodSync, existsSync, mkdirSync, statSync } from "fs";
+import { dirname, join } from "path";
 import { homedir } from "os";
-var home = process.env.HOME || homedir();
+
+// ../config-center/src/errors.ts
+var PluginError = class extends Error {
+  constructor(message, code, exitCode = 1) {
+    super(message);
+    this.code = code;
+    this.exitCode = exitCode;
+    this.name = "PluginError";
+  }
+  code;
+  exitCode;
+};
+
+// ../config-center/src/config-store.ts
+function homeDir() {
+  return homedir();
+}
 var CACHE_DIR_ENV = "AGENT_PLUGINS_CACHE_DIR";
 function cacheRoot() {
   const override = (process.env[CACHE_DIR_ENV] ?? "").trim();
-  return override || join(home, ".cache", "agent-plugins");
+  return override || join(homeDir(), ".cache", "agent-plugins");
 }
-var CACHE_DIR = join(home, ".cache", "agent-plugins");
+var CACHE_DIR = join(homeDir(), ".cache", "agent-plugins");
 function configDir(name) {
   return join(cacheRoot(), name);
 }
 function artifactsDir(name) {
   return join(configDir(name), "artifacts");
 }
+function pluginFilePath(name, ...segments) {
+  return join(configDir(name), ...segments);
+}
 var POSIX_MODES = process.platform !== "win32";
+var OTHERS_BITS = 63;
+function permissionsMessage(what, detail) {
+  return `Refusing to continue: ${what} is readable by other users and could not be restricted (${detail}). Run 'chmod 700' on the plugin cache directory and 'chmod 600' on its config file.`;
+}
+function tightenModeSync(path, mode, what) {
+  if (!POSIX_MODES) return;
+  let current;
+  try {
+    current = statSync(path);
+  } catch (e) {
+    if (e.code === "ENOENT") return;
+    throw new PluginError(permissionsMessage(what, e.code ?? e.message), "CONFIG_PERMISSIONS");
+  }
+  if ((current.mode & OTHERS_BITS) === 0) return;
+  try {
+    chmodSync(path, mode);
+  } catch (e) {
+    throw new PluginError(permissionsMessage(what, e.code ?? e.message), "CONFIG_PERMISSIONS");
+  }
+  if ((statSync(path).mode & OTHERS_BITS) !== 0) {
+    throw new PluginError(permissionsMessage(what, "the mode did not change"), "CONFIG_PERMISSIONS");
+  }
+}
+function ensurePrivateDirSync(dir) {
+  mkdirSync(dir, { recursive: true, mode: 448 });
+  tightenModeSync(dir, 448, "the plugin cache directory");
+  return dir;
+}
+function ensurePrivatePluginDirSync(name, ...segments) {
+  const dir = ensurePrivateDirSync(configDir(name));
+  if (segments.length === 0) return dir;
+  return ensurePrivateDirSync(pluginFilePath(name, ...segments));
+}
 
 // src/schema.ts
 var SCHEMA_SQL = `-- Prompt Forge: Initial Schema
@@ -3590,7 +3643,7 @@ var defaultOutput = {
   stdout: (s) => process.stdout.write(s),
   stderr: (s) => process.stderr.write(s)
 };
-var SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+var SCRIPT_DIR = dirname2(fileURLToPath(import.meta.url));
 var DATA_DIR = process.env.PF_DATA_DIR ? resolve(process.env.PF_DATA_DIR) : join2(SCRIPT_DIR, "..", "skills", "prompt-forge", "data");
 function dbPath() {
   return join2(artifactsDir("prompt-forge"), "prompts.db");
@@ -3599,7 +3652,7 @@ function nowISO() {
   return (/* @__PURE__ */ new Date()).toISOString().replace(/\.\d+Z$/, "Z");
 }
 function openDB() {
-  mkdirSync(artifactsDir("prompt-forge"), { recursive: true });
+  ensurePrivatePluginDirSync("prompt-forge", "artifacts");
   const db = new DatabaseSync(dbPath());
   db.exec(SCHEMA_SQL);
   return db;
@@ -3667,7 +3720,7 @@ function importFile(db, filePath) {
 function cmdInit(output) {
   const db = openDB();
   let count = 0;
-  if (existsSync(DATA_DIR)) {
+  if (existsSync2(DATA_DIR)) {
     const files = readdirSync(DATA_DIR).filter((f) => f.endsWith(".jsonl")).sort();
     for (const file of files) {
       count += importFile(db, join2(DATA_DIR, file));
@@ -3790,7 +3843,7 @@ function cmdPromptAdd(opts, output) {
 `);
 }
 function cmdImageLink(promptId, imagePath, output) {
-  if (!existsSync(imagePath)) {
+  if (!existsSync2(imagePath)) {
     output.stdout(`Error: ${imagePath} not found
 `);
     return;
@@ -3803,7 +3856,7 @@ function cmdImageLink(promptId, imagePath, output) {
     db.close();
     return;
   }
-  const stat = statSync(imagePath);
+  const stat = statSync2(imagePath);
   const uid = randomUUID().replace(/-/g, "").slice(0, 16);
   db.prepare(
     "INSERT INTO images(id, prompt_id, file_path, file_size, created_at) VALUES(?,?,?,?,?)"
@@ -3838,7 +3891,7 @@ function cmdImageRate(promptId, scoreStr, output) {
 `);
 }
 function cmdSourceImport(file, output) {
-  if (!existsSync(file)) {
+  if (!existsSync2(file)) {
     output.stdout(`Error: ${file} not found
 `);
     return;
