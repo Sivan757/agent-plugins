@@ -40,6 +40,7 @@ Some repository constraints are already enforced by scripts. Others are design-q
 | Claude auto-discovery conventions for commands, agents, hooks, and MCP are respected | `npm run validate:claude-layout` |
 | Agent-facing text only names `${CLAUDE_PLUGIN_ROOT}` paths the plugin actually ships | `npm run validate:claude-layout` |
 | A plugin's config form only names components and field types the shared UI can draw, and ships the shared UI exactly when the plugin serves it | `npm run validate:config-ui` |
+| A plugin persists only inside its own directory in the shared cache root, and builds those paths with the shared helpers rather than from the temporary directory, the home directory or the working directory | `npm run validate:persistence` |
 | A committed artifact under `plugins/*/dist` matches its source, including every copy of the shared config form | CI job `validate-generated` (`npm run build`, then any working-tree change under `plugins/` fails the job) |
 | Marketplace entries exist, follow the local source/path policy, and stay ordered by name | `npm run validate:marketplace` |
 | Human-authored surfaces under `plugins/` and `docs/` carry no credential material | `npm run validate:no-secrets` |
@@ -119,9 +120,10 @@ Platform-specific knowledge, migration notes, and practical experience live in r
 - Authoring and reviewing plugin skills: [docs/plugin-development/skill-authoring.md](docs/plugin-development/skill-authoring.md)
 - Why the plugin tree and the credential form have their current shape: [docs/decisions/](docs/decisions/README.md)
 
-Three rules from that guide are worth stating here:
+Four rules from that guide are worth stating here:
 
-- Anything that reads stored plugin configuration (previews, tests, screenshots) must redirect the cache with `AGENT_PLUGINS_CACHE_DIR`; setting `HOME` inside a script does not isolate it, and an unisolated config form renders real credentials into tool output. `AGENT_PLUGINS_CACHE_DIR` is enforced by a test.
+- Anything that reads stored plugin configuration (previews, tests, screenshots) must redirect the cache with `AGENT_PLUGINS_CACHE_DIR`; setting `HOME` inside a script does not isolate it, and an unisolated config form renders real credentials into tool output. The override moves the whole tree, the legacy locations included, and both halves are enforced by tests.
+- A plugin's own data is written through `writePluginFile()` and its paths are built with `pluginFilePath()`, so it lands in the plugin's directory in the shared cache root whatever the platform. `npm run validate:persistence` fails on a source that takes a storage location from the temporary directory, the home directory or the working directory instead.
 - Shipped skill text, READMEs and CLI help must not carry deployment-specific identifiers (regions, domains, project UUIDs, tenant names); use placeholders and keep the shape of real output.
 - Upstream error text is untrusted input. Never print a response body, error message or exception through verbatim: vendors echo submitted credentials back (a gateway answers an unknown key with `ak <AK> not exist`), which puts a live secret into terminal output, logs and an agent's context. Scrub any configured secret from that text first.
 

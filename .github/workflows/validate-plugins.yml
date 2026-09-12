@@ -73,6 +73,9 @@ jobs:
       - name: Validate config UI contract
         run: npm run validate:config-ui
 
+      - name: Validate plugin persistence paths
+        run: npm run validate:persistence
+
       - name: Validate skill, command and agent frontmatter
         run: npm run validate:frontmatter
 

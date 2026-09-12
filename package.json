@@ -16,7 +16,8 @@
     "validate:no-secrets": "bun run .github/scripts/validate-no-secrets.ts",
     "validate:frontmatter": "bun run .github/scripts/validate-frontmatter.ts --all",
     "validate:config-ui": "bun run .github/scripts/validate-config-ui-contract.ts",
-    "validate:plugins": "npm run validate:plugin-metadata && npm run validate:claude-layout && npm run validate:config-ui && npm run validate:marketplace && npm run validate:frontmatter && npm run validate:no-secrets"
+    "validate:persistence": "bun run .github/scripts/validate-persistence.ts",
+    "validate:plugins": "npm run validate:plugin-metadata && npm run validate:claude-layout && npm run validate:config-ui && npm run validate:persistence && npm run validate:marketplace && npm run validate:frontmatter && npm run validate:no-secrets"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
