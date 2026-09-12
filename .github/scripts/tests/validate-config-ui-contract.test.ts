@@ -35,6 +35,8 @@ interface PluginFixture {
   /** Whether the bundle contains the marker that makes it serve the UI. */
   serves?: boolean;
   html?: string;
+  /** Value of `CONFIG_UI.collections`, which sits next to `spec`. */
+  collections?: unknown[];
 }
 
 function addPlugin(root: string, name: string, fixture: PluginFixture): void {
@@ -42,9 +44,11 @@ function addPlugin(root: string, name: string, fixture: PluginFixture): void {
   writeText(join(pluginRoot, "plugin.config.ts"), `export default { name: "${name}" };\n`);
 
   if (fixture.form) {
+    const collections =
+      fixture.collections === undefined ? "" : `, collections: ${JSON.stringify(fixture.collections)}`;
     writeText(
       join(pluginRoot, "src/config-ui.ts"),
-      `export const CONFIG_UI = { spec: { root: ${JSON.stringify(fixture.root ?? "page")}, elements: ${JSON.stringify(fixture.form)} } };\n`
+      `export const CONFIG_UI = { spec: { root: ${JSON.stringify(fixture.root ?? "page")}, elements: ${JSON.stringify(fixture.form)} }${collections} };\n`
     );
   }
 
@@ -72,15 +76,26 @@ afterEach(() => {
 
 const validForm = {
   page: { type: "Header", children: ["connections", "save"] },
-  connections: { type: "Collection", children: ["conn-host"] },
+  connections: {
+    type: "Collection",
+    props: { statePath: "/connections" },
+    children: ["conn-host"],
+  },
   "conn-host": { type: "Field", props: { type: "text" } },
   save: { type: "SaveBar" },
 };
+/** The mapping a Collection needs so the form and the file agree on its shape. */
+const validCollections = [{ statePath: "/connections" }];
 
 describe("validate-config-ui-contract", () => {
   test("passes for a form within the vocabulary that ships the UI it serves", () => {
     const root = createRepo();
-    addPlugin(root, "sample", { form: validForm, serves: true, html: "ui" });
+    addPlugin(root, "sample", {
+      form: validForm,
+      collections: validCollections,
+      serves: true,
+      html: "ui",
+    });
 
     const result = run(root);
 
@@ -142,6 +157,46 @@ describe("validate-config-ui-contract", () => {
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('lists child "ghost"');
+  });
+
+  test("fails when a Collection has no matching collections mapping", () => {
+    const root = createRepo();
+    addPlugin(root, "sample", { form: validForm, serves: true, html: "ui" });
+
+    const result = run(root);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("CONFIG_UI.collections does not list it");
+  });
+
+  test("fails when collections maps a path no Collection renders", () => {
+    const root = createRepo();
+    addPlugin(root, "sample", {
+      form: validForm,
+      collections: [{ statePath: "/elsewhere" }],
+      serves: true,
+      html: "ui",
+    });
+
+    const result = run(root);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("no Collection element renders it");
+  });
+
+  test("fails when a Collection has no statePath to render", () => {
+    const root = createRepo();
+    addPlugin(root, "sample", {
+      form: { ...validForm, connections: { type: "Collection", children: ["conn-host"] } },
+      collections: validCollections,
+      serves: true,
+      html: "ui",
+    });
+
+    const result = run(root);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("has no string props.statePath");
   });
 
   test("fails when the form is served but the shared UI is missing", () => {

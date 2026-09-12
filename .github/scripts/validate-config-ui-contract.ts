@@ -11,7 +11,10 @@
  *   - a `Field` whose `props.type` is not a catalog field type renders nothing;
  *   - a `children` entry naming a missing element never renders (this is how the
  *     CodeArts AK/SK inputs were silently lost once);
- *   - an element unreachable from `spec.root` renders nothing.
+ *   - an element unreachable from `spec.root` renders nothing;
+ *   - a `Collection` element and its `collections` mapping disagree, which either
+ *     hands the Collection the stored object where it expects a list or rewrites a
+ *     path nothing renders.
  *
  * It also checks the other half of the contract: a plugin ships the shared HTML
  * exactly when its bundle actually serves it. Shipping it otherwise is ~340 KB of
@@ -48,6 +51,72 @@ interface ContractModule {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * A `Collection` element and a `CONFIG_UI.collections` entry are the same fact in
+ * the form's shape and the file's shape: the form keeps a list, the config keeps an
+ * object keyed by name, and that mapping is what converts between them. Both
+ * directions are required and neither is checked anywhere else —
+ *
+ *   - missing: the Collection is handed the stored object where it expects a list,
+ *     which throws while rendering, and the save stops owning that path;
+ *   - stale: a mapping converts a path no element renders, so a value in the file
+ *     is rewritten into a shape nothing shows.
+ */
+function checkCollections(
+  pluginRel: string,
+  configUi: Record<string, unknown>,
+  errors: string[],
+): void {
+  const spec = configUi['spec'];
+  const elements = isRecord(spec) && isRecord(spec['elements']) ? spec['elements'] : {};
+
+  const rendered = new Map<string, string>();
+  for (const [id, rawElement] of Object.entries(elements)) {
+    if (!isRecord(rawElement) || rawElement['type'] !== 'Collection') continue;
+    const props = isRecord(rawElement['props']) ? rawElement['props'] : {};
+    const statePath = props['statePath'];
+    if (typeof statePath === 'string' && statePath !== '') {
+      rendered.set(statePath, id);
+    } else {
+      errors.push(`${pluginRel}: Collection "${id}" has no string props.statePath to render`);
+    }
+  }
+
+  const declared = new Set<string>();
+  const raw = configUi['collections'];
+  if (raw !== undefined) {
+    if (!Array.isArray(raw)) {
+      errors.push(`${pluginRel}: CONFIG_UI.collections must be an array when present`);
+      return;
+    }
+    raw.forEach((entry, index) => {
+      if (!isRecord(entry) || typeof entry['statePath'] !== 'string' || entry['statePath'] === '') {
+        errors.push(
+          `${pluginRel}: CONFIG_UI.collections[${index}] must be an object with a non-empty "statePath"`,
+        );
+        return;
+      }
+      declared.add(entry['statePath']);
+    });
+  }
+
+  for (const [statePath, id] of rendered) {
+    if (!declared.has(statePath)) {
+      errors.push(
+        `${pluginRel}: Collection "${id}" renders ${statePath} but CONFIG_UI.collections does not list it; ` +
+          `the form would be handed the stored object where it expects a list`,
+      );
+    }
+  }
+  for (const statePath of declared) {
+    if (!rendered.has(statePath)) {
+      errors.push(
+        `${pluginRel}: CONFIG_UI.collections lists ${statePath} but no Collection element renders it`,
+      );
+    }
+  }
 }
 
 async function importModule(path: string): Promise<Record<string, unknown>> {
@@ -148,6 +217,7 @@ for (const entry of readdirSync(PLUGINS_ROOT)) {
     } else {
       const configUi = module['CONFIG_UI'];
       checkSpec(pluginRel, isRecord(configUi) ? configUi['spec'] : undefined, errors);
+      if (isRecord(configUi)) checkCollections(pluginRel, configUi, errors);
     }
   }
 
