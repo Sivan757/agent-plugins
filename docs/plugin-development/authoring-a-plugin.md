@@ -84,15 +84,48 @@ asking the user to edit JSON.
 
 2. Open it from the CLI with `openConfigUI(name, CONFIG_UI)` (explicit) or
    `requireConfigWithSetup(name, CONFIG_UI)` (opens it when config is missing or
-   incomplete and hands back the reloaded config).
+   incomplete and hands back the reloaded config). `validate` returning `true`
+   means the config is incomplete, and `setupCommand` is the command the error
+   messages tell the reader to run when the form is skipped — it defaults to
+   `setup`, so set it when your entry point differs.
 3. The vocabulary is fixed by
    [`catalog-contract.ts`](../../plugins/config-center/ui/src/shared/catalog-contract.ts):
    five components (`Header`, `Section`, `Collection`, `Field`, `SaveBar`) and six
    field types (`text`, `password`, `select`, `number`, `textarea`, `checkbox`).
    `validate:config-ui` rejects anything else, plus unreachable elements and
    `children` entries that name a missing element.
-4. Skill text must stand alone: never tell the reader to consult another
+4. A `Collection` element needs two declarations, and they are the same fact in two
+   shapes. The form keeps a list (`spec.state` holds
+   `connections: [{ _name: 'default', … }]`) and the config file keeps an object
+   keyed by that name (`connections: { default: { … } }`), so a collection the form
+   renders must also appear in `collections: [{ statePath: '/connections' }]`. That
+   mapping is what converts between the two on load and on save, and it is what
+   makes the save replace the whole list: the form is showing every entry, so an
+   entry the user deleted has to disappear from the file.
+5. The shared HTML ships inside your bundle, and only when the bundle serves it:
+   `scripts/build-plugin.sh` copies it after a build that contains the marker, and
+   `npm run validate:config-ui` fails a plugin that serves the form without
+   shipping the copy, or ships it without serving it. `npm run build` handles it —
+   do not copy the HTML by hand.
+6. Skill text must stand alone: never tell the reader to consult another
    plugin's skill for a rule, because installing one plugin must be enough.
+
+### What happens when the form opens
+
+`openConfigUI` starts a server on `127.0.0.1` with an OS-assigned port, prints the
+URL to stderr (stdout stays clean for the plugin's own output) and waits. The
+server answers `GET /` with the bundled HTML plus four inline globals — the spec,
+the current state, a CSRF token and the plugin name — and it answers the form's
+`POST /save`, which converts the state back to the config shape, merges it over the
+stored file (your collection paths excepted, see step 4), writes it, replies
+`{ ok: true }` and shuts itself down. `handle.done` then resolves `true`, or `false`
+if the session timed out or was closed: nothing was saved, and the caller decides
+what to do.
+
+For a headless run — a test, a screenshot, a preview — set
+`AGENT_PLUGINS_NO_BROWSER=1` to skip the browser and `AGENT_PLUGINS_UI_TIMEOUT_MS`
+to shorten the wait, and always point `AGENT_PLUGINS_CACHE_DIR` at a scratch
+directory so the run cannot read or rewrite the operator's real credentials.
 
 ## Metadata
 
