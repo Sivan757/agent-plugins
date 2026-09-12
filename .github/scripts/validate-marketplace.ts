@@ -17,7 +17,9 @@
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 
-const ROOT = resolve(import.meta.dir, "../..");
+const ROOT = process.env.PLUGIN_REPO_ROOT
+  ? resolve(process.env.PLUGIN_REPO_ROOT)
+  : resolve(import.meta.dir, "../..");
 const CLAUDE_MARKETPLACE_PATH = resolve(ROOT, ".claude-plugin/marketplace.json");
 
 function isRecord(value: unknown): value is Record<string, unknown> {
