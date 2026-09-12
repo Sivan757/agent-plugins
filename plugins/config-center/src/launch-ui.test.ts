@@ -119,7 +119,9 @@ test('GET / serves the bundled HTML', { skip: !bundledHtmlAvailable() ? 'config-
   await handle.close();
 });
 
-test('GET /api/plugins returns the known plugin list', async () => {
+test('GET /api/plugins lists configured plugins and invents none', async () => {
+  mkdirSync(configStore.configDir('test-listed'), { recursive: true });
+
   const handle = launchUI.launchUI(undefined, {
     output: mockOutput(),
     open: false,
@@ -131,10 +133,13 @@ test('GET /api/plugins returns the known plugin list', async () => {
   assert.equal(res.status, 200);
   const plugins = JSON.parse(res.body);
   assert.ok(Array.isArray(plugins));
-  // Hardcoded known plugins should be present.
-  assert.ok(plugins.includes('ticktick'), `expected ticktick in: ${JSON.stringify(plugins)}`);
-  assert.ok(plugins.includes('postgresql'), `expected postgresql in: ${JSON.stringify(plugins)}`);
+  // A plugin with a config directory is offered...
+  assert.ok(plugins.includes('test-listed'), `expected test-listed in: ${JSON.stringify(plugins)}`);
+  // ...and a plugin nobody configured is not invented, so the list cannot rot
+  // into naming plugins that were never installed.
+  assert.ok(!plugins.includes('never-configured'), `unexpected entry in: ${JSON.stringify(plugins)}`);
 
+  rmSync(configStore.configDir('test-listed'), { recursive: true, force: true });
   await handle.close();
 });
 

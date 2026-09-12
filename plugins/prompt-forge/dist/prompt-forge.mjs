@@ -3499,6 +3499,7 @@ function configDir(name) {
 function artifactsDir(name) {
   return join(configDir(name), "artifacts");
 }
+var POSIX_MODES = process.platform !== "win32";
 
 // src/schema.ts
 var SCHEMA_SQL = `-- Prompt Forge: Initial Schema

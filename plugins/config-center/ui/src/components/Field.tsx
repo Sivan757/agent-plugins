@@ -20,6 +20,16 @@ interface FieldProps {
     | null;
 }
 
+/**
+ * Checkbox state is a boolean. A config file written by an earlier version of
+ * this form, or hand-edited JSON, can hold the strings `'true'`/`'false'`
+ * instead; only the true-ish forms count as checked, so `'false'` — which is
+ * truthy in JavaScript — never renders as a ticked box.
+ */
+function isChecked(value: unknown): boolean {
+  return value === true || value === 'true';
+}
+
 export function Field({ props }: BaseComponentProps<FieldProps>) {
   const id = useId();
   const { ts } = useI18n();
@@ -61,7 +71,7 @@ export function Field({ props }: BaseComponentProps<FieldProps>) {
             <input
               id={id}
               type="checkbox"
-              checked={!!value}
+              checked={isChecked(value)}
               onChange={(e) => onChange(e.target.checked)}
               className="peer sr-only"
             />
@@ -71,7 +81,7 @@ export function Field({ props }: BaseComponentProps<FieldProps>) {
                          peer-focus-visible:ring-2 peer-focus-visible:ring-accent
                          transition-colors flex items-center justify-center"
             >
-              {!!value && (
+              {isChecked(value) && (
                 <svg
                   width="10"
                   height="10"

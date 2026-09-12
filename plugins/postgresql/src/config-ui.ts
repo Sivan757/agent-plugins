@@ -68,7 +68,7 @@ export const CONFIG_UI: ConfigUIOptions = {
     },
     state: {
       connections: [
-        { _name: 'default', host: '127.0.0.1', port: '5432', user: '', password: '', database: '', ssl: 'false' },
+        { _name: 'default', host: '127.0.0.1', port: '5432', user: '', password: '', database: '', ssl: false },
       ],
     },
   },

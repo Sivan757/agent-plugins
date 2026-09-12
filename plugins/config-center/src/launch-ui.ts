@@ -24,6 +24,7 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, saveConfig, configPath, configDir, requireConfig, cacheRoot } from './config-store.js';
 import { PluginError } from './errors.js';
+import { deepMerge } from './config-store.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,48 +106,12 @@ function isValidPluginName(name: string): boolean {
   return /^[A-Za-z0-9_-]+$/.test(name);
 }
 
-// ── Known plugin names for the plugin selector ───────────────────────────────
-
-/**
- * Hardcoded list of migrated plugins. Used by GET /api/plugins to populate the
- * plugin selector dropdown even when no config has been written yet.
- */
-const KNOWN_PLUGINS = [
-  'aliyunlog',
-  'config-center',
-  'ecommerce-expert',
-  'mysql',
-  'postgresql',
-  'ticktick',
-];
-
 // ── Deep merge helper ───────────────────────────────────────────────────────
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
-/**
- * Deep-merge `source` into `target`. Returns a new object; inputs are not
- * mutated. Arrays are replaced, not concatenated.
- */
-export function deepMerge(
-  target: Record<string, unknown>,
-  source: Record<string, unknown>,
-): Record<string, unknown> {
-  const out: Record<string, unknown> = { ...target };
-  for (const key of Object.keys(source)) {
-    if (isPlainObject(out[key]) && isPlainObject(source[key])) {
-      out[key] = deepMerge(
-        out[key] as Record<string, unknown>,
-        source[key] as Record<string, unknown>,
-      );
-    } else {
-      out[key] = source[key];
-    }
-  }
-  return out;
-}
 
 // ── State ↔ Config conversion for collections ──────────────────────────────
 
@@ -332,21 +297,22 @@ window.__PLUGIN_NAME__ = ${safeJSON(pluginName ?? null)};
 // ── Plugin listing ──────────────────────────────────────────────────────────
 
 /**
- * List known plugin names: the hardcoded set plus any directories that exist
- * under ~/.cache/agent-plugins/. Sorted and de-duplicated.
+ * List plugin names that already have a config directory. This is the only
+ * ground truth available at runtime: a plugin is installed on its own, so its
+ * directory cannot see its siblings, and a bundled list of names would name
+ * plugins the user never installed. The generic editor accepts any plugin name
+ * typed by hand and uses this list only to suggest the ones already configured.
  */
 function listPlugins(): string[] {
-  let fromCache: string[] = [];
   try {
-    fromCache = readdirSync(cacheRoot(), { withFileTypes: true })
+    return readdirSync(cacheRoot(), { withFileTypes: true })
       .filter((d) => d.isDirectory())
-      .map((d) => d.name);
+      .map((d) => d.name)
+      .sort();
   } catch {
-    // The cache root doesn't exist yet; just use the hardcoded list.
+    // The cache root doesn't exist yet, so no plugin has been configured.
+    return [];
   }
-
-  const all = new Set<string>([...KNOWN_PLUGINS, ...fromCache]);
-  return Array.from(all).sort();
 }
 
 // ── Request body reader ─────────────────────────────────────────────────────
@@ -475,7 +441,7 @@ export function launchUI(
       return;
     }
 
-    // GET /api/plugins - list known plugin names
+    // GET /api/plugins - list plugins that already have a config
     if (method === 'GET' && url === '/api/plugins') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(listPlugins()));

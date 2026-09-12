@@ -8,8 +8,8 @@
 // plaintext.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { configDir } from './config-store.js';
+import { rm, writeFile } from 'node:fs/promises';
+import { configDir, ensurePrivateConfigDir } from './config-store.js';
 import { fingerprintAll } from './redact.js';
 
 export interface VerificationRecord {
@@ -60,7 +60,7 @@ export async function recordVerification(
   record: Omit<VerificationRecord, 'verifiedAt'> & { verifiedAt?: string },
 ): Promise<void> {
   try {
-    await mkdir(configDir(name), { recursive: true });
+    await ensurePrivateConfigDir(name);
     await writeFile(
       verificationPath(name),
       `${JSON.stringify({ ...record, verifiedAt: record.verifiedAt ?? new Date().toISOString() }, null, 2)}\n`,

@@ -39,65 +39,10 @@ export function createAppRegistry(opts: {
         setState(() => initialState);
         opts.onReset?.(initialState);
       },
-
-      addItem: async (params, setState, state) => {
-        if (!params) return;
-        const { statePath } = params;
-        const current = getByPath(state, statePath) as unknown[];
-        const newItems = [...(current ?? []), {}];
-        setState((prev) => setByPath(prev, statePath, newItems));
-      },
-
-      removeItem: async (params, setState, state) => {
-        if (!params) return;
-        const { statePath, index } = params;
-        const current = getByPath(state, statePath) as unknown[];
-        if (!current) return;
-        const newItems = current.filter((_, i) => i !== index);
-        setState((prev) => setByPath(prev, statePath, newItems));
-      },
     },
   });
 
   return { registry, handlers };
-}
-
-// ---- path helpers ----
-
-function getByPath(obj: unknown, path: string): unknown {
-  const segments = path.replace(/^\//, '').split('/').filter(Boolean);
-  let current: unknown = obj;
-  for (const seg of segments) {
-    if (current == null || typeof current !== 'object') return undefined;
-    current = (current as Record<string, unknown>)[seg];
-  }
-  return current;
-}
-
-function setByPath(
-  obj: Record<string, unknown>,
-  path: string,
-  value: unknown,
-): Record<string, unknown> {
-  const segments = path.replace(/^\//, '').split('/').filter(Boolean);
-  if (segments.length === 0) return obj;
-
-  const result = { ...obj };
-  let current: Record<string, unknown> = result;
-
-  for (let i = 0; i < segments.length - 1; i++) {
-    const seg = segments[i];
-    const next = current[seg];
-    if (next && typeof next === 'object' && !Array.isArray(next)) {
-      current[seg] = { ...(next as Record<string, unknown>) };
-    } else {
-      current[seg] = {};
-    }
-    current = current[seg] as Record<string, unknown>;
-  }
-
-  current[segments[segments.length - 1]] = value;
-  return result;
 }
 
 /**

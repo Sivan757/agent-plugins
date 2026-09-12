@@ -75,7 +75,7 @@ export function Collection({ props }: BaseComponentProps<CollectionProps>) {
       _name: `${itemLabel} ${items.length + 1}`,
     };
     for (const f of childFields) {
-      newItem[f.statePath] = f.type === 'checkbox' ? 'false' : '';
+      newItem[f.statePath] = f.type === 'checkbox' ? false : '';
     }
     const newItems = [...items, newItem];
     set(props.statePath, newItems);

@@ -30,7 +30,7 @@ npx esbuild "$ENTRY" \
 
 # The shared config UI ships only with bundles that actually resolve it: the
 # marker is the directory literal in `loadBundledHTML`'s candidate list, so its
-# absence from the bundle means the 348 KB file would never be read. Kept in sync
+# absence from the bundle means the ~340 KB file would never be read. Kept in sync
 # with the same marker in .github/scripts/validate-config-ui-contract.ts.
 if grep -q "config-ui" "$OUTFILE"; then
   CONFIG_UI_SRC="$REPO_ROOT/plugins/config-center/ui/dist/index.html"

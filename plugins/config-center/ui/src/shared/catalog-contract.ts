@@ -10,7 +10,7 @@
 
 export const CONFIG_UI_COMPONENTS = ['Header', 'Section', 'Collection', 'Field', 'SaveBar'] as const;
 export const CONFIG_UI_FIELD_TYPES = ['text', 'password', 'select', 'number', 'textarea', 'checkbox'] as const;
-export const CONFIG_UI_ACTIONS = ['save', 'reset', 'addItem', 'removeItem'] as const;
+export const CONFIG_UI_ACTIONS = ['save', 'reset'] as const;
 
 export type ConfigUIComponent = (typeof CONFIG_UI_COMPONENTS)[number];
 export type ConfigUIFieldType = (typeof CONFIG_UI_FIELD_TYPES)[number];

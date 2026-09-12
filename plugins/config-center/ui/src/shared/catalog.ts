@@ -94,14 +94,6 @@ const actions = {
   reset: {
     description: 'Reload configuration from disk, discarding changes.',
   },
-  addItem: {
-    params: z.object({ statePath: z.string() }),
-    description: 'Add a new item to a collection at the given state path.',
-  },
-  removeItem: {
-    params: z.object({ statePath: z.string(), index: z.number() }),
-    description: 'Remove an item from a collection by index.',
-  },
 } satisfies Record<ConfigUIAction, unknown>;
 
 export const catalog = defineCatalog(schema, { components, actions });

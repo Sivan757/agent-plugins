@@ -1,6 +1,15 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
+import {
+  mkdtempSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+  rmSync,
+  statSync,
+  chmodSync,
+  readdirSync,
+} from 'fs';
 import { tmpdir, homedir } from 'os';
 import { join } from 'path';
 
@@ -256,3 +265,70 @@ test('AGENT_PLUGINS_CACHE_DIR redirects every config path without a re-import', 
     rmSync(scratch, { recursive: true, force: true });
   }
 });
+
+// ── Private storage ─────────────────────────────────────────────────────────
+//
+// The mode checks are POSIX-only: Windows has no mode to check, so these are
+// skipped there rather than asserting something the platform cannot express.
+
+const POSIX = process.platform !== 'win32';
+
+function modeOf(path: string): number {
+  return statSync(path).mode & 0o777;
+}
+
+test('saveConfig writes the config 0600 inside a 0700 plugin directory', { skip: !POSIX }, async () => {
+  await configStore.saveConfig('demo', { password: 'secret' });
+
+  assert.equal(modeOf(configStore.configDir('demo')).toString(8), '700');
+  assert.equal(modeOf(configStore.configPath('demo')).toString(8), '600');
+
+  // Cleanup
+  rmSync(configStore.configDir('demo'), { recursive: true, force: true });
+});
+
+test('loadConfig tightens a config left readable by other users', { skip: !POSIX }, async () => {
+  // Reproduces a config written before permissions were enforced.
+  const dir = configStore.configDir('demo');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(configStore.configPath('demo'), JSON.stringify({ a: 1 }), 'utf-8');
+  chmodSync(dir, 0o755);
+  chmodSync(configStore.configPath('demo'), 0o644);
+
+  const loaded = await configStore.loadConfig<{ a: number }>('demo');
+  assert.equal(loaded?.a, 1);
+  assert.equal(modeOf(dir).toString(8), '700');
+  assert.equal(modeOf(configStore.configPath('demo')).toString(8), '600');
+
+  // Cleanup
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('saveConfig replaces an existing readable config with a private one', { skip: !POSIX }, async () => {
+  const dir = configStore.configDir('demo');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(configStore.configPath('demo'), JSON.stringify({ old: true }), 'utf-8');
+  chmodSync(configStore.configPath('demo'), 0o644);
+
+  await configStore.saveConfig('demo', { password: 'secret' });
+
+  assert.equal(modeOf(configStore.configPath('demo')).toString(8), '600');
+
+  // Cleanup
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('saveConfig leaves no temporary file behind', async () => {
+  const dir = configStore.configDir('demo');
+
+  await configStore.saveConfig('demo', { first: true });
+  await configStore.saveConfig('demo', { second: true }, { merge: true });
+
+  // The write goes through a sibling temporary file, so a leftover would show up
+  // here and would also mean the rename never completed.
+  assert.deepEqual(readdirSync(dir), ['config.json']);
+
+  // Cleanup
+  rmSync(dir, { recursive: true, force: true });
+});
+

@@ -1,4 +1,9 @@
-export type PluginErrorCode = 'CONFIG_MISSING' | 'CONFIG_INVALID' | 'AUTH_FAILED' | 'QUERY_FAILED';
+export type PluginErrorCode =
+  | 'CONFIG_MISSING'
+  | 'CONFIG_INVALID'
+  | 'CONFIG_PERMISSIONS'
+  | 'AUTH_FAILED'
+  | 'QUERY_FAILED';
 
 export class PluginError extends Error {
   constructor(

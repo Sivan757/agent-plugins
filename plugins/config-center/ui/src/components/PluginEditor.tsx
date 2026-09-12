@@ -185,32 +185,25 @@ export function PluginEditor({ csrfToken, initialPlugin }: PluginEditorProps) {
         {t('reconfigureHint')}
       </p>
 
-      {/* Plugin selector */}
+      {/* Plugin selector: any name can be typed, configured ones are suggested */}
       <div className="flex flex-col gap-1.5 mb-6">
-        <label className="text-[15px] font-medium text-text-primary">
+        <label className="text-[15px] font-medium text-text-primary" htmlFor="plugin-name">
           Plugin
         </label>
-        <div className="relative">
-          <select
-            value={selectedPlugin}
-            onChange={(e) => setSelectedPlugin(e.target.value)}
-            className={`${inputClasses} appearance-none pr-8`}
-          >
-            {!selectedPlugin && (
-              <option value="" disabled>Select a plugin…</option>
-            )}
-            {plugins.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-          <svg
-            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-dim pointer-events-none"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </div>
+        <input
+          id="plugin-name"
+          type="text"
+          list="configured-plugins"
+          value={selectedPlugin}
+          onChange={(e) => setSelectedPlugin(e.target.value)}
+          placeholder="Select a plugin…"
+          className={inputClasses}
+        />
+        <datalist id="configured-plugins">
+          {plugins.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
       </div>
 
       {/* Key/Value editor */}

@@ -10309,8 +10309,9 @@ var {
 } = import_index.default;
 
 // ../config-center/src/config-store.ts
-import { readFile, writeFile, rename, mkdir } from "fs/promises";
+import { readFile, rename, mkdir, chmod, open, stat, unlink } from "fs/promises";
 import { existsSync } from "fs";
+import { randomUUID } from "crypto";
 import { join } from "path";
 import { homedir } from "os";
 
@@ -10349,6 +10350,49 @@ function configPath(name) {
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+var POSIX_MODES = process.platform !== "win32";
+function permissionsMessage(what, detail) {
+  return `Refusing to continue: ${what} is readable by other users and could not be restricted (${detail}). Run 'chmod 700' on the plugin cache directory and 'chmod 600' on its config file.`;
+}
+async function tightenMode(path2, mode, what) {
+  if (!POSIX_MODES) return;
+  try {
+    if (((await stat(path2)).mode & 63) === 0) return;
+    await chmod(path2, mode);
+    if (((await stat(path2)).mode & 63) === 0) return;
+  } catch (e) {
+    if (e.code === "ENOENT") return;
+    throw new PluginError(permissionsMessage(what, e.code ?? e.message), "CONFIG_PERMISSIONS");
+  }
+  throw new PluginError(permissionsMessage(what, "the mode did not change"), "CONFIG_PERMISSIONS");
+}
+async function ensurePrivateConfigDir(name) {
+  const dir = configDir(name);
+  await mkdir(dir, { recursive: true, mode: 448 });
+  await tightenMode(dir, 448, "the plugin cache directory");
+  return dir;
+}
+async function tightenStoredConfig(name) {
+  await tightenMode(configDir(name), 448, "the plugin cache directory");
+  await tightenMode(configPath(name), 384, "the stored configuration");
+}
+async function writeConfigAtomic(path2, data) {
+  const tmp = `${path2}.tmp-${process.pid}-${randomUUID().slice(0, 8)}`;
+  const handle = await open(tmp, "wx", 384);
+  try {
+    await handle.writeFile(data, "utf-8");
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  try {
+    await rename(tmp, path2);
+  } catch (e) {
+    await unlink(tmp).catch(() => {
+    });
+    throw e;
+  }
+}
 function deepMerge(target, source) {
   const result = { ...target };
   for (const [key, value] of Object.entries(source)) {
@@ -10369,14 +10413,16 @@ async function migrateLegacyConfig(name) {
   const dir = configDir(name);
   const flat = legacyFlatPath(name);
   if (existsSync(flat)) {
-    await mkdir(dir, { recursive: true });
+    await mkdir(dir, { recursive: true, mode: 448 });
     await rename(flat, target);
+    await tightenMode(target, 384, "the stored configuration");
     return;
   }
   const older = legacyOlderPath(name);
   if (existsSync(older)) {
-    await mkdir(dir, { recursive: true });
+    await mkdir(dir, { recursive: true, mode: 448 });
     await rename(older, target);
+    await tightenMode(target, 384, "the stored configuration");
     return;
   }
 }
@@ -10394,6 +10440,7 @@ async function loadConfig(name) {
   await migrateLegacyConfig(name);
   const path2 = configPath(name);
   if (!existsSync(path2)) return null;
+  await tightenStoredConfig(name);
   try {
     const raw = await readFile(path2, "utf-8");
     return JSON.parse(raw);
@@ -10403,8 +10450,7 @@ async function loadConfig(name) {
   }
 }
 async function saveConfig(name, data, options = {}) {
-  const dir = configDir(name);
-  await mkdir(dir, { recursive: true });
+  await ensurePrivateConfigDir(name);
   let finalData = data;
   if (options.merge === true) {
     const existing = await readConfigRaw(name);
@@ -10412,8 +10458,10 @@ async function saveConfig(name, data, options = {}) {
       finalData = deepMerge(existing, data);
     }
   }
-  const path2 = configPath(name);
-  await writeFile(path2, JSON.stringify(finalData, null, 2) + "\n", "utf-8");
+  await writeConfigAtomic(
+    configPath(name),
+    JSON.stringify(finalData, null, 2) + "\n"
+  );
 }
 async function requireConfig(name) {
   const config = await loadConfig(name);
@@ -10437,30 +10485,8 @@ var defaultOutput = {
 function isValidPluginName(name) {
   return /^[A-Za-z0-9_-]+$/.test(name);
 }
-var KNOWN_PLUGINS = [
-  "aliyunlog",
-  "config-center",
-  "ecommerce-expert",
-  "mysql",
-  "postgresql",
-  "ticktick"
-];
 function isPlainObject(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
-}
-function deepMerge2(target, source) {
-  const out = { ...target };
-  for (const key of Object.keys(source)) {
-    if (isPlainObject(out[key]) && isPlainObject(source[key])) {
-      out[key] = deepMerge2(
-        out[key],
-        source[key]
-      );
-    } else {
-      out[key] = source[key];
-    }
-  }
-  return out;
 }
 function pointerToKeys(pointer) {
   return pointer.replace(/^\//, "").split("/").filter(Boolean);
@@ -10571,13 +10597,11 @@ window.__PLUGIN_NAME__ = ${safeJSON(pluginName ?? null)};
 </head>`);
 }
 function listPlugins() {
-  let fromCache = [];
   try {
-    fromCache = readdirSync(cacheRoot(), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+    return readdirSync(cacheRoot(), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
   } catch {
+    return [];
   }
-  const all = /* @__PURE__ */ new Set([...KNOWN_PLUGINS, ...fromCache]);
-  return Array.from(all).sort();
 }
 async function readBody(req) {
   const chunks = [];
@@ -10586,21 +10610,21 @@ async function readBody(req) {
 }
 function launchUI(pluginName, options) {
   const output = options?.output ?? defaultOutput;
-  const open = options?.open ?? !process.env.AGENT_PLUGINS_NO_BROWSER;
+  const open2 = options?.open ?? !process.env.AGENT_PLUGINS_NO_BROWSER;
   const timeoutMs = options?.timeoutMs ?? (Number(process.env.AGENT_PLUGINS_UI_TIMEOUT_MS) || 5 * 60 * 1e3);
   const spec = options?.spec;
   const collections = options?.collections;
   const csrfToken = randomBytes(16).toString("hex");
   const existing = pluginName ? readConfigSync(pluginName) : {};
   const hasStoredConfig = Object.keys(existing).length > 0;
-  if (!open && hasStoredConfig && !process.env.AGENT_PLUGINS_CACHE_DIR) {
+  if (!open2 && hasStoredConfig && !process.env.AGENT_PLUGINS_CACHE_DIR) {
     output.stderr(
       `[config-center] WARNING: rendering the stored configuration for "${pluginName ?? "unknown"}". For previews and tests set AGENT_PLUGINS_CACHE_DIR to a scratch directory \u2014 changing HOME inside a script does not isolate it.
 `
     );
   }
   const defaults = spec?.state ?? {};
-  const merged = deepMerge2(defaults, existing);
+  const merged = deepMerge(defaults, existing);
   const uiState = configToState(merged, collections);
   let html = null;
   let htmlError = null;
@@ -10722,7 +10746,7 @@ Run: cd src/config-center && npx vite build --config ui/vite.config.ts`);
         const submittedState = JSON.parse(body);
         const configData = stateToConfig(submittedState, collections);
         const currentExisting = readConfigSync(pluginName);
-        const finalConfig = deepMerge2(currentExisting, configData);
+        const finalConfig = deepMerge(currentExisting, configData);
         await saveConfig(pluginName, finalConfig, { merge: false });
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true }));
@@ -10744,7 +10768,7 @@ Run: cd src/config-center && npx vite build --config ui/vite.config.ts`);
     serverPort = addr?.port ?? 0;
     output.stderr(`Open the config UI at: http://localhost:${serverPort}
 `);
-    if (open && serverPort > 0) {
+    if (open2 && serverPort > 0) {
       const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
       exec(`${cmd} "http://localhost:${serverPort}"`, () => {
       });
@@ -11510,8 +11534,8 @@ function cleanupOldTempFiles() {
     for (const f of fs.readdirSync(TEMP_DIR)) {
       const fp = path.join(TEMP_DIR, f);
       try {
-        const stat = fs.statSync(fp);
-        if (stat.mtimeMs < cutoff) fs.unlinkSync(fp);
+        const stat2 = fs.statSync(fp);
+        if (stat2.mtimeMs < cutoff) fs.unlinkSync(fp);
       } catch {
       }
     }

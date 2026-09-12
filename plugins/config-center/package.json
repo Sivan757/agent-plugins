@@ -21,9 +21,8 @@
     "commander": "*"
   },
   "devDependencies": {
-    "@json-render/core": "latest",
-    "@json-render/react": "latest",
-    "@json-render/shadcn": "latest",
+    "@json-render/core": "0.16.0",
+    "@json-render/react": "0.16.0",
     "@tailwindcss/vite": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",

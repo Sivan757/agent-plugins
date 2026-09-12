@@ -80,9 +80,10 @@ field group with optional collapse), `Collection` (dynamic add/remove/rename
 entry list), `Field` (text, password, select, number, textarea, checkbox, with
 an optional `visibleWhen` gate), and `SaveBar` (reset and save).
 
-Actions: `save` (persist state to the config file), `reset` (reload state from
-the file, discarding changes), `addItem` (append an entry to a collection), and
-`removeItem` (remove an entry by index). `setState` and `validateForm` come from
+Actions: `save` (persist state to the config file) and `reset` (reload state from
+the file, discarding changes). A `Collection` adds, renames and removes its own
+entries through the state store rather than through catalog actions, so no other
+action vocabulary exists to drift. `setState` and `validateForm` come from
 json-render itself.
 
 ## Consequences
@@ -92,7 +93,7 @@ json-render itself.
   shared.
 - The shared HTML travels only with bundles that resolve it. A bundle that does
   not serve the form carries no copy, and `npm run validate:config-ui` rejects
-  both a missing copy and an unused one — 344 KB per plugin, which one plugin was
+  both a missing copy and an unused one — ~340 KB per plugin, which one plugin was
   silently shipping. `bun test ./plugins/config-center/src` and the UI's own test files
   cover the routes, the redaction rules, and the config read/write paths.
 - Changing the catalog changes every plugin spec, so the catalog version and the
