@@ -3487,9 +3487,14 @@ import { createServer } from "node:http";
 import { join } from "path";
 import { homedir } from "os";
 var home = process.env.HOME || homedir();
+var CACHE_DIR_ENV = "AGENT_PLUGINS_CACHE_DIR";
+function cacheRoot() {
+  const override = (process.env[CACHE_DIR_ENV] ?? "").trim();
+  return override || join(home, ".cache", "agent-plugins");
+}
 var CACHE_DIR = join(home, ".cache", "agent-plugins");
 function configDir(name) {
-  return join(CACHE_DIR, name);
+  return join(cacheRoot(), name);
 }
 function artifactsDir(name) {
   return join(configDir(name), "artifacts");

@@ -8614,15 +8614,20 @@ var PluginError = class extends Error {
 
 // ../config-center/src/config-store.ts
 var home = process.env.HOME || homedir();
+var CACHE_DIR_ENV = "AGENT_PLUGINS_CACHE_DIR";
+function cacheRoot() {
+  const override = (process.env[CACHE_DIR_ENV] ?? "").trim();
+  return override || join(home, ".cache", "agent-plugins");
+}
 var CACHE_DIR = join(home, ".cache", "agent-plugins");
 function legacyFlatPath(name) {
-  return join(CACHE_DIR, `${name}.json`);
+  return join(cacheRoot(), `${name}.json`);
 }
 function legacyOlderPath(name) {
   return join(home, ".cache", "ap", "ex-plugin", `${name}.json`);
 }
 function configDir(name) {
-  return join(CACHE_DIR, name);
+  return join(cacheRoot(), name);
 }
 function configPath(name) {
   return join(configDir(name), "config.json");
@@ -8822,7 +8827,7 @@ function loadBundledHTML() {
   const candidates = [
     // Bundled plugin: <plugin>/dist/config-ui/dist/index.html
     resolve(thisDir, "config-ui", "dist", "index.html"),
-    // Dev: src/config-center/src/ -> ../ui/dist/index.html
+    // Dev: plugins/config-center/src/ -> ../ui/dist/index.html
     resolve(thisDir, "..", "ui", "dist", "index.html"),
     // Fallback: deeper nesting
     resolve(thisDir, "..", "..", "ui", "dist", "index.html")
@@ -8854,7 +8859,7 @@ window.__PLUGIN_NAME__ = ${safeJSON(pluginName ?? null)};
 function listPlugins() {
   let fromCache = [];
   try {
-    fromCache = readdirSync(CACHE_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+    fromCache = readdirSync(cacheRoot(), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
   } catch {
   }
   const all = /* @__PURE__ */ new Set([...KNOWN_PLUGINS, ...fromCache]);
@@ -8867,12 +8872,19 @@ async function readBody(req) {
 }
 function launchUI(pluginName, options) {
   const output = options?.output ?? defaultOutput;
-  const open = options?.open ?? true;
-  const timeoutMs = options?.timeoutMs ?? 5 * 60 * 1e3;
+  const open = options?.open ?? !process.env.AGENT_PLUGINS_NO_BROWSER;
+  const timeoutMs = options?.timeoutMs ?? (Number(process.env.AGENT_PLUGINS_UI_TIMEOUT_MS) || 5 * 60 * 1e3);
   const spec = options?.spec;
   const collections = options?.collections;
   const csrfToken = randomBytes(16).toString("hex");
   const existing = pluginName ? readConfigSync(pluginName) : {};
+  const hasStoredConfig = Object.keys(existing).length > 0;
+  if (!open && hasStoredConfig && !process.env.AGENT_PLUGINS_CACHE_DIR) {
+    output.stderr(
+      `[config-center] WARNING: rendering the stored configuration for "${pluginName ?? "unknown"}". For previews and tests set AGENT_PLUGINS_CACHE_DIR to a scratch directory \u2014 changing HOME inside a script does not isolate it.
+`
+    );
+  }
   const defaults2 = spec?.state ?? {};
   const merged = deepMerge2(defaults2, existing);
   const uiState = configToState(merged, collections);
@@ -9053,18 +9065,18 @@ Run: cd src/config-center && npx vite build --config ui/vite.config.ts`);
     }
   };
 }
-async function launchConfigUI(pluginName, options) {
-  const handle = launchUI(pluginName, options);
-  return handle.done;
-}
 async function requireConfigWithSetup(pluginName, options) {
   const { validate } = options;
   const setupCommand = options.setupCommand ?? "setup";
+  const reason = options.reason ? `
+[${pluginName}] ${options.reason}
+` : "";
   let config;
   try {
     config = await requireConfig(pluginName);
   } catch (e) {
     if (e instanceof PluginError && e.code === "CONFIG_MISSING") {
+      process.stderr.write(`[${pluginName}] No configuration yet \u2014 opening the configuration form.${reason}`);
       const handle = launchUI(pluginName, options);
       const saved = await handle.done;
       if (saved) {
@@ -9082,8 +9094,7 @@ async function requireConfigWithSetup(pluginName, options) {
     throw e;
   }
   if (validate && validate(config)) {
-    process.stderr.write(`[${pluginName}] Configuration is incomplete.
-`);
+    process.stderr.write(`[${pluginName}] Configuration is incomplete \u2014 opening the configuration form.${reason}`);
     const handle = launchUI(pluginName, options);
     const saved = await handle.done;
     if (saved) {
@@ -9101,19 +9112,125 @@ async function requireConfigWithSetup(pluginName, options) {
   return config;
 }
 
-// src/postgresql.ts
-var { Client: Client2 } = esm_default;
-var DEFAULT_ROW_LIMIT = 1;
-var DEFAULT_COL_WIDTH = 40;
-function info(msg) {
-  process.stderr.write(`[postgresql] ${msg}
+// ../config-center/src/redact.ts
+var MAX_STRUCTURE_DEPTH = 3;
+function maskFully(value) {
+  return "\u2022".repeat(value.length);
+}
+function redactStructure(prefix, value, options = {}) {
+  const maxDepth = options.maxDepth ?? MAX_STRUCTURE_DEPTH;
+  const walk = (path, current, depth) => {
+    if (current === null || current === void 0 || current === "") {
+      return [`${path}=<not set>`];
+    }
+    if (Array.isArray(current)) {
+      if (depth >= maxDepth || current.length === 0) {
+        return [`${path}=<array: ${current.length} item${current.length === 1 ? "" : "s"}>`];
+      }
+      return current.flatMap((item, index) => walk(`${path}[${index}]`, item, depth + 1));
+    }
+    if (typeof current === "object") {
+      const entries = Object.entries(current);
+      if (depth >= maxDepth || entries.length === 0) {
+        return [`${path}=<object: ${entries.length} key${entries.length === 1 ? "" : "s"}>`];
+      }
+      return entries.flatMap(([key, child]) => walk(`${path}.${key}`, child, depth + 1));
+    }
+    if (typeof current === "number" || typeof current === "boolean") {
+      return [`${path}=${current}`];
+    }
+    const text = String(current);
+    if (options.reveal?.(path)) {
+      return [`${path}=${text}`];
+    }
+    return [`${path}=${maskFully(text)}${options.lengths ? `  len=${text.length}` : ""}`];
+  };
+  return walk(prefix, value, 0);
+}
+
+// ../config-center/src/config-flow.ts
+var defaultOutput2 = {
+  stdout: (s) => process.stdout.write(s),
+  stderr: (s) => process.stderr.write(s)
+};
+var INTENT_MESSAGE = {
+  create: "No configuration yet \u2014 opening the configuration form.",
+  edit: "Opening the configuration form to change the configuration.",
+  view: "Opening the configuration form."
+};
+async function openConfigUI(pluginName, options = {}) {
+  const intent = options.intent ?? "edit";
+  const output = options.output ?? defaultOutput2;
+  output.stderr(`[${pluginName}] ${INTENT_MESSAGE[intent]}
 `);
+  if (options.reason) output.stderr(`[${pluginName}] ${options.reason}
+`);
+  if (intent === "view") {
+    output.stderr(
+      `[${pluginName}] Saving is optional here; the form also ends on its own after the session timeout.
+`
+    );
+  }
+  const handle = launchUI(pluginName, options);
+  await handle.ready;
+  output.stderr(`[${pluginName}] Waiting for the form to be saved (or for the session to time out)\u2026
+`);
+  const saved = await handle.done;
+  return { opened: Boolean(handle.url), saved, url: handle.url };
 }
-function die(msg) {
-  console.error(`ERROR: ${msg}`);
-  process.exit(1);
+async function reconfigure(pluginName, options, reason) {
+  const { saved } = await openConfigUI(pluginName, { ...options, intent: "edit", reason });
+  if (!saved) return null;
+  return loadConfig(pluginName);
 }
-var PG_CONFIG_UI = {
+var FIELD_TYPES = /* @__PURE__ */ new Set(["text", "password", "number", "checkbox", "select", "textarea"]);
+function declaredPaths(spec) {
+  const plain = /* @__PURE__ */ new Set();
+  const password = /* @__PURE__ */ new Set();
+  for (const element of Object.values(spec?.elements ?? {})) {
+    const props = element?.props;
+    const fieldType = String(props?.type ?? "").toLowerCase();
+    const statePath = String(props?.statePath ?? "").trim();
+    if (!statePath || !FIELD_TYPES.has(fieldType)) continue;
+    const dotted = statePath.replace(/^\//, "").split("/").filter(Boolean).join(".");
+    const target = fieldType === "password" ? password : plain;
+    target.add(dotted);
+    target.add(dotted.split(".").pop() ?? dotted);
+  }
+  return { plain, password };
+}
+function summarizeConfig(config, options = {}) {
+  const { plain, password } = declaredPaths(options.spec);
+  const isPassword = (path) => {
+    const leaf = path.split(".").pop() ?? path;
+    return password.has(path) || password.has(leaf);
+  };
+  const reveal = (path) => {
+    if (isPassword(path)) return false;
+    const leaf = path.split(".").pop() ?? path;
+    return plain.has(path) || plain.has(leaf);
+  };
+  const lines = Object.entries(config).flatMap(
+    ([key, value]) => redactStructure(key, value, { lengths: true, reveal })
+  );
+  return lines.length > 0 ? lines : ["<empty configuration>"];
+}
+
+// src/config-ui.ts
+function isRecord2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function isConfigIncomplete(config) {
+  const connections = config["connections"];
+  if (!isRecord2(connections) || Object.keys(connections).length === 0) {
+    return true;
+  }
+  return Object.values(connections).some((connection) => {
+    if (!isRecord2(connection)) return true;
+    return !String(connection["host"] ?? "").trim() || !String(connection["user"] ?? "").trim() || !String(connection["database"] ?? "").trim();
+  });
+}
+var CONFIG_UI = {
   spec: {
     root: "page",
     elements: {
@@ -9163,23 +9280,25 @@ var PG_CONFIG_UI = {
     }
   },
   collections: [{ statePath: "/connections" }],
-  validate: isConfigIncomplete
+  validate: isConfigIncomplete,
+  setupCommand: "config --ui",
+  reason: "Each connection needs a host, a user and a password before any query can run."
 };
+
+// src/postgresql.ts
+var { Client: Client2 } = esm_default;
+var DEFAULT_ROW_LIMIT = 1;
+var DEFAULT_COL_WIDTH = 40;
+function info(msg) {
+  process.stderr.write(`[postgresql] ${msg}
+`);
+}
+function die(msg) {
+  console.error(`ERROR: ${msg}`);
+  process.exit(1);
+}
 async function loadConfig3() {
-  return requireConfigWithSetup("postgresql", PG_CONFIG_UI);
-}
-function isRecord2(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function isConfigIncomplete(config) {
-  const connections = config["connections"];
-  if (!isRecord2(connections) || Object.keys(connections).length === 0) {
-    return true;
-  }
-  return Object.values(connections).some((connection) => {
-    if (!isRecord2(connection)) return true;
-    return !String(connection["host"] ?? "").trim() || !String(connection["user"] ?? "").trim() || !String(connection["database"] ?? "").trim();
-  });
+  return requireConfigWithSetup("postgresql", CONFIG_UI);
 }
 function withDatabaseOverride(connConfig, databaseOverride) {
   const database = databaseOverride?.trim() || connConfig.database;
@@ -9201,9 +9320,13 @@ async function loadConnectionConfig(connName, databaseOverride) {
   let config = await loadConfig3();
   let connConfig = (config.connections || {})[connName];
   if (!connConfig) {
-    info(`Connection "${connName}" is not configured. Opening configuration form...`);
-    if (await launchConfigUI("postgresql", PG_CONFIG_UI)) {
-      config = await loadConfig3();
+    const reloaded = await reconfigure(
+      "postgresql",
+      CONFIG_UI,
+      `Connection "${connName}" is not configured.`
+    );
+    if (reloaded) {
+      config = reloaded;
       connConfig = (config.connections || {})[connName];
     }
   }
@@ -9221,9 +9344,13 @@ async function copyConnection(sourceName, targetName, database, overwrite) {
   let config = await loadConfig3();
   let source = (config.connections || {})[sourceName];
   if (!source) {
-    info(`Source connection "${sourceName}" is not configured. Opening configuration form...`);
-    if (await launchConfigUI("postgresql", PG_CONFIG_UI)) {
-      config = await loadConfig3();
+    const reloaded = await reconfigure(
+      "postgresql",
+      CONFIG_UI,
+      `Source connection "${sourceName}" is not configured.`
+    );
+    if (reloaded) {
+      config = reloaded;
       source = (config.connections || {})[sourceName];
     }
   }
@@ -9492,7 +9619,7 @@ function formatTable(rows, colWidth) {
   return [sep, fmt(headers), sep, ...cells.map((c) => fmt(c)), sep].join("\n");
 }
 var program2 = new Command();
-program2.name("postgresql").description("PostgreSQL query executor for Codex and Claude Code").version("0.5.3");
+program2.name("postgresql").description("PostgreSQL query executor").version("0.6.1");
 program2.command("query", { isDefault: true }).description("Execute a SQL query against a named connection").argument("<connection>", "Connection name").argument("<sql>", "SQL query to execute").option("--database <database>", "Temporarily connect to this database without changing saved config").option("--format <fmt>", "Output format: table|json|csv|compact", "csv").option("--params <json>", "Parameterized query values as JSON array").option("--limit <n>", "Max rows to display (0 = unlimited)", String(DEFAULT_ROW_LIMIT)).option("--col-width <n>", "Max column display width", String(DEFAULT_COL_WIDTH)).action(async (connection, sql, opts) => {
   let params = [];
   if (opts.params) {
@@ -9585,8 +9712,33 @@ Hint: Check column names with:`);
 program2.command("init").description("Create config template").action(() => {
   printTemplate();
 });
-program2.command("setup").description("Open the browser configuration form").action(async () => {
-  const saved = await launchConfigUI("postgresql", PG_CONFIG_UI);
+program2.command("config").description("Show the configured connections (passwords masked)").option("--ui", "open the configuration form, pre-filled, instead of only printing").action(async (options) => {
+  let config = await loadConfig("postgresql");
+  if (options.ui) {
+    const result = await openConfigUI("postgresql", {
+      ...CONFIG_UI,
+      intent: config ? "edit" : "create"
+    });
+    if (!result.opened) {
+      console.error("Could not serve the configuration form; printing the stored configuration instead.");
+    } else if (!result.saved) {
+      console.error("No changes were saved.");
+    }
+    config = await loadConfig("postgresql");
+  }
+  if (!config) {
+    console.error("No configuration yet. Run: postgresql config --ui");
+    process.exit(1);
+  }
+  for (const line of summarizeConfig(config, { spec: CONFIG_UI.spec })) console.log(line);
+  console.log(`configPath=${configPath("postgresql")}`);
+});
+program2.command("setup").description("Open the browser configuration form (alias for `config --ui`)").action(async () => {
+  const existing = await loadConfig("postgresql");
+  const { saved } = await openConfigUI("postgresql", {
+    ...CONFIG_UI,
+    intent: existing ? "edit" : "create"
+  });
   if (!saved) {
     console.error("Configuration was not saved.");
     process.exit(1);

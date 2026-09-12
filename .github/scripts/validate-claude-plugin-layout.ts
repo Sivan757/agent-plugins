@@ -10,6 +10,7 @@
  *   - auto-discovered `commands/` and `agents/` directories contain Markdown definitions
  *   - `hooks/hooks.json` uses the Claude plugin wrapper format
  *   - `.mcp.json` parses as a JSON object with at least one server definition
+ *   - every `${CLAUDE_PLUGIN_ROOT}/...` path named in agent-facing text exists
  *
  * Exit 0 on success, exit 1 on any validation error.
  */
@@ -344,6 +345,65 @@ function validateClaudeManifest(pluginRoot: string, errors: string[]): void {
   }
 }
 
+/**
+ * Walk the surfaces an agent reads at runtime and collect text files that may
+ * name plugin-local paths. Source, build output, and the config UI are excluded:
+ * they run in the repository, not inside an installed plugin.
+ */
+function collectAgentFacingFiles(pluginRoot: string): string[] {
+  const files: string[] = [];
+
+  const walk = (directory: string): void => {
+    if (!existsSync(directory)) {
+      return;
+    }
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        walk(path);
+      } else if (/\.(md|json|sh|mjs|py)$/.test(entry.name)) {
+        files.push(path);
+      }
+    }
+  };
+
+  for (const directoryName of ["agents", "commands", "hooks", "skills"] as const) {
+    walk(join(pluginRoot, directoryName));
+  }
+  for (const fileName of ["README.md", ".mcp.json"] as const) {
+    const path = join(pluginRoot, fileName);
+    if (existsSync(path)) {
+      files.push(path);
+    }
+  }
+
+  return files;
+}
+
+/**
+ * A plugin ships its bundle under `dist/`, so an instruction that names a
+ * missing plugin-local path sends the agent to a command that cannot run.
+ * Placeholder segments (`<name>`) and globs are skipped.
+ */
+function validatePluginRootReferences(pluginRoot: string, errors: string[]): void {
+  const pattern = /\$\{CLAUDE_PLUGIN_ROOT\}((?:\/[^\s"'`)\]}]*)+)/g;
+
+  for (const filePath of collectAgentFacingFiles(pluginRoot)) {
+    const contents = readFileSync(filePath, "utf-8");
+    const fileRel = relative(ROOT, filePath);
+
+    for (const match of contents.matchAll(pattern)) {
+      const referenced = match[1].replace(/[.,;:]+$/, "");
+      if (/[<>*$]/.test(referenced)) {
+        continue;
+      }
+      if (!existsSync(join(pluginRoot, referenced))) {
+        errors.push(`${fileRel}: references missing path \${CLAUDE_PLUGIN_ROOT}${referenced}`);
+      }
+    }
+  }
+}
+
 function main(): void {
   const errors: string[] = [];
 
@@ -358,6 +418,7 @@ function main(): void {
     validateMarkdownDirectory(pluginRoot, "agents", errors);
     validateClaudeHooks(pluginRoot, errors);
     validateMcpConfig(pluginRoot, errors);
+    validatePluginRootReferences(pluginRoot, errors);
   }
 
   if (errors.length > 0) {

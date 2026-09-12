@@ -33,9 +33,8 @@ The domain skills intentionally stay documentation-only (no scripts, no bundled 
 ## Structure
 
 ```
-src/apifox/
+plugins/apifox/
 ├── plugin.config.ts
-├── package.json
 └── skills/
     ├── apifox-cli/SKILL.md
     ├── apifox-cli-checkup/SKILL.md

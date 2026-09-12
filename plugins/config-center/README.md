@@ -8,7 +8,7 @@ Local configuration center for managing plugin credentials and environment state
 | --- | --- |
 | `init [<plugin>]` | Bootstraps `~/.cache/agent-plugins/<name>/`; if a schema is registered, opens the HTML UI for human entry. |
 | `edit [<plugin>]` | The sole modification path. Opens the HTML UI only. No CLI `set`. |
-| `get <plugin> [key]` | Prints redacted value(s) (`te•••••key` or `<not set>`). Default redact; used by the Agent to confirm a key is set. |
+| `get <plugin> [key]` | Prints value(s) masked whole with their length (`••••••••••  len=10`), or `<not set>`; used by the Agent to confirm a key is set. |
 | `show <plugin>` | Prints all keys redacted. Never raw. |
 | `which <plugin>` | Prints only whether a config file exists and its age — never the path or contents. |
 

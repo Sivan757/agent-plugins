@@ -15,7 +15,7 @@ Legacy config at `.claude/.aliyun.json` (project-local) is still supported as a 
     "accessKeySecret": "<your-access-key-secret>",
     "endpoint": "cn-hangzhou.log.aliyuncs.com"
   },
-  "default_project": "robot-k8s-dev",
+  "default_project": "example-dev",
   "environments": {
     "<env>": {
       "project": "<sls_project_name>",
@@ -81,13 +81,13 @@ Given config:
     "accessKeySecret": "...",
     "endpoint": "cn-hangzhou.log.aliyuncs.com"
   },
-  "default_project": "robot-k8s-dev",
+  "default_project": "example-dev",
   "environments": {
-    "dev": { "project": "robot-k8s-dev", "logstore_pattern": "dev1-{service}" },
-    "prod": { "project": "robot-k8s-prod", "logstore_pattern": "{service}" }
+    "dev": { "project": "example-dev", "logstore_pattern": "dev1-{service}" },
+    "prod": { "project": "example-prod", "logstore_pattern": "{service}" }
   },
   "aliases": {
-    "prod/base": { "logstore": "robot-base" }
+    "prod/base": { "logstore": "platform-base" }
   }
 }
 ```
@@ -95,8 +95,8 @@ Given config:
 Resolution results:
 | Input | Project | Logstore |
 |-------|---------|----------|
-| `dev saas` | robot-k8s-dev | dev1-saas |
-| `dev imes` | robot-k8s-dev | dev1-imes |
-| `prod saas` | robot-k8s-prod | saas |
-| `prod base` | robot-k8s-prod | robot-base (alias override) |
-| `sit saas` | robot-k8s-dev | sit-saas (fallback) |
+| `dev order-api` | example-dev | dev1-order-api |
+| `dev user-api` | example-dev | dev1-user-api |
+| `prod order-api` | example-prod | order-api |
+| `prod base` | example-prod | platform-base (alias override) |
+| `sit order-api` | example-dev | sit-order-api (fallback) |

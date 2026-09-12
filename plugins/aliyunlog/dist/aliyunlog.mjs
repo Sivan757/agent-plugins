@@ -10328,15 +10328,20 @@ var PluginError = class extends Error {
 
 // ../config-center/src/config-store.ts
 var home = process.env.HOME || homedir();
+var CACHE_DIR_ENV = "AGENT_PLUGINS_CACHE_DIR";
+function cacheRoot() {
+  const override = (process.env[CACHE_DIR_ENV] ?? "").trim();
+  return override || join(home, ".cache", "agent-plugins");
+}
 var CACHE_DIR = join(home, ".cache", "agent-plugins");
 function legacyFlatPath(name) {
-  return join(CACHE_DIR, `${name}.json`);
+  return join(cacheRoot(), `${name}.json`);
 }
 function legacyOlderPath(name) {
   return join(home, ".cache", "ap", "ex-plugin", `${name}.json`);
 }
 function configDir(name) {
-  return join(CACHE_DIR, name);
+  return join(cacheRoot(), name);
 }
 function configPath(name) {
   return join(configDir(name), "config.json");
@@ -10536,7 +10541,7 @@ function loadBundledHTML() {
   const candidates = [
     // Bundled plugin: <plugin>/dist/config-ui/dist/index.html
     resolve(thisDir, "config-ui", "dist", "index.html"),
-    // Dev: src/config-center/src/ -> ../ui/dist/index.html
+    // Dev: plugins/config-center/src/ -> ../ui/dist/index.html
     resolve(thisDir, "..", "ui", "dist", "index.html"),
     // Fallback: deeper nesting
     resolve(thisDir, "..", "..", "ui", "dist", "index.html")
@@ -10568,7 +10573,7 @@ window.__PLUGIN_NAME__ = ${safeJSON(pluginName ?? null)};
 function listPlugins() {
   let fromCache = [];
   try {
-    fromCache = readdirSync(CACHE_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+    fromCache = readdirSync(cacheRoot(), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
   } catch {
   }
   const all = /* @__PURE__ */ new Set([...KNOWN_PLUGINS, ...fromCache]);
@@ -10581,12 +10586,19 @@ async function readBody(req) {
 }
 function launchUI(pluginName, options) {
   const output = options?.output ?? defaultOutput;
-  const open = options?.open ?? true;
-  const timeoutMs = options?.timeoutMs ?? 5 * 60 * 1e3;
+  const open = options?.open ?? !process.env.AGENT_PLUGINS_NO_BROWSER;
+  const timeoutMs = options?.timeoutMs ?? (Number(process.env.AGENT_PLUGINS_UI_TIMEOUT_MS) || 5 * 60 * 1e3);
   const spec = options?.spec;
   const collections = options?.collections;
   const csrfToken = randomBytes(16).toString("hex");
   const existing = pluginName ? readConfigSync(pluginName) : {};
+  const hasStoredConfig = Object.keys(existing).length > 0;
+  if (!open && hasStoredConfig && !process.env.AGENT_PLUGINS_CACHE_DIR) {
+    output.stderr(
+      `[config-center] WARNING: rendering the stored configuration for "${pluginName ?? "unknown"}". For previews and tests set AGENT_PLUGINS_CACHE_DIR to a scratch directory \u2014 changing HOME inside a script does not isolate it.
+`
+    );
+  }
   const defaults = spec?.state ?? {};
   const merged = deepMerge2(defaults, existing);
   const uiState = configToState(merged, collections);
@@ -10770,11 +10782,15 @@ Run: cd src/config-center && npx vite build --config ui/vite.config.ts`);
 async function requireConfigWithSetup(pluginName, options) {
   const { validate } = options;
   const setupCommand = options.setupCommand ?? "setup";
+  const reason = options.reason ? `
+[${pluginName}] ${options.reason}
+` : "";
   let config;
   try {
     config = await requireConfig(pluginName);
   } catch (e) {
     if (e instanceof PluginError && e.code === "CONFIG_MISSING") {
+      process.stderr.write(`[${pluginName}] No configuration yet \u2014 opening the configuration form.${reason}`);
       const handle = launchUI(pluginName, options);
       const saved = await handle.done;
       if (saved) {
@@ -10792,8 +10808,7 @@ async function requireConfigWithSetup(pluginName, options) {
     throw e;
   }
   if (validate && validate(config)) {
-    process.stderr.write(`[${pluginName}] Configuration is incomplete.
-`);
+    process.stderr.write(`[${pluginName}] Configuration is incomplete \u2014 opening the configuration form.${reason}`);
     const handle = launchUI(pluginName, options);
     const saved = await handle.done;
     if (saved) {
@@ -10811,39 +10826,115 @@ async function requireConfigWithSetup(pluginName, options) {
   return config;
 }
 
+// ../config-center/src/redact.ts
+var MAX_STRUCTURE_DEPTH = 3;
+function maskFully(value) {
+  return "\u2022".repeat(value.length);
+}
+function redactStructure(prefix, value, options = {}) {
+  const maxDepth = options.maxDepth ?? MAX_STRUCTURE_DEPTH;
+  const walk = (path2, current, depth) => {
+    if (current === null || current === void 0 || current === "") {
+      return [`${path2}=<not set>`];
+    }
+    if (Array.isArray(current)) {
+      if (depth >= maxDepth || current.length === 0) {
+        return [`${path2}=<array: ${current.length} item${current.length === 1 ? "" : "s"}>`];
+      }
+      return current.flatMap((item, index) => walk(`${path2}[${index}]`, item, depth + 1));
+    }
+    if (typeof current === "object") {
+      const entries = Object.entries(current);
+      if (depth >= maxDepth || entries.length === 0) {
+        return [`${path2}=<object: ${entries.length} key${entries.length === 1 ? "" : "s"}>`];
+      }
+      return entries.flatMap(([key, child]) => walk(`${path2}.${key}`, child, depth + 1));
+    }
+    if (typeof current === "number" || typeof current === "boolean") {
+      return [`${path2}=${current}`];
+    }
+    const text = String(current);
+    if (options.reveal?.(path2)) {
+      return [`${path2}=${text}`];
+    }
+    return [`${path2}=${maskFully(text)}${options.lengths ? `  len=${text.length}` : ""}`];
+  };
+  return walk(prefix, value, 0);
+}
+
+// ../config-center/src/config-flow.ts
+var defaultOutput2 = {
+  stdout: (s) => process.stdout.write(s),
+  stderr: (s) => process.stderr.write(s)
+};
+var INTENT_MESSAGE = {
+  create: "No configuration yet \u2014 opening the configuration form.",
+  edit: "Opening the configuration form to change the configuration.",
+  view: "Opening the configuration form."
+};
+async function openConfigUI(pluginName, options = {}) {
+  const intent = options.intent ?? "edit";
+  const output = options.output ?? defaultOutput2;
+  output.stderr(`[${pluginName}] ${INTENT_MESSAGE[intent]}
+`);
+  if (options.reason) output.stderr(`[${pluginName}] ${options.reason}
+`);
+  if (intent === "view") {
+    output.stderr(
+      `[${pluginName}] Saving is optional here; the form also ends on its own after the session timeout.
+`
+    );
+  }
+  const handle = launchUI(pluginName, options);
+  await handle.ready;
+  output.stderr(`[${pluginName}] Waiting for the form to be saved (or for the session to time out)\u2026
+`);
+  const saved = await handle.done;
+  return { opened: Boolean(handle.url), saved, url: handle.url };
+}
+var FIELD_TYPES = /* @__PURE__ */ new Set(["text", "password", "number", "checkbox", "select", "textarea"]);
+function declaredPaths(spec) {
+  const plain = /* @__PURE__ */ new Set();
+  const password = /* @__PURE__ */ new Set();
+  for (const element of Object.values(spec?.elements ?? {})) {
+    const props = element?.props;
+    const fieldType = String(props?.type ?? "").toLowerCase();
+    const statePath = String(props?.statePath ?? "").trim();
+    if (!statePath || !FIELD_TYPES.has(fieldType)) continue;
+    const dotted = statePath.replace(/^\//, "").split("/").filter(Boolean).join(".");
+    const target = fieldType === "password" ? password : plain;
+    target.add(dotted);
+    target.add(dotted.split(".").pop() ?? dotted);
+  }
+  return { plain, password };
+}
+function summarizeConfig(config, options = {}) {
+  const { plain, password } = declaredPaths(options.spec);
+  const isPassword = (path2) => {
+    const leaf = path2.split(".").pop() ?? path2;
+    return password.has(path2) || password.has(leaf);
+  };
+  const reveal = (path2) => {
+    if (isPassword(path2)) return false;
+    const leaf = path2.split(".").pop() ?? path2;
+    return plain.has(path2) || plain.has(leaf);
+  };
+  const lines = Object.entries(config).flatMap(
+    ([key, value]) => redactStructure(key, value, { lengths: true, reveal })
+  );
+  return lines.length > 0 ? lines : ["<empty configuration>"];
+}
+
 // src/aliyunlog.ts
 var import_log = __toESM(require_log(), 1);
-var CONFIG_PATH = configPath("aliyunlog");
-var CACHE_DIR2 = path.join(os.homedir(), ".cache", "agent-plugins");
-var LEGACY_CACHE_DIR = path.join(os.homedir(), ".cache", ["ap", "ex-plugin"].join(""));
-var MAPPINGS_CACHE_PATH = path.join(CACHE_DIR2, "aliyunlog-mappings.json");
-var LEGACY_MAPPINGS_CACHE_PATH = path.join(LEGACY_CACHE_DIR, "aliyunlog-mappings.json");
-var CONTEXT_PATH = path.join(CACHE_DIR2, "aliyunlog-context.json");
-var LEGACY_CONTEXT_PATH = path.join(LEGACY_CACHE_DIR, "aliyunlog-context.json");
-var TEMP_DIR = path.join(os.tmpdir(), "claude-sls");
-var AUTO_TEMP_THRESHOLD = 2e3;
-function die(msg) {
-  process.stderr.write(`ERROR: ${msg}
-`);
-  process.exit(1);
-}
-function info(msg) {
-  process.stderr.write(`[SLS] ${msg}
-`);
-}
-function resolveCachePath(primaryPath, legacyPath) {
-  if (fs.existsSync(primaryPath)) return primaryPath;
-  return fs.existsSync(legacyPath) ? legacyPath : primaryPath;
-}
-function createClient(config, timeout) {
-  return new import_log.default({
-    accessKeyId: config.credentials.accessKeyId,
-    accessKeySecret: config.credentials.accessKeySecret,
-    endpoint: config.credentials.endpoint,
-    ...timeout ? { timeout } : { timeout: 1e4 }
-  });
-}
-var ALIYUNLOG_CONFIG_UI = {
+
+// src/config-ui.ts
+var REASON_NEEDS_CONFIG = "SLS needs an AccessKey pair and a service endpoint before any query can run.";
+var CONFIG_UI = {
+  // The browser form is the path that keeps the secret out of the terminal, so
+  // error hints point at it rather than at the legacy `setup` wizard.
+  setupCommand: "config --ui",
+  reason: REASON_NEEDS_CONFIG,
   spec: {
     root: "page",
     elements: {
@@ -10876,7 +10967,7 @@ var ALIYUNLOG_CONFIG_UI = {
       },
       "setting-default-project": {
         type: "Field",
-        props: { label: { en: "Default Project", zh: "\u9ED8\u8BA4\u9879\u76EE" }, type: "text", required: false, help: null, placeholder: { en: "e.g. robot-k8s-dev", zh: "\u4F8B\u5982 robot-k8s-dev" }, options: null, statePath: "/default_project" }
+        props: { label: { en: "Default Project", zh: "\u9ED8\u8BA4\u9879\u76EE" }, type: "text", required: false, help: null, placeholder: { en: "e.g. example-dev", zh: "\u4F8B\u5982 example-dev" }, options: null, statePath: "/default_project" }
       },
       "environments": {
         type: "Collection",
@@ -10908,16 +10999,48 @@ var ALIYUNLOG_CONFIG_UI = {
     return !c || !c.accessKeyId || c.accessKeyId.includes("<") || !c.accessKeySecret || c.accessKeySecret.includes("<") || !c.endpoint;
   }
 };
+
+// src/aliyunlog.ts
+var CONFIG_PATH = configPath("aliyunlog");
+var CACHE_DIR2 = path.join(os.homedir(), ".cache", "agent-plugins");
+var LEGACY_CACHE_DIR = path.join(os.homedir(), ".cache", ["ap", "ex-plugin"].join(""));
+var MAPPINGS_CACHE_PATH = path.join(CACHE_DIR2, "aliyunlog-mappings.json");
+var LEGACY_MAPPINGS_CACHE_PATH = path.join(LEGACY_CACHE_DIR, "aliyunlog-mappings.json");
+var CONTEXT_PATH = path.join(CACHE_DIR2, "aliyunlog-context.json");
+var LEGACY_CONTEXT_PATH = path.join(LEGACY_CACHE_DIR, "aliyunlog-context.json");
+var TEMP_DIR = path.join(os.tmpdir(), "claude-sls");
+var AUTO_TEMP_THRESHOLD = 2e3;
+function die(msg) {
+  process.stderr.write(`ERROR: ${msg}
+`);
+  process.exit(1);
+}
+function info(msg) {
+  process.stderr.write(`[SLS] ${msg}
+`);
+}
+function resolveCachePath(primaryPath, legacyPath) {
+  if (fs.existsSync(primaryPath)) return primaryPath;
+  return fs.existsSync(legacyPath) ? legacyPath : primaryPath;
+}
+function createClient(config, timeout) {
+  return new import_log.default({
+    accessKeyId: config.credentials.accessKeyId,
+    accessKeySecret: config.credentials.accessKeySecret,
+    endpoint: config.credentials.endpoint,
+    ...timeout ? { timeout } : { timeout: 1e4 }
+  });
+}
 function validateCredentials(config) {
-  if (!ALIYUNLOG_CONFIG_UI.validate(config)) return;
+  if (!CONFIG_UI.validate(config)) return;
   const c = config.credentials;
-  if (!c) die(`Missing 'credentials' section in config. Run: aliyunlog setup`);
+  if (!c) die(`Missing 'credentials' section in config. Run: aliyunlog config --ui`);
   if (!c.accessKeyId || c.accessKeyId.includes("<"))
-    die(`Invalid accessKeyId in config. Run: aliyunlog setup`);
+    die(`Invalid accessKeyId in config. Run: aliyunlog config --ui`);
   if (!c.accessKeySecret || c.accessKeySecret.includes("<"))
-    die(`Invalid accessKeySecret in config. Run: aliyunlog setup`);
+    die(`Invalid accessKeySecret in config. Run: aliyunlog config --ui`);
   if (!c.endpoint)
-    die(`Missing endpoint in config. Run: aliyunlog setup`);
+    die(`Missing endpoint in config. Run: aliyunlog config --ui`);
 }
 function loadContext() {
   try {
@@ -11629,7 +11752,7 @@ async function getLogsWithRetry(client, project, logstore, from, to, query, limi
 async function loadConfig3() {
   return requireConfigWithSetup(
     "aliyunlog",
-    ALIYUNLOG_CONFIG_UI
+    CONFIG_UI
   );
 }
 async function runQuery(env, service, opts) {
@@ -11881,12 +12004,48 @@ Hint: List available logstores:
   }
 }
 var program2 = new Command();
-program2.name("aliyunlog").description("Alibaba Cloud SLS log query CLI").version("1.2.0");
+program2.name("aliyunlog").description("Alibaba Cloud SLS log query CLI").version("1.7.1");
 program2.command("init").description("Create config template").action(async () => {
   await cmdInit();
 });
-program2.command("setup").description("Interactive setup wizard").action(async () => {
-  await cmdSetup();
+program2.command("config").description("Show the configured credentials (secrets masked)").option("--ui", "open the configuration form, pre-filled, instead of only printing").action(async (options) => {
+  let config = await loadConfig("aliyunlog");
+  if (options.ui) {
+    const result = await openConfigUI("aliyunlog", {
+      ...CONFIG_UI,
+      intent: config ? "edit" : "create",
+      reason: REASON_NEEDS_CONFIG
+    });
+    if (!result.opened) {
+      console.error("Could not serve the configuration form; printing the stored configuration instead.");
+    } else if (!result.saved) {
+      console.error("No changes were saved.");
+    }
+    config = await loadConfig("aliyunlog");
+  }
+  if (!config) {
+    console.error("No configuration yet. Run: aliyunlog config --ui");
+    process.exit(1);
+  }
+  for (const line of summarizeConfig(config, { spec: CONFIG_UI.spec })) console.log(line);
+  console.log(`configPath=${CONFIG_PATH}`);
+});
+program2.command("setup").description("Open the browser configuration form (alias for `config --ui`)").option("--terminal", "use the legacy terminal wizard instead of the browser form").action(async (options) => {
+  if (options.terminal) {
+    await cmdSetup();
+    return;
+  }
+  const existing = await loadConfig("aliyunlog");
+  const { saved } = await openConfigUI("aliyunlog", {
+    ...CONFIG_UI,
+    intent: existing ? "edit" : "create",
+    reason: REASON_NEEDS_CONFIG
+  });
+  if (!saved) {
+    console.error("Configuration was not saved.");
+    process.exit(1);
+  }
+  console.log("Configuration saved.");
 });
 program2.command("test").description("Test SDK connection").action(async () => {
   const config = await loadConfig3();

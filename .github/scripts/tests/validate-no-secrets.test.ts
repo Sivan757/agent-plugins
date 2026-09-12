@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  findAccessKeyLiteral,
   isExcludedPath,
   isScannedFile,
   previewOf,
@@ -13,6 +14,9 @@ import {
 const HEX_SECRET = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0";
 const HEX_SECRET_ALT = "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0a1";
 const TOKEN_LIKE = "t1z26vlvwq1kulyyyybkdy0bfwnlrgfls8e4ssefhxpanh1mltyodjacc";
+// A Huawei access key id is 20 uppercase alphanumerics: too short for any
+// entropy rule, but half of a live credential pair.
+const ACCESS_KEY_LIKE = "Q7XK3M9PLW2ZR5TV8BND";
 
 function rules(findings: SecretFinding[]): string[] {
   return findings.map(finding => finding.rule);
@@ -33,6 +37,15 @@ describe("secret scanner", () => {
     const line = `${HEX_SECRET}access\\_token${TOKEN_LIKE}app\\_key${HEX_SECRET_ALT}data\\_typeJSON`;
     const findings = scanText("src/demo/references/signing.md", line);
     expect(rules(findings)).toContain("keyed-entropy");
+  });
+
+  test("flags the accessKeyId spelling used by Huawei and AWS", () => {
+    // `accessKeyId`/`accessKeySecret` were absent from the credential-field
+    // pattern, so a long value beside them was never even considered.
+    for (const field of ["accessKeyId", "accessKeySecret", "access_key_id", "accessKey"]) {
+      const findings = scanText(`src/demo/client.ts`, `const ${field} = "${HEX_SECRET}";\n`);
+      expect(findings.map(finding => finding.rule)).toContain("keyed-entropy");
+    }
   });
 
   test("flags a bare standalone hex blob line", () => {
@@ -104,6 +117,40 @@ describe("secret scanner", () => {
     expect(findings[0].file).toBe("docs/report.md");
   });
 
+  test("flags an access-key-shaped literal in code", () => {
+    const findings = scanText("src/demo/client.ts", `const ak = "${ACCESS_KEY_LIKE}";\n`);
+    expect(rules(findings)).toEqual(["ak-literal"]);
+    expect(findings[0].line).toBe(1);
+    // The shape is only reported, never reproduced in full.
+    expect(findings[0].preview).not.toContain(ACCESS_KEY_LIKE);
+  });
+
+  test("flags an access-key literal in docs only beside a credential field", () => {
+    const bare = scanText("src/demo/references/ids.md", `- orderNo: "${ACCESS_KEY_LIKE}"\n`);
+    expect(bare).toEqual([]);
+
+    const keyed = scanText("src/demo/references/auth.md", `- accessKeyId: "${ACCESS_KEY_LIKE}"\n`);
+    expect(rules(keyed)).toEqual(["ak-literal"]);
+  });
+
+  test("accepts values that announce themselves as fixtures", () => {
+    for (const value of [
+      "EXAMPLEKEY0000000001",
+      "AKIAIOSFODNN7EXAMPLE",
+      "FIXTUREACCESSKEY0001",
+      "TESTDUMMYACCESSKEY01",
+    ]) {
+      expect(findAccessKeyLiteral(`const ak = "${value}";`)).toBeNull();
+    }
+  });
+
+  test("ignores unquoted, hyphenated and wrong-length access keys", () => {
+    expect(findAccessKeyLiteral("const ak = Q7XK3M9PLW2ZR5TV8BND;")).toBeNull();
+    expect(findAccessKeyLiteral('const ak = "Q7XK3M9PLW2ZR5TV8BN";')).toBeNull();
+    expect(findAccessKeyLiteral('const ak = "SDK-HMAC-SHA256-ABCDEF";')).toBeNull();
+    expect(findAccessKeyLiteral('const ak = "q7xk3m9plw2zr5tv8bnd";')).toBeNull();
+  });
+
   test("previews never contain the full literal", () => {
     const preview = previewOf(HEX_SECRET + TOKEN_LIKE);
     expect(preview).not.toContain(HEX_SECRET);
@@ -115,16 +162,16 @@ describe("secret scanner", () => {
 describe("scan scope selection", () => {
   test("excludes generated and third-party data surfaces", () => {
     expect(isExcludedPath("plugins/demo/dist/demoo.mjs")).toBe(true);
-    expect(isExcludedPath("src/demo/node_modules/lib/index.js")).toBe(true);
+    expect(isExcludedPath("plugins/demo/node_modules/lib/index.js")).toBe(true);
     expect(isExcludedPath("plugins/prompt-forge/skills/prompt-forge/data/prompts.jsonl")).toBe(true);
     expect(isExcludedPath("plugins/mysql/dist/bundle.mjs")).toBe(true);
   });
 
   test("keeps human-authored surfaces in scope", () => {
     expect(isExcludedPath("plugins/ecommerce-expert/skills/temu-dev/SKILL.md")).toBe(false);
-    expect(isExcludedPath("src/mysql/plugin.config.ts")).toBe(false);
-    expect(isScannedFile("docs/superpowers/evals/report.md")).toBe(true);
-    expect(isScannedFile("src/config-center/package.json")).toBe(true);
+    expect(isExcludedPath("plugins/mysql/plugin.config.ts")).toBe(false);
+    expect(isScannedFile("docs/decisions/single-tree-plugin-layout.md")).toBe(true);
+    expect(isScannedFile("plugins/config-center/src/config-center.test.ts")).toBe(true);
     expect(isScannedFile("assets/logo.png")).toBe(false);
   });
 });

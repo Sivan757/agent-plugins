@@ -10,7 +10,7 @@ const tempRoots: string[] = [];
 function createRepo(): string {
   const root = mkdtempSync(join(tmpdir(), "agent-plugins-frontmatter-"));
   tempRoots.push(root);
-  mkdirSync(join(root, "src"), { recursive: true });
+  mkdirSync(join(root, "plugins"), { recursive: true });
   return root;
 }
 
@@ -32,7 +32,7 @@ function run(root: string, args: string[] = ["--all"]) {
 }
 
 function writeSkill(root: string, name = "demo", frontmatter = 'name: demo\ndescription: Demo skill\n'): string {
-  const file = join(root, "src", "sample-plugin", "skills", name, "SKILL.md");
+  const file = join(root, "plugins", "sample-plugin", "skills", name, "SKILL.md");
   writeText(file, `---\n${frontmatter}---\n\n# Demo\n`);
   return file;
 }
@@ -48,7 +48,7 @@ describe("frontmatter validation (--all)", () => {
     const root = createRepo();
     writeSkill(root);
     writeText(
-      join(root, "src", "sample-plugin", "commands", "init.md"),
+      join(root, "plugins", "sample-plugin", "commands", "init.md"),
       '---\ndescription: Initialize\nargument-hint: "[target] [--dry-run]"\n---\n\nbody\n',
     );
 
@@ -61,7 +61,7 @@ describe("frontmatter validation (--all)", () => {
   test("rejects an unquoted flow-sequence argument hint", () => {
     const root = createRepo();
     writeText(
-      join(root, "src", "sample-plugin", "commands", "init.md"),
+      join(root, "plugins", "sample-plugin", "commands", "init.md"),
       "---\ndescription: Initialize\nargument-hint: [target] [--dry-run]\n---\n\nbody\n",
     );
 
@@ -85,7 +85,7 @@ describe("frontmatter validation (--all)", () => {
   test("leaves a skill's internal agents directory out of scope", () => {
     const root = createRepo();
     writeSkill(root);
-    writeText(join(root, "src", "sample-plugin", "skills", "demo", "agents", "note.md"), "# resource file\n");
+    writeText(join(root, "plugins", "sample-plugin", "skills", "demo", "agents", "note.md"), "# resource file\n");
 
     const result = run(root);
 
@@ -103,7 +103,7 @@ describe("frontmatter validation (--all)", () => {
   test("still validates explicit paths passed as arguments", () => {
     const root = createRepo();
     const skill = writeSkill(root);
-    writeText(join(root, "src", "sample-plugin", "commands", "broken.md"), "---\nargument-hint: [a] [b]\n---\n");
+    writeText(join(root, "plugins", "sample-plugin", "commands", "broken.md"), "---\nargument-hint: [a] [b]\n---\n");
 
     const result = run(root, [skill]);
 

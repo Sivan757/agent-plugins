@@ -1,0 +1,9 @@
+import type { PluginConfig } from "../../scripts/plugin-config";
+
+export default {
+  name: "magick",
+  version: "0.1.0",
+  description:
+    "Generate, execute, and verify ImageMagick magick, mogrify, identify, compare, composite, and montage workflows for image conversion, resizing, compression, normalization, clothing mockup overlays, watermarks, labels, contact sheets, chroma-key transparency and print cutouts, metadata, visual QA, PDF/SVG rasterization, and delegate/format troubleshooting.",
+  author: { name: "Agent Plugins" },
+} satisfies PluginConfig;

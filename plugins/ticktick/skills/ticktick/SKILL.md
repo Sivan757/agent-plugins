@@ -251,7 +251,20 @@ Opens the browser for OAuth2 authorization. Required when `TICKTICK_ACCESS_TOKEN
 | abandoned | Abandoned   |
 
 ### Host Configuration
-The CLI reads credentials from a global config file at `~/.cache/agent-plugins/ticktick/config.json`. **NEVER read, open, `cat`, or `Read` that file directly** - use the `auth`, `setup x-device`, and `whoami` subcommands instead. When config is missing, a browser setup form opens automatically.
+The CLI reads credentials from a global config file at `~/.cache/agent-plugins/ticktick/config.json`. **NEVER read, open, `cat`, or `Read` that file directly** - use the `auth`, `config`, `setup x-device`, and `whoami` subcommands instead. When config is missing, a browser setup form opens automatically; `config --ui` opens it pre-filled, and `config` prints the account with secrets masked. Note that `ticktick setup` is *not* the config form - it sets the X-Device header.
+
+
+**Opening the form is your job, not the user's.** When the user wants to set up,
+change, or look at the configuration, run `config --ui` yourself as a background
+task — do not print the command and wait for them to type it. The form is served
+by that process, so it stays alive until the user saves or the session times out;
+continue with other work and read the configuration back afterwards.
+
+The four cases where you open it yourself: first-time setup, a change to what is
+stored, showing the user what is stored, and a command that cannot continue until
+the account is fixed — in the last case the CLI opens the form on its own and
+reloads after a save.
+
 
 ### API Architecture
 - **V1 (OAuth2)**: projects, task get/create/complete/delete — uses Bearer token

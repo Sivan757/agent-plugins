@@ -1,0 +1,14 @@
+{
+  "name": "ticktick",
+  "version": "0.7.1",
+  "type": "module",
+  "scripts": {
+    "build": "bash ../../scripts/build-plugin.sh ticktick src/ticktick.ts",
+    "dev": "tsx src/ticktick.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agent-plugins/config-center": "*",
+    "commander": "*"
+  }
+}

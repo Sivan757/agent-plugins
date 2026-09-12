@@ -2,7 +2,7 @@
 
 ## Common Errors
 
-- **`@alicloud/log not found`** - Run `npm install --prefix <plugin-dir>` or restart the session to trigger auto-install
+- **`Cannot find module '/dist/aliyunlog.mjs'`** - `${CLAUDE_PLUGIN_ROOT}` was empty. Check that it is set before running the command
 - **`Invalid accessKeyId`** - Run `--setup` for interactive configuration, or edit `~/.cache/agent-plugins/aliyunlog.json` with real credentials
 - **`No config found`** - Run `--setup` (interactive) or `--init` (template) to create `~/.cache/agent-plugins/aliyunlog.json`
 - **`Failed to parse config`** - Check for trailing commas, missing quotes, or other JSON syntax errors
@@ -15,12 +15,6 @@
 - **Permission errors** - Verify SLS access key has read permission on target project
 - **`No previous context found`** - Run a query first (context is auto-saved by default), and don't use `--no-context` if you need `--more`/`--refine`/`--full`
 - **`--full` shows usage instead of replaying context** - Your plugin version is old; rerun the original query with `--full`, or upgrade to latest plugin
-
-## npm Install Failures
-
-- **Network issues** - Check proxy settings or try `npm install --prefix <plugin-dir> --registry https://registry.npmmirror.com`
-- **Permission denied** - Ensure write access to the plugin directory's `node_modules`
-- **Corrupted node_modules** - Delete `node_modules` and `package-lock.json`, then re-run `npm install --prefix <plugin-dir>`
 
 ## SDK Timeout / Rate Limiting
 

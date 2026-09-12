@@ -1,6 +1,6 @@
 # E-commerce Platform Expert
 
-E-commerce platform API knowledge base plugin for Codex and Claude Code — two independent skills, one plugin.
+E-commerce platform API knowledge base plugin — two independent skills, one plugin.
 
 ## Skills
 

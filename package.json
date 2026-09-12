@@ -3,33 +3,21 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "src/ticktick",
-    "src/postgresql",
-    "src/mysql",
-    "src/aliyunlog",
-    "src/ecommerce-expert",
-    "src/config-center",
-    "src/prompt-forge",
-    "src/ffmpeg",
-    "src/magick",
-    "src/real-esrgan",
-    "src/withoutbg",
-    "src/consulting-advisor",
-    "src/zentao"
+    "plugins/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build:ui": "npm run build:ui --workspace @agent-plugins/config-center",
+    "build": "npm run build:ui && npm run build --workspaces --if-present",
     "generate:plugins": "tsx scripts/generate-plugin-metadata.ts",
-    "pack:plugins": "tsx scripts/pack-plugins.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "validate:plugin-metadata": "tsx scripts/validate-plugin-metadata.ts",
-    "validate:plugin-packs": "tsx scripts/validate-plugin-metadata.ts --packs",
+    "validate:plugin-metadata": "tsx scripts/generate-plugin-metadata.ts --check",
     "validate:claude-layout": "bun run .github/scripts/validate-claude-plugin-layout.ts",
     "validate:marketplace": "bun run .github/scripts/validate-marketplace.ts",
     "validate:versions": "bun run .github/scripts/validate-versions.ts",
     "validate:no-secrets": "bun run .github/scripts/validate-no-secrets.ts",
     "validate:frontmatter": "bun run .github/scripts/validate-frontmatter.ts --all",
-    "validate:plugins": "npm run validate:plugin-metadata && npm run validate:claude-layout && npm run validate:marketplace && npm run validate:versions && npm run validate:frontmatter && npm run validate:no-secrets"
+    "validate:config-ui": "bun run .github/scripts/validate-config-ui-contract.ts",
+    "validate:plugins": "npm run validate:plugin-metadata && npm run validate:claude-layout && npm run validate:config-ui && npm run validate:marketplace && npm run validate:versions && npm run validate:frontmatter && npm run validate:no-secrets"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

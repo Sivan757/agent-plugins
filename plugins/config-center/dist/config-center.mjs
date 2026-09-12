@@ -3498,15 +3498,20 @@ var PluginError = class extends Error {
 
 // src/config-store.ts
 var home = process.env.HOME || homedir();
+var CACHE_DIR_ENV = "AGENT_PLUGINS_CACHE_DIR";
+function cacheRoot() {
+  const override = (process.env[CACHE_DIR_ENV] ?? "").trim();
+  return override || join(home, ".cache", "agent-plugins");
+}
 var CACHE_DIR = join(home, ".cache", "agent-plugins");
 function legacyFlatPath(name) {
-  return join(CACHE_DIR, `${name}.json`);
+  return join(cacheRoot(), `${name}.json`);
 }
 function legacyOlderPath(name) {
   return join(home, ".cache", "ap", "ex-plugin", `${name}.json`);
 }
 function configDir(name) {
-  return join(CACHE_DIR, name);
+  return join(cacheRoot(), name);
 }
 function configPath(name) {
   return join(configDir(name), "config.json");
@@ -3582,40 +3587,39 @@ async function saveConfig(name, data, options = {}) {
 }
 
 // src/redact.ts
-function redact(value) {
-  if (value == null || value === "") {
-    return "<not set>";
-  }
-  if (value.length >= 8) {
-    const prefix = value.slice(0, 2);
-    const suffix = value.slice(-3);
-    const middleLen = value.length - 2 - 3;
-    return prefix + "\u2022".repeat(middleLen) + suffix;
-  }
+var MAX_STRUCTURE_DEPTH = 3;
+function maskFully(value) {
   return "\u2022".repeat(value.length);
 }
-var MAX_STRUCTURE_DEPTH = 2;
-function redactStructure(prefix, value, depth = 0) {
-  if (value === null || value === void 0) {
-    return [`${prefix}=<not set>`];
-  }
-  if (Array.isArray(value)) {
-    if (depth >= MAX_STRUCTURE_DEPTH || value.length === 0) {
-      return [`${prefix}=<array: ${value.length} item${value.length === 1 ? "" : "s"}>`];
+function redactStructure(prefix, value, options = {}) {
+  const maxDepth = options.maxDepth ?? MAX_STRUCTURE_DEPTH;
+  const walk = (path, current, depth) => {
+    if (current === null || current === void 0 || current === "") {
+      return [`${path}=<not set>`];
     }
-    return value.flatMap((item, i) => redactStructure(`${prefix}[${i}]`, item, depth + 1));
-  }
-  if (typeof value === "object") {
-    const entries = Object.entries(value);
-    if (depth >= MAX_STRUCTURE_DEPTH || entries.length === 0) {
-      return [`${prefix}=<object: ${entries.length} key${entries.length === 1 ? "" : "s"}>`];
+    if (Array.isArray(current)) {
+      if (depth >= maxDepth || current.length === 0) {
+        return [`${path}=<array: ${current.length} item${current.length === 1 ? "" : "s"}>`];
+      }
+      return current.flatMap((item, index) => walk(`${path}[${index}]`, item, depth + 1));
     }
-    return entries.flatMap(([k, v]) => redactStructure(`${prefix}.${k}`, v, depth + 1));
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return [`${prefix}=${value}`];
-  }
-  return [`${prefix}=${redact(String(value))}`];
+    if (typeof current === "object") {
+      const entries = Object.entries(current);
+      if (depth >= maxDepth || entries.length === 0) {
+        return [`${path}=<object: ${entries.length} key${entries.length === 1 ? "" : "s"}>`];
+      }
+      return entries.flatMap(([key, child]) => walk(`${path}.${key}`, child, depth + 1));
+    }
+    if (typeof current === "number" || typeof current === "boolean") {
+      return [`${path}=${current}`];
+    }
+    const text = String(current);
+    if (options.reveal?.(path)) {
+      return [`${path}=${text}`];
+    }
+    return [`${path}=${maskFully(text)}${options.lengths ? `  len=${text.length}` : ""}`];
+  };
+  return walk(prefix, value, 0);
 }
 
 // src/launch-ui.ts
@@ -3736,7 +3740,7 @@ function loadBundledHTML() {
   const candidates = [
     // Bundled plugin: <plugin>/dist/config-ui/dist/index.html
     resolve(thisDir, "config-ui", "dist", "index.html"),
-    // Dev: src/config-center/src/ -> ../ui/dist/index.html
+    // Dev: plugins/config-center/src/ -> ../ui/dist/index.html
     resolve(thisDir, "..", "ui", "dist", "index.html"),
     // Fallback: deeper nesting
     resolve(thisDir, "..", "..", "ui", "dist", "index.html")
@@ -3768,7 +3772,7 @@ window.__PLUGIN_NAME__ = ${safeJSON(pluginName ?? null)};
 function listPlugins() {
   let fromCache = [];
   try {
-    fromCache = readdirSync(CACHE_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+    fromCache = readdirSync(cacheRoot(), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
   } catch {
   }
   const all = /* @__PURE__ */ new Set([...KNOWN_PLUGINS, ...fromCache]);
@@ -3781,12 +3785,19 @@ async function readBody(req) {
 }
 function launchUI(pluginName, options) {
   const output = options?.output ?? defaultOutput;
-  const open = options?.open ?? true;
-  const timeoutMs = options?.timeoutMs ?? 5 * 60 * 1e3;
+  const open = options?.open ?? !process.env.AGENT_PLUGINS_NO_BROWSER;
+  const timeoutMs = options?.timeoutMs ?? (Number(process.env.AGENT_PLUGINS_UI_TIMEOUT_MS) || 5 * 60 * 1e3);
   const spec = options?.spec;
   const collections = options?.collections;
   const csrfToken = randomBytes(16).toString("hex");
   const existing = pluginName ? readConfigSync(pluginName) : {};
+  const hasStoredConfig = Object.keys(existing).length > 0;
+  if (!open && hasStoredConfig && !process.env.AGENT_PLUGINS_CACHE_DIR) {
+    output.stderr(
+      `[config-center] WARNING: rendering the stored configuration for "${pluginName ?? "unknown"}". For previews and tests set AGENT_PLUGINS_CACHE_DIR to a scratch directory \u2014 changing HOME inside a script does not isolate it.
+`
+    );
+  }
   const defaults = spec?.state ?? {};
   const merged = deepMerge2(defaults, existing);
   const uiState = configToState(merged, collections);
@@ -3996,14 +4007,14 @@ function buildProgram(output) {
         return;
       }
       for (const [k, v] of Object.entries(config)) {
-        for (const line of redactStructure(k, v)) {
+        for (const line of redactStructure(k, v, { lengths: true })) {
           output.stdout(`${line}
 `);
         }
       }
       return;
     }
-    for (const line of redactStructure(key, config?.[key])) {
+    for (const line of redactStructure(key, config?.[key], { lengths: true })) {
       output.stdout(`${line}
 `);
     }
@@ -4015,7 +4026,7 @@ function buildProgram(output) {
       return;
     }
     for (const [k, v] of Object.entries(config)) {
-      for (const line of redactStructure(k, v)) {
+      for (const line of redactStructure(k, v, { lengths: true })) {
         output.stdout(`${line}
 `);
       }

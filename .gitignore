@@ -10,10 +10,13 @@ external-resources/*
 .playwright-mcp
 .vscode/
 node_modules/
-.build/
-src/*/dist/
-src/*/ui/dist/
-src/*/package-lock.json
+
+# The vite build for the shared config UI is an intermediate: what ships is
+# plugins/<name>/dist/config-ui/dist/index.html. Plugin bundles under
+# plugins/<name>/dist/ are committed on purpose, because this repository is
+# installed as a git marketplace and consumers cannot build it themselves.
+plugins/*/ui/dist/
+
 .serena/
 *.tsbuildinfo
 bun.lock

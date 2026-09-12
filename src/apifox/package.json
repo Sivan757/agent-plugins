@@ -1,6 +1,0 @@
-{
-  "name": "@agent-plugins/apifox",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Apifox CLI skills for managing API projects, running interface automation tests, importing/exporting API docs, and handling branch collaboration. Use when the user asks to manage Apifox project resources (endpoints, environments, schemas, mocks, branches), run test cases/scenarios/suites via the apifox CLI, import or export OpenAPI/Postman/Apifox-native formats, or debug apifox CLI behavior."
-}

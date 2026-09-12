@@ -4,18 +4,12 @@
 
 - **`Connection "xxx" not found`** - Run `--list` to see available connection names. **NEVER guess.**
 - **`Unknown column 'xxx'`** - Run `--columns <conn> <table>` to see actual column names. **NEVER guess columns.**
-- **`mysql2 package not found`** - Run `npm install --prefix ${CLAUDE_PLUGIN_ROOT}` or restart the session to trigger auto-install
+- **`Cannot find module '/dist/mysql.mjs'`** - `${CLAUDE_PLUGIN_ROOT}` was empty. Check that it is set before running the command
 - **`No config found`** - Run `--init` to create `~/.cache/agent-plugins/mysql.json`
 - **`Failed to parse config`** - Check for trailing commas, missing quotes, or other JSON syntax errors
 - **`Connection refused`** - Verify host, port, and that MySQL server is running
 - **`Access denied`** - Check username and password in config
 - **`Unknown database`** - Verify the database name exists
-
-## npm Install Failures
-
-- **Network issues** - Check proxy settings or try `npm install --prefix <plugin-dir> --registry https://registry.npmmirror.com`
-- **Permission denied** - Ensure write access to the plugin directory's `node_modules`
-- **Corrupted node_modules** - Delete `node_modules` and `package-lock.json`, then re-run `npm install --prefix <plugin-dir>`
 
 ## Security Guidelines
 

@@ -26,9 +26,8 @@ The default verb is the product: the user asks to build or design something new,
 ## Structure
 
 ```
-src/hallmark/
+plugins/hallmark/
 ├── plugin.config.ts
-├── package.json
 └── skills/
     └── hallmark/
         ├── SKILL.md            # rule-set entry: verbs, design flow, safety rail

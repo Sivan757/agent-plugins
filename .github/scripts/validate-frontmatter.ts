@@ -34,7 +34,7 @@ const ROOT = process.env.PLUGIN_REPO_ROOT
 function discoverFrontmatterFiles(): string[] {
   const files: string[] = [];
 
-  for (const base of ["src", "plugins"]) {
+  for (const base of ["plugins"]) {
     const baseDir = join(ROOT, base);
     if (!existsSync(baseDir)) continue;
 

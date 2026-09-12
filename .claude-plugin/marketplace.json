@@ -23,6 +23,12 @@
       "description": "Apifox CLI skills for managing API projects, running interface automation tests, importing/exporting API docs, and handling branch collaboration. Use when the user asks to manage Apifox project resources (endpoints, environments, schemas, mocks, branches), run test cases/scenarios/suites via the apifox CLI, import or export OpenAPI/Postman/Apifox-native formats, or debug apifox CLI behavior."
     },
     {
+      "name": "codearts",
+      "version": "0.1.0",
+      "source": "./plugins/codearts",
+      "description": "Run Huawei Cloud CodeArts pipelines, builds, code checks, deploys, artifact repositories and code repos from the local codearts CLI, covering the development-to-operations chain end to end."
+    },
+    {
       "name": "config-center",
       "version": "0.1.1",
       "source": "./plugins/config-center",
@@ -44,7 +50,7 @@
       "name": "ecommerce-expert",
       "version": "1.1.0",
       "source": "./plugins/ecommerce-expert",
-      "description": "E-commerce platform API knowledge base \u2014 SHEIN (173 endpoints) and Temu with full parameter specs, signing algorithms, integration patterns, and offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides)"
+      "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu with full parameter specs, signing algorithms, integration patterns, and offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides)"
     },
     {
       "name": "ffmpeg",
@@ -90,7 +96,7 @@
     },
     {
       "name": "shopify-ai-toolkit",
-      "description": "Shopify development toolkit \u2014 themes, apps, Storefront API, Hydrogen, checkout extensions, Polaris, POS, and Liquid templating",
+      "description": "Shopify development toolkit — themes, apps, Storefront API, Hydrogen, checkout extensions, Polaris, POS, and Liquid templating",
       "source": {
         "source": "url",
         "url": "https://github.com/Shopify/Shopify-AI-Toolkit.git"
@@ -122,7 +128,7 @@
       "name": "zentao",
       "version": "0.1.7",
       "source": "./plugins/zentao",
-      "description": "Zentao (\u7985\u9053) CLI skill \u2014 query and operate Zentao project-management data (programs, products, projects, executions, stories, bugs, tasks, test cases, plans, releases, feedback, users, attachments) via the zentao command-line tool. Use when the user mentions \u7985\u9053/zentao, asks for project progress, bug lists, task creation, or story status updates."
+      "description": "Zentao (禅道) CLI skill — query and operate Zentao project-management data (programs, products, projects, executions, stories, bugs, tasks, test cases, plans, releases, feedback, users, attachments) via the zentao command-line tool. Use when the user mentions 禅道/zentao, asks for project progress, bug lists, task creation, or story status updates."
     }
   ]
 }

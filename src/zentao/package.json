@@ -1,6 +1,0 @@
-{
-  "name": "@agent-plugins/zentao",
-  "version": "0.1.7",
-  "private": true,
-  "description": "Zentao (禅道) CLI skill — query and operate Zentao project-management data via the zentao command-line tool"
-}

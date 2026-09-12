@@ -3501,15 +3501,20 @@ var PluginError = class extends Error {
 
 // ../config-center/src/config-store.ts
 var home = process.env.HOME || homedir();
+var CACHE_DIR_ENV = "AGENT_PLUGINS_CACHE_DIR";
+function cacheRoot() {
+  const override = (process.env[CACHE_DIR_ENV] ?? "").trim();
+  return override || join(home, ".cache", "agent-plugins");
+}
 var CACHE_DIR = join(home, ".cache", "agent-plugins");
 function legacyFlatPath(name) {
-  return join(CACHE_DIR, `${name}.json`);
+  return join(cacheRoot(), `${name}.json`);
 }
 function legacyOlderPath(name) {
   return join(home, ".cache", "ap", "ex-plugin", `${name}.json`);
 }
 function configDir(name) {
-  return join(CACHE_DIR, name);
+  return join(cacheRoot(), name);
 }
 function configPath(name) {
   return join(configDir(name), "config.json");
@@ -3709,7 +3714,7 @@ function loadBundledHTML() {
   const candidates = [
     // Bundled plugin: <plugin>/dist/config-ui/dist/index.html
     resolve(thisDir, "config-ui", "dist", "index.html"),
-    // Dev: src/config-center/src/ -> ../ui/dist/index.html
+    // Dev: plugins/config-center/src/ -> ../ui/dist/index.html
     resolve(thisDir, "..", "ui", "dist", "index.html"),
     // Fallback: deeper nesting
     resolve(thisDir, "..", "..", "ui", "dist", "index.html")
@@ -3741,7 +3746,7 @@ window.__PLUGIN_NAME__ = ${safeJSON(pluginName ?? null)};
 function listPlugins() {
   let fromCache = [];
   try {
-    fromCache = readdirSync(CACHE_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+    fromCache = readdirSync(cacheRoot(), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
   } catch {
   }
   const all = /* @__PURE__ */ new Set([...KNOWN_PLUGINS, ...fromCache]);
@@ -3754,12 +3759,19 @@ async function readBody(req) {
 }
 function launchUI(pluginName, options) {
   const output = options?.output ?? defaultOutput;
-  const open = options?.open ?? true;
-  const timeoutMs = options?.timeoutMs ?? 5 * 60 * 1e3;
+  const open = options?.open ?? !process.env.AGENT_PLUGINS_NO_BROWSER;
+  const timeoutMs = options?.timeoutMs ?? (Number(process.env.AGENT_PLUGINS_UI_TIMEOUT_MS) || 5 * 60 * 1e3);
   const spec = options?.spec;
   const collections = options?.collections;
   const csrfToken = randomBytes(16).toString("hex");
   const existing = pluginName ? readConfigSync(pluginName) : {};
+  const hasStoredConfig = Object.keys(existing).length > 0;
+  if (!open && hasStoredConfig && !process.env.AGENT_PLUGINS_CACHE_DIR) {
+    output.stderr(
+      `[config-center] WARNING: rendering the stored configuration for "${pluginName ?? "unknown"}". For previews and tests set AGENT_PLUGINS_CACHE_DIR to a scratch directory \u2014 changing HOME inside a script does not isolate it.
+`
+    );
+  }
   const defaults = spec?.state ?? {};
   const merged = deepMerge2(defaults, existing);
   const uiState = configToState(merged, collections);
@@ -3943,11 +3955,15 @@ Run: cd src/config-center && npx vite build --config ui/vite.config.ts`);
 async function requireConfigWithSetup(pluginName, options) {
   const { validate } = options;
   const setupCommand = options.setupCommand ?? "setup";
+  const reason = options.reason ? `
+[${pluginName}] ${options.reason}
+` : "";
   let config;
   try {
     config = await requireConfig(pluginName);
   } catch (e) {
     if (e instanceof PluginError && e.code === "CONFIG_MISSING") {
+      process.stderr.write(`[${pluginName}] No configuration yet \u2014 opening the configuration form.${reason}`);
       const handle = launchUI(pluginName, options);
       const saved = await handle.done;
       if (saved) {
@@ -3965,8 +3981,7 @@ async function requireConfigWithSetup(pluginName, options) {
     throw e;
   }
   if (validate && validate(config)) {
-    process.stderr.write(`[${pluginName}] Configuration is incomplete.
-`);
+    process.stderr.write(`[${pluginName}] Configuration is incomplete \u2014 opening the configuration form.${reason}`);
     const handle = launchUI(pluginName, options);
     const saved = await handle.done;
     if (saved) {
@@ -3984,10 +3999,112 @@ async function requireConfigWithSetup(pluginName, options) {
   return config;
 }
 
-// src/ticktick.ts
-var SESSION_CACHE = `${tmpdir()}/ticktick-session.json`;
-var SESSION_TTL_MS = 36e5;
-var TICKTICK_CONFIG_UI = {
+// ../config-center/src/redact.ts
+var MAX_STRUCTURE_DEPTH = 3;
+function maskFully(value) {
+  return "\u2022".repeat(value.length);
+}
+function redactStructure(prefix, value, options = {}) {
+  const maxDepth = options.maxDepth ?? MAX_STRUCTURE_DEPTH;
+  const walk = (path, current, depth) => {
+    if (current === null || current === void 0 || current === "") {
+      return [`${path}=<not set>`];
+    }
+    if (Array.isArray(current)) {
+      if (depth >= maxDepth || current.length === 0) {
+        return [`${path}=<array: ${current.length} item${current.length === 1 ? "" : "s"}>`];
+      }
+      return current.flatMap((item, index) => walk(`${path}[${index}]`, item, depth + 1));
+    }
+    if (typeof current === "object") {
+      const entries = Object.entries(current);
+      if (depth >= maxDepth || entries.length === 0) {
+        return [`${path}=<object: ${entries.length} key${entries.length === 1 ? "" : "s"}>`];
+      }
+      return entries.flatMap(([key, child]) => walk(`${path}.${key}`, child, depth + 1));
+    }
+    if (typeof current === "number" || typeof current === "boolean") {
+      return [`${path}=${current}`];
+    }
+    const text = String(current);
+    if (options.reveal?.(path)) {
+      return [`${path}=${text}`];
+    }
+    return [`${path}=${maskFully(text)}${options.lengths ? `  len=${text.length}` : ""}`];
+  };
+  return walk(prefix, value, 0);
+}
+
+// ../config-center/src/config-flow.ts
+var defaultOutput2 = {
+  stdout: (s) => process.stdout.write(s),
+  stderr: (s) => process.stderr.write(s)
+};
+var INTENT_MESSAGE = {
+  create: "No configuration yet \u2014 opening the configuration form.",
+  edit: "Opening the configuration form to change the configuration.",
+  view: "Opening the configuration form."
+};
+async function openConfigUI(pluginName, options = {}) {
+  const intent = options.intent ?? "edit";
+  const output = options.output ?? defaultOutput2;
+  output.stderr(`[${pluginName}] ${INTENT_MESSAGE[intent]}
+`);
+  if (options.reason) output.stderr(`[${pluginName}] ${options.reason}
+`);
+  if (intent === "view") {
+    output.stderr(
+      `[${pluginName}] Saving is optional here; the form also ends on its own after the session timeout.
+`
+    );
+  }
+  const handle = launchUI(pluginName, options);
+  await handle.ready;
+  output.stderr(`[${pluginName}] Waiting for the form to be saved (or for the session to time out)\u2026
+`);
+  const saved = await handle.done;
+  return { opened: Boolean(handle.url), saved, url: handle.url };
+}
+var FIELD_TYPES = /* @__PURE__ */ new Set(["text", "password", "number", "checkbox", "select", "textarea"]);
+function declaredPaths(spec) {
+  const plain = /* @__PURE__ */ new Set();
+  const password = /* @__PURE__ */ new Set();
+  for (const element of Object.values(spec?.elements ?? {})) {
+    const props = element?.props;
+    const fieldType = String(props?.type ?? "").toLowerCase();
+    const statePath = String(props?.statePath ?? "").trim();
+    if (!statePath || !FIELD_TYPES.has(fieldType)) continue;
+    const dotted = statePath.replace(/^\//, "").split("/").filter(Boolean).join(".");
+    const target = fieldType === "password" ? password : plain;
+    target.add(dotted);
+    target.add(dotted.split(".").pop() ?? dotted);
+  }
+  return { plain, password };
+}
+function summarizeConfig(config, options = {}) {
+  const { plain, password } = declaredPaths(options.spec);
+  const isPassword = (path) => {
+    const leaf = path.split(".").pop() ?? path;
+    return password.has(path) || password.has(leaf);
+  };
+  const reveal = (path) => {
+    if (isPassword(path)) return false;
+    const leaf = path.split(".").pop() ?? path;
+    return plain.has(path) || plain.has(leaf);
+  };
+  const lines = Object.entries(config).flatMap(
+    ([key, value]) => redactStructure(key, value, { lengths: true, reveal })
+  );
+  return lines.length > 0 ? lines : ["<empty configuration>"];
+}
+
+// src/config-ui.ts
+var REASON_NEEDS_CONFIG = "TickTick needs the username, password and X-Device header that authenticate this account.";
+var CONFIG_UI = {
+  // `setup` here means `setup x-device`, so it must not be offered as the way to
+  // open the form.
+  setupCommand: "config --ui",
+  reason: REASON_NEEDS_CONFIG,
   spec: {
     root: "page",
     elements: {
@@ -4029,6 +4146,10 @@ var TICKTICK_CONFIG_UI = {
     state: { host: "ticktick.com", username: "", password: "" }
   }
 };
+
+// src/ticktick.ts
+var SESSION_CACHE = `${tmpdir()}/ticktick-session.json`;
+var SESSION_TTL_MS = 36e5;
 var FETCH_RETRY_ATTEMPTS = 3;
 var FETCH_RETRY_DELAY_MS = 350;
 function isTransientFetchError(error) {
@@ -4308,7 +4429,7 @@ function parseRawOpts(rawArgs) {
 }
 async function main() {
   const program2 = new Command();
-  program2.name("ticktick").description("TickTick CLI \u2014 AI-friendly task management").version("0.3.0").addHelpText("after", `
+  program2.name("ticktick").description("TickTick CLI \u2014 AI-friendly task management").version("0.7.1").addHelpText("after", `
 Resources:
   tasks       list|get|create|quick-add|update|complete|delete|move|search|batch-create|batch-complete|batch-delete
               set-parent|unset-parent|subtasks|checklist|checklist-add|checklist-check|checklist-uncheck|checklist-remove|checklist-rename
@@ -4332,11 +4453,34 @@ Examples:
   ticktick habits checkin-all
   ticktick tags list
   ticktick user stats`);
+  program2.command("config").description("Show the configured account (secrets masked)").option("--ui", "open the configuration form, pre-filled, instead of only printing").action(async (options) => {
+    let config = await loadConfig("ticktick");
+    if (options.ui) {
+      const result = await openConfigUI("ticktick", {
+        ...CONFIG_UI,
+        intent: config ? "edit" : "create",
+        reason: REASON_NEEDS_CONFIG
+      });
+      if (!result.opened) {
+        console.error("Could not serve the configuration form; printing the stored configuration instead.");
+      } else if (!result.saved) {
+        console.error("No changes were saved.");
+      }
+      config = await loadConfig("ticktick");
+    }
+    if (!config) {
+      console.error("No configuration yet. Run: ticktick config --ui");
+      process.exit(1);
+    }
+    for (const line of summarizeConfig(config, { spec: CONFIG_UI.spec })) console.log(line);
+    console.log(`configPath=${configPath("ticktick")}`);
+    return;
+  });
   const resourceNames = ["tasks", "projects", "folders", "tags", "columns", "habits", "user", "focus"];
   for (const res of resourceNames) {
     program2.command(res).description(`Manage ${res}`).argument("<action>", "Action to perform (see --help)").argument("[args...]", "Positional arguments for the action").allowUnknownOption(true).allowExcessArguments(true).action(async (action, positionalArgs, _cmdObj) => {
       const { args: realArgs, opts } = parseRawOpts(positionalArgs);
-      const config = await requireConfigWithSetup("ticktick", TICKTICK_CONFIG_UI);
+      const config = await requireConfigWithSetup("ticktick", CONFIG_UI);
       const HOST = config.host || "ticktick.com";
       const API_V2 = `https://api.${HOST}/api/v2`;
       const API_V1 = `https://api.${HOST}/open/v1`;
@@ -4370,7 +4514,7 @@ Examples:
     });
   }
   program2.command("sync").description("Full account sync \u2014 dump all projects, tasks, tags").action(async () => {
-    const config = await requireConfigWithSetup("ticktick", TICKTICK_CONFIG_UI);
+    const config = await requireConfigWithSetup("ticktick", CONFIG_UI);
     const HOST = config.host || "ticktick.com";
     const API_V2 = `https://api.${HOST}/api/v2`;
     function buildXDevice() {
@@ -4388,7 +4532,7 @@ Examples:
     outJson(data);
   });
   program2.command("auth").description("OAuth2 token acquisition \u2014 opens browser").action(async () => {
-    const config = await requireConfigWithSetup("ticktick", TICKTICK_CONFIG_UI);
+    const config = await requireConfigWithSetup("ticktick", CONFIG_UI);
     const HOST = config.host || "ticktick.com";
     await authFlow(config, HOST);
   });

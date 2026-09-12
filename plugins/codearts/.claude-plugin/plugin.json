@@ -1,0 +1,21 @@
+{
+  "name": "codearts",
+  "version": "0.1.0",
+  "description": "Drive Huawei Cloud CodeArts from the local `codearts` CLI — compilation build, code check, wiki, board, deploy, artifact, repo, and pipeline — with AK/SK or token auth and a generated catalog covering every documented API operation.",
+  "author": {
+    "name": "Agent Plugins"
+  },
+  "keywords": [
+    "huawei",
+    "huaweicloud",
+    "codearts",
+    "devops",
+    "ci",
+    "cd",
+    "pipeline",
+    "build",
+    "repo",
+    "deploy",
+    "artifact"
+  ]
+}

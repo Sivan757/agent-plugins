@@ -4,10 +4,9 @@
 
 - **`Connection "xxx" not found`** - Run `list` to see available connection names, then run `setup` if the connection must be added. **NEVER guess.**
 - **`relation "xxx" does not exist`** - Table may be in a different schema. Run `--find-table <conn> <table>` to locate it.
-- **`pg package not found`** - Run `npm install --prefix ${CLAUDE_PLUGIN_ROOT}` or restart the session to trigger auto-install
+- **`Cannot find module '/dist/postgresql.mjs'`** - `${CLAUDE_PLUGIN_ROOT}` was empty. Check that it is set before running the command
 - **`No config found`** - Run `setup` to open the browser configuration UI
 - **`Failed to parse config`** - Check for trailing commas, missing quotes, or other JSON syntax errors
-- **`Cannot find module '/dist/postgresql.mjs'`** - The plugin root variable was empty; resolve `${CLAUDE_PLUGIN_ROOT}`, `${CODEX_PLUGIN_ROOT}`, `${PLUGIN_ROOT}`, or the installed cache path before running commands
 - **Only the database name differs** - Use `copy-connection <source> <target> --database <db>` instead of reading the config file
 - **`unknown option '--format=table'` on `databases`/`schemas`** - `--format`, `--limit`, and `--params` are only valid for `query`
 - **`syntax error at or near "<number>"` after using `DO $$`** - Shell expanded `$$` to the process id; single-quote or escape the dollar signs
@@ -20,12 +19,6 @@
 - **`column undefined`** - Column name not found. Run `--columns <conn> [schema] <table>` to see actual column names.
 - **`schema "xxx" does not exist`** - Schema may not exist. Run `--schemas <conn>` to list available schemas.
 - **`42P01: undefined_table`** - Table not found. Use `--find-table` to locate it across all schemas.
-
-## npm Install Failures
-
-- **Network issues** - Check proxy settings or try `npm install --prefix <plugin-dir> --registry https://registry.npmmirror.com`
-- **Permission denied** - Ensure write access to the plugin directory's `node_modules`
-- **Corrupted node_modules** - Delete `node_modules` and `package-lock.json`, then re-run `npm install --prefix <plugin-dir>`
 
 ## Security Guidelines
 

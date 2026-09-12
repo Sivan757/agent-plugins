@@ -36,7 +36,7 @@ The dida365.com API validates the `X-Device` header format and rejects requests 
 The error message `username_password_not_match` is misleading — the server rejects the entire request based on the X-Device header before even checking credentials. This was confirmed by testing: the same password succeeds with the new header format and fails with the old one.
 
 ### Files fixed
-- CLI: `${CLAUDE_PLUGIN_ROOT}/scripts/ticktick.mjs` — `X_DEVICE` constant at module level
+- CLI: `${CLAUDE_PLUGIN_ROOT}/dist/ticktick.mjs` — `X_DEVICE` constant at module level
 
 ### How to debug if this recurs
 ```bash

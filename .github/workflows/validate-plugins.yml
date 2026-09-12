@@ -10,7 +10,6 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'scripts/**'
-      - 'src/**'
       - 'plugins/**'
       - '**/.claude-plugin/plugin.json'
       - '**/package.json'
@@ -20,6 +19,47 @@ on:
       - '**/assets/**'
 
 jobs:
+  validate-plugin-metadata:
+    name: Validate Plugin Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check generated manifests and marketplace match plugin metadata
+        run: npm run validate:plugin-metadata
+
+  validate-committed-bundles:
+    name: Validate Committed Bundles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild plugin bundles
+        run: npm run build
+
+      - name: Fail when a committed bundle is stale
+        run: |
+          # config-ui copies are compared against each other by
+          # validate-config-ui-contract instead, so they are excluded here.
+          if ! git diff --exit-code -- plugins ':(exclude)*config-ui*'; then
+            echo "::error::A committed artifact under plugins/*/dist no longer matches its source. Run 'npm run build' and commit the result."
+            exit 1
+          fi
+
   validate-script-tests:
     name: Validate Script Tests
     runs-on: ubuntu-latest
@@ -78,6 +118,17 @@ jobs:
 
       - name: Validate Claude plugin layout
         run: bun run .github/scripts/validate-claude-plugin-layout.ts
+
+  validate-config-ui-contract:
+    name: Validate Config UI Contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Validate plugin config forms against the UI catalog
+        run: bun run .github/scripts/validate-config-ui-contract.ts
 
   validate-versions:
     name: Validate Versions

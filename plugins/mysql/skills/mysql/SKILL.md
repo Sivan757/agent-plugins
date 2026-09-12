@@ -17,13 +17,19 @@ Execute SQL queries via `mysql2` Node.js script with multi-connection support.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `~/.cache/agent-plugins/mysql/config.json` directly.** Use `list`, `test`, `init` subcommands instead.
+**NEVER read, open, cat, or view `~/.cache/agent-plugins/mysql/config.json` directly.** Use `config`, `list`, and `test` instead. `config` prints the stored connections with passwords masked.
 
 When config is missing or incomplete, the CLI automatically opens a browser
-setup form and prints the local URL to stderr — tell the user to fill it in.
+setup form and prints the local URL to stderr — the user fills it in there.
+
+**Opening the form is your job, not the user's.** When the user wants to set up,
+change, or look at the configuration, run `config --ui` yourself as a background
+task — do not print the command and wait for them to type it. The form is served
+by that process, so it stays alive until the user saves or the session times out;
+continue with other work and read the configuration back afterwards.
 Once saved in the browser, the same command resumes on its own (no re-run
 needed). If the user skips the form, the CLI exits with
-`No config found. Run: mysql init` — run `init` to reopen the form.
+`No config found. Run: mysql config --ui` — run it (background) to reopen the form.
 
 ## CRITICAL: Write Operations FORBIDDEN
 
@@ -118,7 +124,7 @@ node ${CLAUDE_PLUGIN_ROOT}/dist/mysql.mjs query <connection> "<sql>" [options]
 | `--limit <n>` | Max rows (default: 1, 0=unlimited) |
 | `--col-width <n>` | Max column width (default: 40) |
 
-Subcommands: `init`, `list`, `test [name]`, `columns <conn> <table>`, `databases <conn>`, `find-table <conn> <table|%pat%>`, `search-columns <conn> <pattern>`, `profile <conn> <table>`, `relationships <conn> <table>`, `--help`
+Subcommands: `config [--ui]`, `init`, `list`, `test [name]`, `columns <conn> <table>`, `databases <conn>`, `find-table <conn> <table|%pat%>`, `search-columns <conn> <pattern>`, `profile <conn> <table>`, `relationships <conn> <table>`, `--help`
 
 ## Token Optimization Rules
 

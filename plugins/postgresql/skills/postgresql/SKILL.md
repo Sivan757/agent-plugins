@@ -17,20 +17,28 @@ Execute SQL queries via `pg` Node.js script with multi-connection support.
 
 ## CRITICAL: Credential Security
 
-**NEVER read, open, cat, or view `~/.cache/agent-plugins/postgresql/config.json` directly.** Use `list`, `test`, `setup`, and `copy-connection` subcommands instead.
+**NEVER read, open, cat, or view `~/.cache/agent-plugins/postgresql/config.json` directly.** Use `config`, `list`, `test`, and `copy-connection` instead. `config` prints the stored connections with passwords masked.
+
+
+**Opening the form is your job, not the user's.** When the user wants to set up,
+change, or look at the configuration, run `config --ui` yourself as a background
+task — do not print the command and wait for them to type it. The form is served
+by that process, so it stays alive until the user saves or the session times out;
+continue with other work and read the configuration back afterwards.
+
+The four cases where you open it yourself: first-time setup, a change to what is
+stored, showing the user what is stored, and a command that cannot continue until
+the connection is fixed — in the last case the CLI opens the form on its own and
+reloads after a save.
+
 
 ## Command Path Setup
 
-Use the installed plugin root, not a literal empty variable. In Claude Code,
-`${CLAUDE_PLUGIN_ROOT}` should point at this plugin. In Codex, first prefer
-`${CODEX_PLUGIN_ROOT}` or `${PLUGIN_ROOT}` when available. If no root variable
-is set, locate the installed plugin cache or repo-local release artifact before
-running commands; do not run `node ${CLAUDE_PLUGIN_ROOT}/dist/postgresql.mjs`
-when that expands to `/dist/postgresql.mjs`.
+`${CLAUDE_PLUGIN_ROOT}` points at this plugin. Fail fast when it is not set
+rather than running `node /dist/postgresql.mjs`.
 
 ```bash
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-${PLUGIN_ROOT:-}}}"
-test -n "$PLUGIN_ROOT"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:?CLAUDE_PLUGIN_ROOT is not set}"
 PG_BIN="$PLUGIN_ROOT/dist/postgresql.mjs"
 node "$PG_BIN" list
 ```
@@ -56,13 +64,13 @@ confirmation flag. After confirmation, run the command directly.
 
 **Exception for read-only queries on an already-confirmed connection:** Read-only queries that the user explicitly requested against an already-confirmed connection (e.g., `SELECT 1`, schema inspection via `columns`, `schemas`, `databases`, `find-table`) may proceed without re-confirming each time. The mandatory confirmation applies to choosing WHICH connection and to any write/DDL operation (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `CREATE`).
 
-If the requested connection is missing, run `setup` to open the browser config
+If the requested connection is missing, the CLI opens the browser config
 UI. To reuse the same host/user/password with a different database, use
 `copy-connection` instead of reading the config file:
 
 ```bash
 node "$PG_BIN" list
-node "$PG_BIN" setup
+node "$PG_BIN" config --ui
 node "$PG_BIN" copy-connection <source> <target> --database <database>
 ```
 
@@ -117,7 +125,7 @@ node "$PG_BIN" query <connection> "<sql>" [options]
 | `--col-width <n>` | Max column width (default: 40) |
 | `--database <name>` | Temporarily connect to another database without saving config |
 
-Subcommands: `setup`, `init`, `list`, `test [name]`, `copy-connection <source> <target> --database <db>`, `columns <conn> [schema] <table>`, `databases <conn>`, `schemas <conn>`, `find-table <conn> <table|%pat%>`, `--help`
+Subcommands: `config [--ui]`, `setup` (alias), `init`, `list`, `test [name]`, `copy-connection <source> <target> --database <db>`, `columns <conn> [schema] <table>`, `databases <conn>`, `schemas <conn>`, `find-table <conn> <table|%pat%>`, `--help`
 
 `--format`, `--params`, `--limit`, and `--col-width` are `query` options only.
 Do not add them to `databases`, `schemas`, `find-table`, or `columns`.

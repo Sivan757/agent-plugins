@@ -137,4 +137,48 @@ describe("validate-claude-plugin-layout", () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('manifest.commands[0]: must start with "./"');
   });
+
+  test("passes when agent-facing text names a path the plugin ships", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+
+    writeText(join(pluginRoot, "dist", "sample.mjs"), "console.log('bundle');\n");
+    writeText(
+      join(pluginRoot, "skills", "sample", "SKILL.md"),
+      "---\nname: sample\ndescription: Sample skill\n---\n\nRun `node ${CLAUDE_PLUGIN_ROOT}/dist/sample.mjs --help`.\n"
+    );
+
+    const result = runValidator(root);
+
+    expect(result.status).toBe(0);
+  });
+
+  test("fails when agent-facing text names a plugin path that does not exist", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+
+    writeText(
+      join(pluginRoot, "skills", "sample", "SKILL.md"),
+      "---\nname: sample\ndescription: Sample skill\n---\n\nRun `node ${CLAUDE_PLUGIN_ROOT}/scripts/sample.mjs --help`.\n"
+    );
+
+    const result = runValidator(root);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("references missing path ${CLAUDE_PLUGIN_ROOT}/scripts/sample.mjs");
+  });
+
+  test("ignores placeholder and glob segments in plugin-root paths", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+
+    writeText(
+      join(pluginRoot, "commands", "run.md"),
+      "---\ndescription: Run a script\n---\n\nRun `bash ${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh` over `${CLAUDE_PLUGIN_ROOT}/scripts/*.mjs`.\n"
+    );
+
+    const result = runValidator(root);
+
+    expect(result.status).toBe(0);
+  });
 });

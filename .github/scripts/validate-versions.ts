@@ -1,21 +1,21 @@
 #!/usr/bin/env bun
 /**
- * Validates local plugin version consistency across:
- *   - src/<name>/plugin.config.ts
- *   - src/<name>/package.json          (if it exists)
- *   - .claude-plugin/marketplace.json
- *   - plugins/<name>/.claude-plugin/plugin.json
+ * Validates local plugin version consistency. A plugin version is declared in
+ * several places by design, so this gate keeps them from drifting:
+ *   - plugins/<name>/plugin.config.ts        (metadata source of truth)
+ *   - plugins/<name>/package.json            (only for plugins that build)
+ *   - plugins/<name>/.claude-plugin/plugin.json  (generated)
+ *   - .claude-plugin/marketplace.json        (generated entry)
  *
  * Exit 0 if all consistent, exit 1 on any mismatch.
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
-import { join, resolve } from "path";
+import { join, relative, resolve } from "path";
 import { pathToFileURL } from "url";
 
 const ROOT = resolve(import.meta.dir, "../..");
-const SOURCE_ROOT = join(ROOT, "src");
-const RELEASE_ROOT = join(ROOT, "plugins");
+const PLUGINS_ROOT = join(ROOT, "plugins");
 const CLAUDE_MARKETPLACE_PATH = join(ROOT, ".claude-plugin/marketplace.json");
 
 interface VersionEntry {
@@ -39,21 +39,45 @@ function readJson<T>(filePath: string): T {
 }
 
 async function loadPluginConfig(pluginRoot: string): Promise<PluginConfig | undefined> {
-  const tsConfig = join(pluginRoot, "plugin.config.ts");
-  const jsonConfig = join(pluginRoot, "plugin.config.json");
-
-  if (existsSync(tsConfig)) {
-    const imported = (await import(`${pathToFileURL(tsConfig).href}?mtime=${Date.now()}`)) as {
-      default?: PluginConfig;
-    };
-    return imported.default;
+  const configPath = join(pluginRoot, "plugin.config.ts");
+  if (!existsSync(configPath)) {
+    return undefined;
   }
 
-  if (existsSync(jsonConfig)) {
-    return readJson<PluginConfig>(jsonConfig);
+  const imported = (await import(`${pathToFileURL(configPath).href}?mtime=${Date.now()}`)) as {
+    default?: PluginConfig;
+  };
+  return imported.default;
+}
+
+/**
+ * A CLI that prints a version the metadata disagrees with is the worst kind of
+ * drift: it is the answer an agent reads back when diagnosing an install.
+ */
+function readCliDeclaredVersions(pluginRoot: string): VersionEntry[] {
+  const srcRoot = join(pluginRoot, "src");
+  if (!existsSync(srcRoot)) {
+    return [];
   }
 
-  return undefined;
+  const entries: VersionEntry[] = [];
+  const pattern = /\.version\(\s*["']([^"']+)["']\s*\)/g;
+
+  const walk = (directory: string): void => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        walk(path);
+      } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
+        for (const match of readFileSync(path, "utf-8").matchAll(pattern)) {
+          entries.push({ file: relative(ROOT, path), version: match[1] });
+        }
+      }
+    }
+  };
+  walk(srcRoot);
+
+  return entries;
 }
 
 async function main(): Promise<void> {
@@ -73,70 +97,27 @@ async function main(): Promise<void> {
     }
   }
 
-  const sourcePlugins = new Set<string>();
-  for (const entry of readdirSync(SOURCE_ROOT)) {
-    const pluginRoot = join(SOURCE_ROOT, entry);
-    if (!statSync(pluginRoot).isDirectory()) {
-      continue;
-    }
-    if (existsSync(join(pluginRoot, "plugin.config.ts")) || existsSync(join(pluginRoot, "plugin.config.json"))) {
-      sourcePlugins.add(entry);
+  const pluginNames = new Set<string>(claudeLocal.keys());
+  for (const entry of readdirSync(PLUGINS_ROOT)) {
+    const pluginRoot = join(PLUGINS_ROOT, entry);
+    if (statSync(pluginRoot).isDirectory() && existsSync(join(pluginRoot, "plugin.config.ts"))) {
+      pluginNames.add(entry);
     }
   }
 
-  const releasePlugins = new Set<string>();
-  if (existsSync(RELEASE_ROOT)) {
-    for (const entry of readdirSync(RELEASE_ROOT)) {
-      const pluginRoot = join(RELEASE_ROOT, entry);
-      if (!statSync(pluginRoot).isDirectory()) {
-        continue;
-      }
-
-      const hasClaudeManifest = existsSync(join(pluginRoot, ".claude-plugin", "plugin.json"));
-      if (hasClaudeManifest) {
-        releasePlugins.add(entry);
-      }
-    }
-  }
-
-  const pluginNames = new Set<string>([
-    ...sourcePlugins,
-    ...releasePlugins,
-    ...claudeLocal.keys(),
-  ]);
   const errors: string[] = [];
   let checkedCount = 0;
 
   for (const pluginName of [...pluginNames].sort()) {
     checkedCount++;
 
-    const sourceDir = join(SOURCE_ROOT, pluginName);
-    const releaseDir = join(RELEASE_ROOT, pluginName);
-    const expectedPath = `./plugins/${pluginName}`;
+    const pluginRoot = join(PLUGINS_ROOT, pluginName);
+    const relativeRoot = `plugins/${pluginName}`;
     const claudeEntry = claudeLocal.get(pluginName);
 
-    if (!sourcePlugins.has(pluginName)) {
-      errors.push(`${pluginName}: release or marketplace entry exists but src/${pluginName} is missing`);
-      continue;
-    }
-
-    if (!releasePlugins.has(pluginName)) {
-      errors.push(`${pluginName}: source plugin exists but ${expectedPath} is missing`);
-      continue;
-    }
-
-    if (!claudeEntry) {
-      errors.push(`${pluginName}: missing from .claude-plugin/marketplace.json`);
-      continue;
-    }
-
-    if (claudeEntry.path !== expectedPath) {
-      errors.push(`${pluginName}: Claude marketplace path is ${claudeEntry.path} (expected ${expectedPath})`);
-    }
-
-    const config = await loadPluginConfig(sourceDir);
+    const config = await loadPluginConfig(pluginRoot);
     if (!config) {
-      errors.push(`${pluginName}: missing src/${pluginName}/plugin.config.ts or plugin.config.json`);
+      errors.push(`${pluginName}: marketplace entry exists but ${relativeRoot}/plugin.config.ts is missing`);
       continue;
     }
     if (config.name !== pluginName) {
@@ -145,29 +126,23 @@ async function main(): Promise<void> {
 
     const versions: VersionEntry[] = [
       {
-        file: `src/${pluginName}/plugin.config.ts`,
+        file: `${relativeRoot}/plugin.config.ts`,
         version: config.version,
       },
-      {
-        file: ".claude-plugin/marketplace.json",
-        version: claudeEntry.version,
-      },
+      ...readCliDeclaredVersions(pluginRoot),
     ];
 
-    const packageJsonPath = join(sourceDir, "package.json");
+    const packageJsonPath = join(pluginRoot, "package.json");
     if (existsSync(packageJsonPath)) {
       const pkg = readJson<{ version?: string }>(packageJsonPath);
       if (typeof pkg.version === "string") {
-        versions.push({
-          file: `src/${pluginName}/package.json`,
-          version: pkg.version,
-        });
+        versions.push({ file: `${relativeRoot}/package.json`, version: pkg.version });
       }
     }
 
-    const claudeManifestPath = join(releaseDir, ".claude-plugin/plugin.json");
+    const claudeManifestPath = join(pluginRoot, ".claude-plugin/plugin.json");
     if (!existsSync(claudeManifestPath)) {
-      errors.push(`${pluginName}: missing ${expectedPath}/.claude-plugin/plugin.json`);
+      errors.push(`${pluginName}: missing ${relativeRoot}/.claude-plugin/plugin.json`);
       continue;
     }
     const claudeManifest = readJson<{ name?: string; version?: string }>(claudeManifestPath);
@@ -175,10 +150,17 @@ async function main(): Promise<void> {
       errors.push(`${pluginName}: .claude-plugin/plugin.json name is ${claudeManifest.name} (expected ${pluginName})`);
     }
     if (typeof claudeManifest.version === "string") {
-      versions.push({
-        file: `${expectedPath}/.claude-plugin/plugin.json`,
-        version: claudeManifest.version,
-      });
+      versions.push({ file: `${relativeRoot}/.claude-plugin/plugin.json`, version: claudeManifest.version });
+    }
+
+    if (!claudeEntry) {
+      errors.push(`${pluginName}: missing from .claude-plugin/marketplace.json`);
+    } else {
+      const expectedPath = `./${relativeRoot}`;
+      if (claudeEntry.path !== expectedPath) {
+        errors.push(`${pluginName}: Claude marketplace path is ${claudeEntry.path} (expected ${expectedPath})`);
+      }
+      versions.push({ file: ".claude-plugin/marketplace.json", version: claudeEntry.version });
     }
 
     const uniqueVersions = new Set(versions.map((entry) => entry.version));

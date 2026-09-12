@@ -1,12 +1,11 @@
 #!/usr/bin/env bun
 /**
- * Scans human-authored text surfaces (src/, plugins/, docs/) for credential
+ * Scans human-authored text surfaces (plugins/, docs/) for credential
  * material that must never live in the repository.
  *
  * Motivation: skill-sync commits twice re-introduced plaintext Temu
- * credentials that had already been redacted (see
- * docs/superpowers/evals/2026-07-28-fresh-eyes-evaluation.md). This gate makes
- * such a regression fail validation instead of relying on reviewer vigilance.
+ * credentials that had already been redacted. This gate makes such a
+ * regression fail validation instead of relying on reviewer vigilance.
  *
  * Rules:
  *   1. bare-secret      - a line whose whole payload is a single long
@@ -14,6 +13,11 @@
  *   2. keyed-entropy    - a line that names a credential field (secret,
  *                         token, key, password...) and also carries a long
  *                         high-entropy literal.
+ *   3. ak-literal       - a quoted 20-character uppercase-alphanumeric literal,
+ *                         the shape of a Huawei Cloud access key id. Such a
+ *                         value is short and structured enough to pass every
+ *                         entropy rule above, yet it is half of a live
+ *                         credential pair and identifies the account.
  *
  * Known limitation (accepted until a real case justifies more): URL substrings
  * are stripped before matching. Reference mirrors are full of benign URL
@@ -34,7 +38,7 @@ import { join, relative, resolve, sep } from "path";
 
 const ROOT = resolve(import.meta.dir, "../..");
 
-const SCAN_ROOTS = ["src", "plugins", "docs"];
+const SCAN_ROOTS = ["plugins", "docs"];
 const SCANNED_EXTENSIONS = new Set([
   ".md",
   ".txt",
@@ -46,12 +50,14 @@ const SCANNED_EXTENSIONS = new Set([
   ".js",
   ".mjs",
 ]);
-const EXCLUDED_PATH_PARTS = ["node_modules", "dist", ".build"];
+const EXCLUDED_PATH_PARTS = ["node_modules", "dist"];
 const EXCLUDED_EXTENSIONS = new Set([".jsonl"]);
 const ALLOW_MARKER = "secret-scan: allow";
 
+// `access[_-]?key` covers the Huawei/AWS spelling (accessKeyId, accessKeySecret),
+// which the token-only `access_token` alternative did not.
 const CREDENTIAL_KEY_PATTERN =
-  /(app[\\_]?-?(?:secret|key)|access[\\_]?-?token|refresh[\\_]?-?token|api[\\_]?-?key|apikey|secret[\\_]?-?key|client[\\_]?-?secret|password|passwd|credential)/i;
+  /(app[\\_]?-?(?:secret|key)|access[\\_]?-?key|access[\\_]?-?token|refresh[\\_]?-?token|api[\\_]?-?key|apikey|secret[\\_]?-?key|client[\\_]?-?secret|password|passwd|credential)/i;
 
 // Long hex blobs: >= 32 chars, must contain at least one [a-f] letter so pure
 // numeric identifiers do not trigger.
@@ -59,6 +65,13 @@ const HEX_BLOB_PATTERN = /[0-9a-f]{32,}/gi;
 // Generic opaque tokens: >= 40 chars of base64/url-safe alphabet containing
 // at least one letter and one digit (excludes prose and plain words).
 const OPAQUE_TOKEN_PATTERN = /[A-Za-z0-9+/_=-]{40,}/g;
+// Huawei access key ids are exactly 20 uppercase alphanumerics. Only a *quoted*
+// occurrence counts, so prose, identifiers and version strings stay out.
+const AK_LITERAL_PATTERN = /["'`]([A-Z0-9]{20})["'`]/g;
+// Example/fixture markers: a value that announces itself as fake is the point of
+// a fixture, and flagging it would train readers to ignore this rule.
+const SYNTHETIC_MARKER_PATTERN = /EXAMPLE|FIXTURE|SAMPLE|DUMMY|PLACEHOLDER|XXXX/i;
+const CODE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs"]);
 // Whole-payload line: optional markdown list punctuation and quotes around a
 // single hex blob.
 const BARE_HEX_LINE_PATTERN =
@@ -67,7 +80,7 @@ const BARE_HEX_LINE_PATTERN =
 export interface SecretFinding {
   file: string;
   line: number;
-  rule: "bare-secret" | "keyed-entropy";
+  rule: "bare-secret" | "keyed-entropy" | "ak-literal";
   preview: string;
 }
 
@@ -102,6 +115,16 @@ function hasHexLetter(candidate: string): boolean {
 
 function hasLetterAndDigit(candidate: string): boolean {
   return /[a-z]/i.test(candidate) && /[0-9]/.test(candidate);
+}
+
+/** First access-key-shaped literal on a line that is not marked as synthetic. */
+export function findAccessKeyLiteral(line: string): string | null {
+  AK_LITERAL_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = AK_LITERAL_PATTERN.exec(line)) !== null) {
+    if (!SYNTHETIC_MARKER_PATTERN.test(match[1])) return match[1];
+  }
+  return null;
 }
 
 /** Scans one file's text and returns findings with repo-relative paths. */
@@ -156,6 +179,25 @@ export function scanText(
           preview: previewOf(blob),
         });
         continue;
+      }
+    }
+
+    // Rule 3: an access-key-shaped literal. In code a hardcoded access key id
+    // is always a mistake; in reference documentation the same 20 characters
+    // are usually a business id (order numbers, product codes), so markdown is
+    // only checked when the line also names a credential field.
+    if (!findings.some(finding => finding.line === index + 1)) {
+      const extension = relativePath.slice(relativePath.lastIndexOf("."));
+      if (CODE_EXTENSIONS.has(extension) || CREDENTIAL_KEY_PATTERN.test(line)) {
+        const literal = findAccessKeyLiteral(line);
+        if (literal) {
+          findings.push({
+            file: relativePath,
+            line: index + 1,
+            rule: "ak-literal",
+            preview: previewOf(literal),
+          });
+        }
       }
     }
 
