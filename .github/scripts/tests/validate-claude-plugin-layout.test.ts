@@ -45,6 +45,18 @@ function runValidator(root: string) {
   });
 }
 
+/** A valid skill frontmatter block, so a case can vary one field. */
+function writeSkill(
+  pluginRoot: string,
+  name = "demo",
+  frontmatter = "name: demo\ndescription: Demo skill\n"
+): void {
+  writeText(
+    join(pluginRoot, "skills", name, "SKILL.md"),
+    `---\n${frontmatter}---\n\n# Demo\n`
+  );
+}
+
 afterEach(() => {
   for (const root of tempRoots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -72,7 +84,7 @@ describe("validate-claude-plugin-layout", () => {
     const result = runValidator(root);
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Claude plugin layout validation passed.");
+    expect(result.stdout).toContain("Claude plugin layout validation passed");
   });
 
   test("fails when .claude-plugin contains extra files", () => {
@@ -180,5 +192,90 @@ describe("validate-claude-plugin-layout", () => {
     const result = runValidator(root);
 
     expect(result.status).toBe(0);
+  });
+
+  // Frontmatter of the definitions Claude Code reads. Ported from the gate this one
+  // absorbed: it walked the same directories for the same reason.
+
+  test("checks the frontmatter of every discovered skill and command", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+    writeSkill(pluginRoot);
+    writeText(
+      join(pluginRoot, "commands", "init.md"),
+      '---\ndescription: Initialize\nargument-hint: "[target] [--dry-run]"\n---\n\nbody\n'
+    );
+
+    const result = runValidator(root);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("2 frontmatter file(s) checked");
+  });
+
+  test("rejects an unquoted flow-sequence argument hint", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+    writeText(
+      join(pluginRoot, "commands", "init.md"),
+      "---\ndescription: Initialize\nargument-hint: [target] [--dry-run]\n---\n\nbody\n"
+    );
+
+    const result = runValidator(root);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("invalid YAML frontmatter");
+    expect(result.stderr).toContain("flow-seq-start");
+  });
+
+  test("requires a skill description", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+    writeSkill(pluginRoot, "demo", "name: demo\n");
+
+    const result = runValidator(root);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('skill frontmatter must have "description"');
+  });
+
+  test("requires an agent name and description", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+    writeText(join(pluginRoot, "agents", "reviewer.md"), "---\ndescription: Reviews\n---\n\nbody\n");
+
+    const result = runValidator(root);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('agent frontmatter must have "name"');
+  });
+
+  test("accepts a command that carries only a description", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+    writeText(join(pluginRoot, "commands", "review.md"), "---\ndescription: Reviews\n---\n\nbody\n");
+
+    const result = runValidator(root);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("1 frontmatter file(s) checked");
+  });
+
+  test("leaves a skill's internal agents directory out of scope", () => {
+    const root = createRepo();
+    const pluginRoot = createPlugin(root, "sample-plugin");
+    writeSkill(pluginRoot);
+    writeText(join(pluginRoot, "skills", "demo", "agents", "note.md"), "# resource file\n");
+
+    const result = runValidator(root);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("1 frontmatter file(s) checked");
+  });
+
+  test("reports a repository with nothing to check instead of an empty pass", () => {
+    const result = runValidator(createRepo());
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("0 frontmatter file(s) checked");
   });
 });

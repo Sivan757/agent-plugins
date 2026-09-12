@@ -37,14 +37,13 @@ Some repository constraints are already enforced by scripts. Others are design-q
 | `plugin.config.ts` is the metadata source of truth | `npm run generate:plugins`, `npm run validate:plugin-metadata` |
 | Generated manifests and marketplace entries match the metadata sources, and the versions declared in `package.json` and by the CLI's own `.version()` agree with it | `npm run validate:plugin-metadata` |
 | Claude manifest directories stay minimal and paths stay rooted in the plugin | `npm run validate:claude-layout` |
-| Claude auto-discovery conventions for commands, agents, hooks, and MCP are respected | `npm run validate:claude-layout` |
+| Claude auto-discovery conventions for commands, agents, hooks, and MCP are respected, and the frontmatter of every discovered skill, command and agent carries the fields Claude Code reads | `npm run validate:claude-layout` |
 | Agent-facing text only names `${CLAUDE_PLUGIN_ROOT}` paths the plugin actually ships | `npm run validate:claude-layout` |
 | A plugin's config form only names components and field types the shared UI can draw, and ships the shared UI exactly when the plugin serves it | `npm run validate:config-ui` |
 | A plugin persists only inside its own directory in the shared cache root, and builds those paths with the shared helpers rather than from the temporary directory, the home directory or the working directory | `npm run validate:persistence` |
 | A committed artifact under `plugins/*/dist` matches its source, including every copy of the shared config form | CI job `validate-generated` (`npm run build`, then any working-tree change under `plugins/` fails the job) |
-| Marketplace entries exist, follow the local source/path policy, and stay ordered by name | `npm run validate:marketplace` |
+| The hand-maintained half of the marketplace file is well formed: external entries carry a usable source, names are unique, and local entries point at a directory that exists | `npm run validate:marketplace` |
 | Human-authored surfaces under `plugins/` and `docs/` carry no credential material | `npm run validate:no-secrets` |
-| Skill, command, and agent frontmatter parses as YAML with the required fields | `npm run validate:frontmatter` |
 | Shared metadata generation and validation behavior stays regression-tested | `bun test ./.github/scripts/tests` |
 
 ### Scriptable Next

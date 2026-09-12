@@ -157,11 +157,10 @@ bash scripts/dev.sh <name> # launch Claude Code against the plugin directory
 | Gate | Catches |
 | --- | --- |
 | `validate:plugin-metadata` | a manifest, marketplace entry or version that no longer matches `plugin.config.ts` |
-| `validate:claude-layout` | a missing/extra file in `.claude-plugin/`, malformed hooks or MCP config, and any `${CLAUDE_PLUGIN_ROOT}` path the plugin does not ship |
+| `validate:claude-layout` | a missing/extra file in `.claude-plugin/`, malformed hooks or MCP config, any `${CLAUDE_PLUGIN_ROOT}` path the plugin does not ship, and skill/command/agent frontmatter that is not valid YAML with the fields Claude Code reads |
 | `validate:config-ui` | a form spec the renderer cannot draw, a plugin that serves the form without shipping the HTML (or ships it without serving it), and stale HTML copies |
 | `validate:persistence` | a runtime source that takes a storage location from the temporary directory, the home directory or the working directory instead of the shared cache root |
-| `validate:marketplace` | a local entry that points somewhere other than `./plugins/<name>`, at a directory that does not exist, or out of name order |
-| `validate:frontmatter` | skill/command/agent frontmatter that is not valid YAML with the required fields |
+| `validate:marketplace` | a malformed or duplicate marketplace entry; the generated entries are already compared byte for byte by `validate:plugin-metadata` |
 | `validate:no-secrets` | credential material in any human-authored surface |
 | CI `validate-generated` | a committed artifact under `plugins/*/dist` that no longer matches its source |
 

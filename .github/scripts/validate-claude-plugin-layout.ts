@@ -11,12 +11,20 @@
  *   - `hooks/hooks.json` uses the Claude plugin wrapper format
  *   - `.mcp.json` parses as a JSON object with at least one server definition
  *   - every `${CLAUDE_PLUGIN_ROOT}/...` path named in agent-facing text exists
+ *   - every discovered `skills/<name>/SKILL.md`, `commands/*.md` and `agents/*.md`
+ *     carries YAML frontmatter with the fields Claude Code reads: a skill and an
+ *     agent need `name` and `description`, a command needs `description`
+ *
+ * One gate answers "is this a plugin directory Claude Code will load, and does it
+ * say what it needs to say", so an author runs one command instead of two that
+ * walk the same directories.
  *
  * Exit 0 on success, exit 1 on any validation error.
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { join, relative, resolve } from "path";
+import { parse as parseYaml } from "yaml";
 
 const ROOT = process.env.PLUGIN_REPO_ROOT
   ? resolve(process.env.PLUGIN_REPO_ROOT)
@@ -404,6 +412,84 @@ function validatePluginRootReferences(pluginRoot: string, errors: string[]): voi
   }
 }
 
+/** How many frontmatter files the walk reached, so a silent zero is visible. */
+let frontmatterFiles = 0;
+
+/**
+ * Check the YAML frontmatter of every definition Claude Code reads: each
+ * `skills/<name>/SKILL.md`, `commands/*.md` and `agents/*.md` directly under the
+ * plugin root. Returns how many files were checked.
+ *
+ * Anchoring at the plugin root matters: a skill's own `agents/` directory holds
+ * resource files (prompt-forge's curator/evaluator/synthesizer notes), not Claude
+ * Code subagent definitions, so those stay out of scope.
+ */
+function validateFrontmatter(pluginRoot: string, errors: string[]): number {
+  const files: string[] = [];
+
+  const skillsDir = join(pluginRoot, "skills");
+  if (existsSync(skillsDir)) {
+    for (const skill of readdirSync(skillsDir, { withFileTypes: true })) {
+      if (!skill.isDirectory()) continue;
+      const skillFile = join(skillsDir, skill.name, "SKILL.md");
+      if (existsSync(skillFile)) files.push(skillFile);
+    }
+  }
+
+  for (const dirName of ["commands", "agents"] as const) {
+    const dir = join(pluginRoot, dirName);
+    if (!existsSync(dir)) continue;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.endsWith(".md")) {
+        files.push(join(dir, entry.name));
+      }
+    }
+  }
+
+  for (const filePath of files) {
+    const fileRel = relative(ROOT, filePath);
+    const frontmatter = extractFrontmatter(readFileSync(filePath, "utf-8"));
+    if (frontmatter === null) {
+      errors.push(`${fileRel}: no YAML frontmatter found (expected --- delimiters)`);
+      continue;
+    }
+
+    let fields: Record<string, unknown>;
+    try {
+      const parsed = parseYaml(frontmatter);
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        errors.push(`${fileRel}: frontmatter must be a YAML mapping`);
+        continue;
+      }
+      fields = parsed as Record<string, unknown>;
+    } catch (err) {
+      errors.push(`${fileRel}: invalid YAML frontmatter: ${err}`);
+      continue;
+    }
+
+    const segments = relative(pluginRoot, filePath).split(/[\\/]/);
+    const kind = segments[0] === "skills" ? "skill" : segments[0] === "agents" ? "agent" : "command";
+    // Claude Code reads a skill's and an agent's name and description; a command is
+    // addressed by its file name, so it needs only a description.
+    const required = kind === "command" ? ["description"] : ["name", "description"];
+
+    for (const field of required) {
+      const value = fields[field];
+      if (typeof value !== "string" || value.trim() === "") {
+        errors.push(`${fileRel}: ${kind} frontmatter must have "${field}"`);
+      }
+    }
+  }
+
+  return files.length;
+}
+
+/** The YAML block between the leading `---` delimiters, or null when absent. */
+function extractFrontmatter(contents: string): string | null {
+  const match = contents.match(/^---\s*\n([\s\S]*?)\n---/);
+  return match ? match[1] : null;
+}
+
 function main(): void {
   const errors: string[] = [];
 
@@ -419,6 +505,7 @@ function main(): void {
     validateClaudeHooks(pluginRoot, errors);
     validateMcpConfig(pluginRoot, errors);
     validatePluginRootReferences(pluginRoot, errors);
+    frontmatterFiles += validateFrontmatter(pluginRoot, errors);
   }
 
   if (errors.length > 0) {
@@ -430,7 +517,9 @@ function main(): void {
     process.exit(1);
   }
 
-  console.log("Claude plugin layout validation passed.");
+  console.log(
+    `Claude plugin layout validation passed: ${frontmatterFiles} frontmatter file(s) checked.`,
+  );
 }
 
 main();
