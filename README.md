@@ -1,17 +1,38 @@
-# Agent Plugins
+<div align="center">
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+  # Agent Plugins
 
-A curated collection of useful plugins for real agent workflows.
+  *Practical plugins for real agent workflows*
+
+  [English](README.md) · [简体中文](README.zh-CN.md)
+
+  [![Validate Plugins](https://img.shields.io/github/actions/workflow/status/Sivan757/agent-plugins/validate-plugins.yml?style=flat-square&label=validate)](https://github.com/Sivan757/agent-plugins/actions/workflows/validate-plugins.yml)
+  [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-3c873a?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+  [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757?style=flat-square)](https://code.claude.com/docs/en/discover-plugins)
+
+  [What you can do](#what-you-can-do) · [Examples](#example-workflows) · [Install](#install) · [The collection](#the-collection) · [Troubleshooting](#troubleshooting)
+
+</div>
+
+A collection of plugins that give your agent real leverage: the credentials and
+API knowledge to reach your systems, the command-line tools to operate them, and
+the procedures to do it consistently.
+
+Every plugin is a directory in this repository. What you install is what you can
+read — no build step stands between the two.
 
 ## What You Can Do
 
-- Investigate production issues from Alibaba Cloud logs
-- Query MySQL and PostgreSQL directly from your agent workflow
-- Manage TickTick tasks, habits, and focus workflows
-- Get structured guidance for SHEIN and Temu platform APIs
-- Drive the Apifox CLI to manage API projects, run automation tests, and handle branch collaboration
-- Plan, format, package, and stage Chinese new-media drafts for WeChat and Xiaohongshu
+- **Investigate production** — chase an error through Alibaba Cloud SLS logs by environment and service
+- **Query data** — run MySQL and PostgreSQL statements over saved connections, with schema discovery and parameterized values
+- **Process media** — compress, convert, resize, upscale, and cut out images, audio, and video
+- **Design interfaces** — audit or rebuild a page that reads as machine-made, or extract the design DNA from a reference
+- **Find prompts** — search, rate, and synthesize image-generation prompts from a local library
+- **Decide with a framework** — work an ambiguous problem through an authoritative model chosen for the domain
+- **Keep delivery moving** — ZenTao stories and bugs, TickTick tasks and habits, and Apifox API projects without opening another web UI
+- **Integrate** — look up SHEIN and Temu API details offline, and run the Huawei Cloud CodeArts chain from pipeline to deploy
+- **Keep a codebase healthy** — review standards, pre-push checks, CI flake diagnosis, docs and notes hygiene, and prose passes
+- **Handle credentials** — read configuration redacted, and edit it through a local browser form instead of pasting secrets into chat
 
 ## Example Workflows
 
@@ -19,154 +40,203 @@ These are the kinds of jobs this collection is built for:
 
 - "Check recent payment failures in production logs"
 - "Show me the schema for the orders table in Postgres"
-- "Run this MySQL query against the reporting database"
-- "Find where this service builds auth headers"
+- "Compress this 4K clip to 1080p and verify it plays"
+- "Remove the background from these product photos"
+- "This landing page feels generic — audit it and fix the worst offenders"
 - "Create a TickTick task for today's release checklist"
+- "Which story is blocking the current execution?"
 - "Explain the Temu order and webhook flow"
 - "Run the Apifox test suite for the checkout API and upload the report"
-- "Turn this article into a WeChat Official Account draft package"
+- "Why did the build on our CodeArts pipeline fail?"
 
-## Browse The Collection
+## Requirements
+
+- **Claude Code**, installed through the [official docs](https://docs.anthropic.com/en/docs/claude-code/setup)
+- **Node.js 22 or newer**, for the plugins that bundle a CLI. They run as
+  `node ${CLAUDE_PLUGIN_ROOT}/dist/<plugin>.mjs`; `prompt-forge` uses the built-in
+  `node:sqlite`, which is where the floor comes from
+
+Plugins that only carry skills need nothing beyond Claude Code.
+
+## Quick Start
+
+### Install
+
+1. Add this repository as a marketplace:
+
+   ```text
+   /plugin marketplace add Sivan757/agent-plugins
+   ```
+
+2. Install the plugin you want:
+
+   ```text
+   /plugin install mysql@agent-plugins
+   ```
+
+3. Repeat for any other plugin in [the collection](#the-collection).
+
+> [!NOTE]
+> Plugins install one at a time. Install only the ones you need — each one adds
+> its descriptions to every session.
+
+## The Collection
 
 ### Observe systems
 
 | Plugin | What it does |
 | --- | --- |
-| [aliyunlog](plugins/aliyunlog) | Query Alibaba Cloud SLS logs with environment and service-based lookup |
+| [aliyunlog](plugins/aliyunlog) | Query Alibaba Cloud SLS logs, with environment and service-based lookup |
 
 ### Query data
 
 | Plugin | What it does |
 | --- | --- |
-| [mysql](plugins/mysql) | Run MySQL queries with multi-connection support and a write-statement confirmation guard |
-| [postgresql](plugins/postgresql) | Run PostgreSQL queries with schema discovery and parameterized queries |
+| [mysql](plugins/mysql) | Run MySQL queries across saved connections, with a guard on write statements |
+| [postgresql](plugins/postgresql) | Run PostgreSQL queries with schema discovery and parameterized statements |
 
 ### Process media
 
 | Plugin | What it does |
 | --- | --- |
-| [ffmpeg](plugins/ffmpeg) | Build and verify FFmpeg/ffprobe commands for video, audio, and image media |
-| [magick](plugins/magick) | Build ImageMagick workflows for conversion, resizing, mockups, and compositing |
-| [real-esrgan](plugins/real-esrgan) | Upscale and enhance raster images with Real-ESRGAN, verified via ImageMagick |
-| [withoutbg](plugins/withoutbg) | Remove image backgrounds with the withoutbg CLI |
+| [ffmpeg](plugins/ffmpeg) | Build and verify FFmpeg and ffprobe commands for video, audio, and images |
+| [magick](plugins/magick) | Build ImageMagick workflows: conversion, resizing, mockups, compositing |
+| [real-esrgan](plugins/real-esrgan) | Upscale and enhance raster images with Real-ESRGAN, verified through ImageMagick |
+| [withoutbg](plugins/withoutbg) | Remove image backgrounds, locally or through the API |
+
+### Design interfaces
+
+| Plugin | What it does |
+| --- | --- |
+| [hallmark](plugins/hallmark) | Audit, redesign, or build a page against an anti-slop design rule set, and extract the design DNA from a reference |
 
 ### Manage prompts
 
 | Plugin | What it does |
 | --- | --- |
-| [prompt-forge](plugins/prompt-forge) | Image-generation prompt library with RAG search, synthesis, and rating over a local SQLite DB |
+| [prompt-forge](plugins/prompt-forge) | Search, classify, rate, and synthesize image-generation prompts from a local library of 25k+ examples |
 
 ### Get advice
 
 | Plugin | What it does |
 | --- | --- |
-| [consulting-advisor](plugins/consulting-advisor) | Structured cross-domain consulting using authoritative frameworks |
+| [consulting-advisor](plugins/consulting-advisor) | Work through an ambiguous problem with an authoritative framework, chosen for the domain |
 
 ### Manage personal execution
 
 | Plugin | What it does |
 | --- | --- |
-| [ticktick](plugins/ticktick) | Manage TickTick tasks, projects, habits, and productivity workflows |
+| [ticktick](plugins/ticktick) | Manage TickTick tasks, projects, tags, habits, kanban columns, and focus sessions |
 
 ### Manage project delivery
 
 | Plugin | What it does |
 | --- | --- |
-| [zentao](plugins/zentao) | Query and operate ZenTao (禅道) project-management data — stories, bugs, tasks, executions, test runs — through the `zentao` CLI (ported from easysoft/zentao-skills) |
-
-### Manage credentials
-
-| Plugin | What it does |
-| --- | --- |
-| [config-center](plugins/config-center) | Manage plugin credentials and env config; redacted reads, browser-UI edits |
-
-### Work with commerce APIs
-
-| Plugin | What it does |
-| --- | --- |
-| [ecommerce-expert](plugins/ecommerce-expert) | Navigate SHEIN and Temu integration APIs with structured reference material, plus offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides) |
+| [zentao](plugins/zentao) | Query and operate ZenTao data — stories, bugs, tasks, executions, test runs — through the `zentao` CLI |
 
 ### Manage API projects
 
 | Plugin | What it does |
 | --- | --- |
-| [apifox](plugins/apifox) | Manage Apifox project resources, run interface automation tests, import/export API docs, and handle branch collaboration through the `apifox` CLI (official Apifox CLI skills) |
+| [apifox](plugins/apifox) | Manage Apifox resources, run interface automation tests, import and export API docs, and handle branch collaboration |
+
+### Work with commerce APIs
+
+| Plugin | What it does |
+| --- | --- |
+| [ecommerce-expert](plugins/ecommerce-expert) | Navigate SHEIN and Temu integration APIs, with offline mirrors of 209 Temu endpoint docs and 23 developer guides |
 
 ### Run the development-to-operations chain
 
 | Plugin | What it does |
 | --- | --- |
-| [codearts](plugins/codearts) | Drive Huawei Cloud CodeArts end to end — run pipelines and builds, execute code checks, manage merge requests, deploy applications, move artifacts, and read wiki documents — through one bundled `codearts` CLI, with 782 documented API operations reachable behind it |
+| [codearts](plugins/codearts) | Drive Huawei Cloud CodeArts end to end — pipelines, builds, code checks, merge requests, deploys, artifacts, wiki — through one bundled CLI over 782 documented API operations |
 
-## Quick Start
+### Keep a DeepSeek Harness codebase healthy
 
-Use the official client installation and plugin management flows first, then install plugins from this collection.
+| Plugin | What it does |
+| --- | --- |
+| [dsh-workflow](plugins/dsh-workflow) | Review standards, pre-push checks, CI flake diagnosis, docs lifecycle, Agent Notes hygiene, prose and simplification passes, stacked PRs, and browser GIF demos |
 
-### Use in Claude Code
+### Manage credentials
 
-1. Install Claude Code using the official docs.
-2. Add this repository as a marketplace:
+| Plugin | What it does |
+| --- | --- |
+| [config-center](plugins/config-center) | Inspect and edit stored plugin credentials; agent-facing reads are redacted, edits go through the browser form |
 
-```text
-/plugin marketplace add Sivan757/agent-plugins
+## How It Works
+
+A plugin is two kinds of thing: **skills** that tell the agent how to do a job,
+and — when the job needs to talk to a service — a **bundled CLI** that does it.
+The CLI is built with esbuild, which inlines every dependency, so an installed
+plugin never runs `npm install` and carries no `node_modules`.
+
+Credentials and environment state live outside this repository, in
+`~/.cache/agent-plugins/<plugin>/config.json`. Each plugin opens a local browser
+form to edit them — the agent runs it as a background task, in this shape:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/dist/<plugin>.mjs" config --ui    # the plugin's own form
+node "${CLAUDE_PLUGIN_ROOT}/dist/config-center.mjs" edit mysql # the shared editor
 ```
 
-3. Install the plugin you want:
+> [!IMPORTANT]
+> Reads of stored configuration are always redacted, and no subcommand prints the
+> cache path or a plaintext secret. The agent is expected to open the form for you
+> rather than typing credentials.
+
+This marketplace also curates a small number of third-party plugins alongside the
+local ones; see [recommended external plugins](docs/recommended-plugins.md).
+
+## Troubleshooting
+
+**A plugin says nothing is configured yet.** The agent should open the setup form
+for you. If it does not, ask it to open the plugin's own form (`config --ui`).
+Configuration lives in `~/.cache/agent-plugins/<plugin>/config.json` and never
+inside your project.
+
+**A bundled CLI fails with a module error.** `aliyunlog`, `codearts`,
+`config-center`, `mysql`, `postgresql`, `prompt-forge`, and `ticktick` run as Node
+programs and need Node.js 22 or newer. The skills-only plugins do not.
+
+**A plugin is missing from a running session.** Check what is installed and
+enabled with `/plugin`; a plugin installed mid-session needs a restart.
+
+**You want to know what a plugin will do before installing it.** Read it — each
+directory under [`plugins/`](plugins/) contains the `SKILL.md` instructions the
+agent receives and a `plugin.config.ts` with the plugin's metadata.
+
+## Development
+
+Each directory under [`plugins/`](plugins/) is the plugin itself, and the source
+you edit is the artifact that ships.
 
 ```text
-/plugin install mysql@agent-plugins
-```
-
-4. Repeat for any other plugin in the collection.
-
-References:
-- [Claude Code setup](https://docs.anthropic.com/en/docs/claude-code/setup)
-- [Discover plugins in Claude Code](https://code.claude.com/docs/en/discover-plugins)
-
-## Why This Repo Exists
-
-Most plugin repositories either focus on one client or treat the plugin code as an implementation detail hidden behind internal tooling. This repository takes the opposite approach: the plugin collection is the product.
-
-Each plugin directory is written by hand and is exactly what Claude Code installs. Nothing is compiled, copied, or repacked to produce it, so what you read in [`plugins/`](plugins/) is what runs.
-
-## Repository Layout
-
-```text
-plugins/   the plugins themselves — each directory is installable as-is
-docs/      development notes and references
+plugins/   the plugins — each directory is installable as-is
+docs/      development notes and decision records
 scripts/   metadata generation, bundling, validation, and development helpers
 ```
 
-A plugin directory holds its own native files (`skills/`, `commands/`, `agents/`, `hooks/`, `.mcp.json`, `assets/`), its metadata source `plugin.config.ts`, and — for plugins with a CLI — the TypeScript source in `src/` next to the committed bundle in `dist/`.
-
-Shared runtime code lives inside the `config-center` plugin (`plugins/config-center/src`), which CLI plugins depend on as the workspace package `@agent-plugins/config-center`.
-
-## For Plugin Authors
-
-If you want to contribute plugins or improve the shared tooling:
-
-- Add or update the plugin directly in [`plugins/<name>/`](plugins/)
-- Keep its metadata in `plugins/<name>/plugin.config.ts`
-- Run `npm run generate:plugins` after metadata changes; it refreshes `.claude-plugin/plugin.json` and the marketplace entry
-- Run `npm run build` only when you change CLI source; the bundle lands in that plugin's own `dist/`
-- Run validation before submitting changes; [docs/plugin-development/authoring-a-plugin.md](docs/plugin-development/authoring-a-plugin.md) is the full checklist
-
-Useful commands:
-
 ```bash
-npm run generate:plugins
-npm run build
-npm run validate:plugins
-bun test ./.github/scripts/tests
-bash scripts/dev.sh --list
+bash scripts/dev.sh --list        # list plugins
+bash scripts/dev.sh mysql         # load one plugin straight from this checkout
+npm run generate:plugins          # after changing plugin.config.ts
+npm run build                     # after changing CLI source
+npm run validate:plugins          # every gate
 ```
 
-## Further Reading
+> [!TIP]
+> `bash scripts/dev.sh <plugin>` loads the plugin from this working tree, so a
+> skill or command edit takes effect after `/reload-plugins` — no build needed.
 
+Adding a plugin: [docs/plugin-development/authoring-a-plugin.md](docs/plugin-development/authoring-a-plugin.md)
+is the full checklist.
+
+## Resources
+
+- [Adding a plugin](docs/plugin-development/authoring-a-plugin.md)
 - [Claude Code plugin development notes](docs/plugin-development/claude-code.md)
+- [Decision records](docs/decisions/README.md)
 - [Recommended external plugins](docs/recommended-plugins.md)
-- [AGENTS.md](AGENTS.md)
-
-## Contributing
-
-Contributions are welcome if they improve the plugin catalog or the shared tooling.
+- [Repository guidelines](AGENTS.md)
+- [Discover plugins in Claude Code](https://code.claude.com/docs/en/discover-plugins)
