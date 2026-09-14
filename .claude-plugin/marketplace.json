@@ -104,6 +104,12 @@
       "homepage": "https://github.com/Shopify/Shopify-AI-Toolkit"
     },
     {
+      "name": "teams",
+      "version": "0.2.0",
+      "source": "./plugins/teams",
+      "description": "Nine domain agents (product, design, frontend, backend, data, api, test, ops, analytics) backed by a domain-organised knowledge library: each agent reads its own domain skill, which routes to the one topic document that applies — keeping context small while preserving automatic triggering. Covers Vue 3 + Vite, Java 17 + Spring Boot + Dubbo + Nacos + Sa-Token, MyBatis-Plus + Liquibase, OpenAPI, JUnit 5 / Vitest / Playwright, Docker/Kubernetes, and product/design/analytics practice. Every document is traceable to a pinned upstream commit or to official framework documentation."
+    },
+    {
       "name": "ticktick",
       "version": "0.7.1",
       "source": "./plugins/ticktick",
