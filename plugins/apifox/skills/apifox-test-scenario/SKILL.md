@@ -293,9 +293,9 @@ pm.test("JSON value equals expected", function () {
 
 | 现象 | 处理 |
 |------|------|
-| 场景创建成功但前端步骤不展示 | `test-scenario get` 看真实保存结构，必要时转 `apifox-cli-checkup` |
+| 场景创建成功但前端步骤不展示 | `test-scenario get` 看真实保存结构，必要时转 `apifox-cli` 的排障附录 |
 | 后续步骤变量为空 | 检查上游 extractor、响应路径、变量名和执行顺序 |
 | 场景 run 失败但单接口成功 | 检查步骤间变量传递、环境、前置脚本和依赖顺序 |
 | 循环或等待卡住 | 检查退出条件、最大次数、timeout |
 | 清理没执行 | 检查失败策略和后置步骤配置 |
-| 报告没有步骤详情 | 先按 `apifox-test-automation` 区分本地/云端报告，再必要时转 `apifox-cli-checkup` |
+| 报告没有步骤详情 | 先按 `apifox-test-automation` 区分本地/云端报告，再必要时转 `apifox-cli` 的排障附录 |

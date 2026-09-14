@@ -1,13 +1,8 @@
----
-name: apifox-cli-checkup
-description: Apifox CLI 使用检查与版本确认：命令成功但页面没看到、创建后 list/get 找不到、测试运行失败、报告缺失、agentHints/help/实际行为不一致，或怀疑本机 CLI 版本不是最新时使用。
----
-
 # CLI 使用检查与版本确认
 
-> 前置条件：先阅读 `../apifox-cli/SKILL.md`。若旧总入口与本 skill 的规则冲突，以当前 `apifox <command> --help` 和本 skill 为准。根据资源类型再读取对应业务 skill。
+> 本文件是 `apifox-cli` 的排障附录：命令结果与预期不符、页面与回读不一致，或怀疑本机 CLI 版本时读它。规则冲突时以当前 `apifox <command> --help` 为准；按资源类型再读取对应业务 skill。
 
-本 skill 用于公开 CLI 使用排查，不依赖内部接口或内部代码。目标是确认命令、项目、分支、环境、资源 ID、报告位置和 CLI 版本是否一致，再回到具体业务 skill 修正资源结构。Agent 排查时优先以当前 help、schema validate、get 回读和 agentHints 组成闭环，不要只看 summary 文案。
+本附录用于公开 CLI 使用排查，不依赖内部接口或内部代码。目标是确认命令、项目、分支、环境、资源 ID、报告位置和 CLI 版本是否一致，再回到具体业务 skill 修正资源结构。排查时优先以当前 help、schema validate、get 回读和 agentHints 组成闭环，不要只看 summary 文案。
 
 ## 何时使用
 

@@ -105,5 +105,5 @@ AI 分支注意点：
 | get 不带 branch 找不到资源 | 带 `--branch <branchName>` 重试 |
 | AI 分支里找不到源资源 | 先 `branch pick-to` 导入 |
 | `projectBranchState` 有计数但 AI 分支页面为空 | 不要误判为已导入；AI 分支仍需 pick-to |
-| run-config 在分支下 404 | 确认 case/endpoint/environment/branch 均存在后转 `apifox-cli-checkup` |
+| run-config 在分支下 404 | 确认 case/endpoint/environment/branch 均存在后转 `apifox-cli` 的排障附录 |
 | merge 被保护分支拦截 | 改走 `merge-request` |

@@ -74,7 +74,7 @@ apifox test-scenario import-steps <scenarioId> --project <projectId> --source te
 1. 创建或更新后执行 `test-case get`。
 2. 确认步骤、断言、提取变量、处理器字段被后端保存。
 3. 确认字段不是空数组、空对象或写到错误层级。
-4. 如果 CLI 返回成功但前端不展示，转 `apifox-cli-checkup`，先确认 project、branch、endpoint、categoryId 和回读结构是否一致。
+4. 如果 CLI 返回成功但前端不展示，转 `apifox-cli` 的排障附录，先确认 project、branch、endpoint、categoryId 和回读结构是否一致。
 
 ## 内容和处理器结构
 
@@ -188,8 +188,8 @@ pm.test("JSON value equals expected", function () {
 
 | 现象 | 处理 |
 |------|------|
-| 测试步骤不展示 | `test-case get` 看真实结构，必要时转 `apifox-cli-checkup` |
+| 测试步骤不展示 | `test-case get` 看真实结构，必要时转 `apifox-cli` 的排障附录 |
 | 断言不生效 | 读取现有成功 case 模板，对比 assertion 字段 |
 | 提取变量为空 | 检查 extractor 层级、变量名、响应路径和执行报告 |
-| run-config 404 | 确认 case/endpoint/environment/branch 均存在，再转 `apifox-cli-checkup` |
+| run-config 404 | 确认 case/endpoint/environment/branch 均存在，再转 `apifox-cli` 的排障附录 |
 | endpoint 下找不到 case | 检查是否带了正确 `--branch` 和 `--endpoint` |

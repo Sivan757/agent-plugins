@@ -1,11 +1,37 @@
 ---
 name: apifox-cli
-description: 通过 Apifox CLI 管理 Apifox 项目资源。触发场景：运行接口自动化测试/测试套件，查询/创建/更新/删除接口、环境、Schema、Mock、分支等项目资源，导入导出 API 文档，查看测试报告，管理 Runner、定时任务、通知等 CI/CD 配置。CLI 输出为结构化 JSON，常含 agentHints.nextSteps；所有命令支持 --help。
+description: 通过 Apifox CLI 管理 Apifox 项目资源，并端到端交付一组 API。触发场景：从需求/PRD/代码生成并导入接口，设计 endpoint 与 Schema，配置环境与 Mock，创建并运行接口测试用例/场景/测试套件，导出或发布 API 文档，走分支合并；以及查询/创建/更新/删除接口、环境、Schema、Mock、分支等项目资源、查看测试报告、管理 Runner/定时任务/通知等 CI/CD 配置。也用于 CLI 排障：命令成功但页面没看到、创建后 list/get 找不到、报告缺失、agentHints/help 与实际行为不一致、怀疑本机 CLI 版本过旧。CLI 输出为结构化 JSON，常含 agentHints.nextSteps；所有命令支持 --help。
 ---
 
 # Apifox CLI
 
 用 Apifox CLI 完成用户请求；不要凭记忆拼 payload，优先让 CLI 的 `--help`、`cli-schema`、`cli-schema validate`、`agentHints.nextSteps` 驱动下一步。
+
+## 黄金路径：从需求到交付
+
+用户要「创建/补齐一组 API」时，按这条链走，不要把它拆成互不相关的步骤：
+
+```text
+确认项目/分支
+  -> 如需从代码/文档导入，先做 spec 生成和质量门禁
+  -> 设计接口和 Schema
+  -> 配置环境和变量
+  -> 配置 Mock
+  -> 创建接口测试用例
+  -> 运行测试并查看报告
+  -> 导出/发布文档
+  -> 合并或创建 MR
+```
+
+1. **确认上下文**：按当前 CLI help 确认身份、项目、目标分支，以及是否需要 AI 分支。要直接改主分支/迭代分支时，先确认 AI 写入权限或走 AI 分支；通过 AI 分支改已有资源时，先用 `branch pick-to` 导入源资源。
+2. **设计 API 资源**：使用 endpoint、schema、response-component、security-scheme、folder 等命令。先建 `schema`、`response-component`、`security-scheme` 等可复用资源，再引用到 endpoint；创建后必须 `endpoint get` 验证真实保存结构。endpoint 是接口定义，test-case 是接口下测试用例，不要混写；环境变量不要写进 common-parameter。
+3. **配置环境**：使用 environment、variables、database-connection、vault 等命令。没有合适环境时创建或更新。运行测试和 CI 交付命令建议显式带 `--environment`，避免默认环境变化导致不可复现。
+4. **补测试用例**：不要创建空壳 case；创建后 `test-case get` 验证步骤、断言、提取器被保存。
+5. **验证和交付**：报告或前端展示异常先转本文件的「故障恢复」；需要合并时读 `apifox-branch`。
+
+从代码库、PRD 或文档生成并导入 API spec 时，先读 `apifox-import-export`，完成生成器搜索、OpenAPI 指标校验、tags 分组和临时项目导入验证，再进入接口设计或测试补充。
+
+不可违反：不要跳过 project/branch 确认；不要直接在受保护主分支写入；不要只创建接口不验证保存结构；不要只创建空测试用例；不要把测试失败当作接口创建失败，分别定位 API 定义、环境、测试用例和执行报告。
 
 ## 新会话检查
 
@@ -93,3 +119,5 @@ apifox <command> <subcommand> --help
 | 参数或 schema 错误 | 先跑 `cli-schema get` / `cli-schema validate` |
 | AI 写入受限 | 解释 AI 分支/权限开关，让用户选择 |
 | 私有部署 | 加 `--api-base-url https://your-server` |
+
+命令"成功"但页面看不到、回读找不到、报告缺失、agentHints 与 help 冲突，或怀疑 CLI 版本过旧时，读 [`references/checkup.md`](references/checkup.md)。该附录给出记录现场、确认版本、回读校验和按现象分流的完整排查步骤。

@@ -73,4 +73,4 @@ apifox test-suite run <suiteId> --project <projectId> --environment <environment
 | 套件 `items: []` | 这是空占位套件，不是有效回归套件 |
 | CI 找不到环境 | 按当前 CLI help 使用 `environment list/get` 确认 environmentId |
 | runner 不可用 | `runner check`，再看 runner get/list |
-| 报告没有步骤详情 | 先区分本地 JSON、云端上传、下载接口概要，再必要时转 `apifox-cli-checkup` |
+| 报告没有步骤详情 | 先区分本地 JSON、云端上传、下载接口概要，再必要时转 `apifox-cli` 的排障附录 |
