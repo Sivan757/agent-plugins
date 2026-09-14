@@ -72,4 +72,4 @@ Docs captured into skill references:
 - Region notes: `docId=909799935182`
 - Goods publishing flow: `docId=896172443264`
 
-For exact request/response schemas, open the specific API document id from `$temu-api` references and extract that page before coding.
+For exact request/response schemas, open the specific API document from `references/temu-openapi/api/` and extract that page before coding.

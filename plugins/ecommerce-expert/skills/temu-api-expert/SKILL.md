@@ -20,6 +20,15 @@ description: >-
 This skill contains comprehensive reference material for the Temu Partner Open API platform.
 Use it to guide developers building integrations with Temu's seller/merchant ecosystem.
 
+## Scope
+
+This is the compiled handbook: the 124 endpoints most integrations actually call, each with a full
+request/response parameter table, plus signing, auth flows, error codes and rate limits.
+
+For an endpoint that is not in the 11 domain files below, or for the authoritative wording of a
+field, use the `temu-openapi` skill — the offline mirror of 232 captured Partner Platform documents
+(209 API + 23 developer). Search that mirror before falling back to a browser.
+
 ## Quick Facts
 
 - **Protocol**: HTTPS, POST-only (no GET/PUT/DELETE)
@@ -215,7 +224,8 @@ Each reference file contains **full request/response parameter tables** (propert
 | Ads | `references/ads.md` | 8 | Ad campaigns, reports, ROAS prediction |
 | Integration Guide | `references/integration-guide.md` | — | Auth flows, signing code (Python), rate limits, common patterns |
 
-**Total: 124 API endpoints with full parameter specs across 11 domain files.**
+**Total: 124 API endpoints with full parameter specs across 11 domain files** — the compiled subset.
+The full captured catalog (209 API documents) lives in the `temu-openapi` skill.
 
 Read only the file(s) relevant to the user's question — do not load all references at once.
 

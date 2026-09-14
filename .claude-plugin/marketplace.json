@@ -60,9 +60,9 @@
     },
     {
       "name": "ecommerce-expert",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "source": "./plugins/ecommerce-expert",
-      "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints) and Temu with full parameter specs, signing algorithms, integration patterns, and offline Temu OpenAPI mirrors (209 endpoint docs, 23 developer guides)"
+      "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints), a compiled Temu handbook (124 endpoints) with signing algorithms and integration patterns, and an offline Temu Partner Platform mirror of 232 captured documents (209 API + 23 developer guides)"
     },
     {
       "name": "ffmpeg",
