@@ -26,3 +26,16 @@ export {
 export type { VerificationRecord, CredentialAssessment } from './verification.js';
 export { PluginError } from './errors.js';
 export type { PluginErrorCode } from './errors.js';
+export {
+  DEFAULT_ROW_LIMIT,
+  DEFAULT_COL_WIDTH,
+  truncate,
+  formatCompact,
+  formatCSV,
+  formatTable,
+  resolveQueryOptions,
+  renderRows,
+  assertWriteAllowed,
+  WRITE_STATEMENT_PATTERN,
+} from './sql-output.js';
+export type { RowFormat, RawQueryOptions, QueryOptions } from './sql-output.js';

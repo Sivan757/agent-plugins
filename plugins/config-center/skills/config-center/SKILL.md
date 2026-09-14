@@ -3,7 +3,7 @@ name: config-center
 description: >-
   Manage plugin credentials and environment configuration. Use when the user
   needs to set up, check, or edit credentials for any agent plugin (TickTick,
-  PostgreSQL, MySQL, Aliyun SLS, Temu, withoutbg, prompt-forge, etc.), or when
+  Database, Aliyun SLS, CodeArts, prompt-forge, etc.), or when
   a plugin reports missing/unconfigured credentials. Provides redacted
   credential checks (the Agent never sees plaintext) and a browser-based config
   UI for human-only editing. Opening that UI is the Agent's job: when the user

@@ -4970,7 +4970,7 @@ async function fetchProjectToken(config, projectId) {
     throw new PluginError(
       `IAM did not return a project token (HTTP ${result.status}).
 Check the IAM endpoint, account name, username and password.
-Response: ${redactEchoedSecrets(truncate(result.raw, 400), config)}`,
+Response: ${redactEchoedSecrets(truncate2(result.raw, 400), config)}`,
       "AUTH_FAILED"
     );
   }
@@ -5118,7 +5118,7 @@ function httpError(response, config) {
   if (errorMsg) lines.push(`error_msg: ${redactEchoedSecrets(String(errorMsg), config)}`);
   lines.push(`request: ${response.preview.method} ${response.preview.url}`);
   if (!errorCode && !errorMsg) {
-    lines.push(`response: ${redactEchoedSecrets(truncate(response.raw, 600), config)}`);
+    lines.push(`response: ${redactEchoedSecrets(truncate2(response.raw, 600), config)}`);
   }
   if (response.status === 401 || response.status === 403) {
     lines.push("The gateway rejected the credentials.");
@@ -5159,7 +5159,7 @@ function redactHeaders(headers) {
   }
   return redacted;
 }
-function truncate(value, max) {
+function truncate2(value, max) {
   if (value.length <= max) return value;
   return `${value.slice(0, max)}\u2026 (${value.length - max} more characters)`;
 }

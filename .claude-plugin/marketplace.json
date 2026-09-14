@@ -30,7 +30,7 @@
     },
     {
       "name": "config-center",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "source": "./plugins/config-center",
       "description": "Local configuration center for managing plugin credentials and environment state. Agent-facing reads are redacted; modifications require the HTML UI."
     },
@@ -39,6 +39,12 @@
       "version": "0.1.0",
       "source": "./plugins/consulting-advisor",
       "description": "Structured cross-domain consulting for problem solving and cognitive upgrade. Use when the user asks for advice, diagnosis, planning, strategy, career/job-search help, management, product/design/marketing, communication/PPT/writing, programming tradeoffs, decision-making, learning, or any ambiguous problem where the agent should identify domains, infer intent, select an authoritative framework, briefly teach it, ask clarifying questions before final recommendations, and apply the framework to the user's context."
+    },
+    {
+      "name": "database",
+      "version": "0.2.0",
+      "source": "./plugins/database",
+      "description": "Execute SQL against MySQL and PostgreSQL from one CLI — each connection carries its engine, and the database is optional, so a connection can describe a server and let each command pick the database. Multi-connection support, database/schema discovery, column listing, table location search, foreign-key tracing, table profiling, and a guard on write statements."
     },
     {
       "name": "dsh-evolve",
@@ -81,18 +87,6 @@
       "version": "0.2.0",
       "source": "./plugins/magick",
       "description": "Image workflows for conversion, resizing, compression, normalization, clothing mockup overlays, watermarks, labels, contact sheets, chroma-key transparency and print cutouts, metadata, visual QA, and PDF/SVG rasterization with ImageMagick; local super-resolution and clarity enhancement with Real-ESRGAN; and AI background removal with withoutbg for transparent PNG/WebP assets — each verified so alpha, DPI metadata, and canvas placement survive the pipeline."
-    },
-    {
-      "name": "mysql",
-      "version": "0.12.1",
-      "source": "./plugins/mysql",
-      "description": "Enables AI to execute SQL queries against MySQL databases via Node.js with multi-connection support for cross-database analysis."
-    },
-    {
-      "name": "postgresql",
-      "version": "0.6.1",
-      "source": "./plugins/postgresql",
-      "description": "Enables AI to execute SQL queries against PostgreSQL databases via Node.js with multi-connection support for schema inspection and discovery."
     },
     {
       "name": "prompt-forge",

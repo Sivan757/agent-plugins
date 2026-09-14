@@ -1,0 +1,17 @@
+{
+  "name": "database",
+  "version": "0.2.0",
+  "description": "Enables AI to execute SQL against MySQL and PostgreSQL from one CLI. Every connection carries its engine, and the database is optional — describe a server once and choose the database per command. Query, discover schemas and databases, list columns, find where a table lives, trace foreign keys, and profile a table, with a guard that refuses write statements until the user confirms.",
+  "author": {
+    "name": "Agent Plugins"
+  },
+  "keywords": [
+    "database",
+    "sql",
+    "mysql",
+    "postgresql",
+    "query",
+    "schema",
+    "node"
+  ]
+}

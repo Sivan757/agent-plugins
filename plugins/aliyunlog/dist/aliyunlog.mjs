@@ -11504,7 +11504,7 @@ function extractTime(entry) {
   }
   return t;
 }
-function formatCompact(data) {
+function formatCompact2(data) {
   if (!data.length) return "(no results)";
   const lines = [];
   for (const entry of data) {
@@ -11968,7 +11968,7 @@ Available: ${Object.keys(QUERY_TEMPLATES).join(", ")}`);
     } else {
       switch (format) {
         case "compact":
-          output = fields ? formatCsv(data, fields) : formatCompact(data);
+          output = fields ? formatCsv(data, fields) : formatCompact2(data);
           break;
         case "csv":
           output = formatCsv(data, fields);

@@ -3643,6 +3643,13 @@ var init_verification = __esm({
   }
 });
 
+// ../config-center/src/sql-output.ts
+var init_sql_output = __esm({
+  "../config-center/src/sql-output.ts"() {
+    "use strict";
+  }
+});
+
 // ../config-center/src/index.ts
 var init_src = __esm({
   "../config-center/src/index.ts"() {
@@ -3653,6 +3660,7 @@ var init_src = __esm({
     init_redact();
     init_verification();
     init_errors();
+    init_sql_output();
   }
 });
 
