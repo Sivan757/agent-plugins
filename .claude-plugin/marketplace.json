@@ -41,6 +41,18 @@
       "description": "Structured cross-domain consulting for problem solving and cognitive upgrade. Use when the user asks for advice, diagnosis, planning, strategy, career/job-search help, management, product/design/marketing, communication/PPT/writing, programming tradeoffs, decision-making, learning, or any ambiguous problem where the agent should identify domains, infer intent, select an authoritative framework, briefly teach it, ask clarifying questions before final recommendations, and apply the framework to the user's context."
     },
     {
+      "name": "dsh-evolve",
+      "version": "0.2.0",
+      "source": "./plugins/dsh-evolve",
+      "description": "DeepSeek Harness self-evolution loop: deterministic hooks count tool activity, detect repeated calls and failure streaks, and nudge the agent to fold repeated work into a reusable skill."
+    },
+    {
+      "name": "dsh-plugin-creator",
+      "version": "0.1.0",
+      "source": "./plugins/dsh-plugin-creator",
+      "description": "Author, package, install, and debug DeepSeek Harness (dsh) plugins from a separate repository. Covers the plugin module shape (apply / inject / Config), cordis.yml composition and patch overrides, bundle packaging (package.json dsh.bundle), dsh plugin add, tool / service / event registration, and git-install and distribution traps. Use when the user mentions a dsh plugin, DeepSeek Harness plugin, @deepseek-ai/dsh-*, cordis.yml, cordis.patch.yml, defineTool, dsh plugin add, or wants to build a dsh extension in their own repository."
+    },
+    {
       "name": "dsh-workflow",
       "version": "0.1.0",
       "source": "./plugins/dsh-workflow",

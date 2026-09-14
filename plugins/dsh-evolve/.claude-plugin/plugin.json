@@ -1,0 +1,14 @@
+{
+  "name": "dsh-evolve",
+  "version": "0.2.0",
+  "description": "DeepSeek Harness self-evolution loop: deterministic hooks count tool activity, detect repeated calls and failure streaks, and nudge the agent to fold repeated work into a reusable skill.",
+  "author": {
+    "name": "Agent Plugins"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "hooks",
+    "self-improvement",
+    "skills"
+  ]
+}
