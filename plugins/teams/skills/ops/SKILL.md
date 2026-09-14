@@ -1,6 +1,6 @@
 ---
 name: ops
-description: "部署运维域的技能入口。覆盖34个主题：bash-defensive-patterns、canary-watch、ci-cd-and-automation、create-github-action-workflow-specification、dependabot、deployment-patterns、deployment-pipeline-design、devops-rollout-plan、distributed-tracing、docker-patterns 等。当任务落在部署运维范围内时先读本文件，再按下方路由表只读需要的那一篇——不要一次读完整个 references。适用场景：让服务能可靠地构建、部署、观测与回滚。"
+description: "部署运维域的技能入口。覆盖37个主题：bash-defensive-patterns、canary-watch、ci-cd-and-automation、create-github-action-workflow-specification、dependabot、deployment-patterns、deployment-pipeline-design、devops-rollout-plan、distributed-tracing、docker-patterns 等。当任务落在部署运维范围内时先读本文件，再按下方路由表只读需要的那一篇——不要一次读完整个 references。适用场景：让服务能可靠地构建、部署、观测与回滚。"
 ---
 
 # 部署运维（`ops`）
@@ -9,7 +9,7 @@ description: "部署运维域的技能入口。覆盖34个主题：bash-defensiv
 
 ## 怎么用这个技能（重要）
 
-这是一个**入口**，不是手册。`references/` 下有 34 篇主题文档，**不要整目录读**。正确做法：
+这是一个**入口**，不是手册。`references/` 下有 37 篇主题文档，**不要整目录读**。正确做法：
 
 1. 按下面路由表的「什么时候读」列，挑出与本任务真正相关的那 1–3 篇；
 2. 用 `Read` 读 `${CLAUDE_PLUGIN_ROOT}/skills/ops/references/<主题>/guide.md`；
@@ -30,6 +30,8 @@ description: "部署运维域的技能入口。覆盖34个主题：bash-defensiv
 | `devops-rollout-plan` | Generate comprehensive rollout plans with preflight checks, step-by-step deployment, verification signals, rollback pro… |
 | `distributed-tracing` | Implement distributed tracing with Jaeger and Tempo to track requests across microservices and identify performance bot… |
 | `docker-patterns` | Docker and Docker Compose patterns for local development, hardened CLI installer harnesses, container security, network… |
+| `finishing-a-development-branch` | Use when implementation is complete, all tests pass, and you need to decide how to integrate the work |
+| `git-workflow` | Git workflow patterns including branching strategies, commit conventions, merge vs rebase, conflict resolution, and col… |
 | `github-actions-efficiency` | Audit GitHub Actions workflow efficiency and recommend fixes to reduce CI minutes and costs. |
 | `github-actions-hardening` | Security hardening reviewer for GitHub Actions workflow files (.github/workflows/*.yml). |
 | `github-actions-runtime-upgrade-conventions` | Upgrade GitHub Actions to supported runtimes by selecting safe action versions, preserving workflow behavior, and valid… |
@@ -54,6 +56,7 @@ description: "部署运维域的技能入口。覆盖34个主题：bash-defensiv
 | `shellcheck-configuration` | Master ShellCheck static analysis configuration and usage for shell script quality. |
 | `shipping-and-launch` | Prepares production launches. |
 | `slo-implementation` | Define and implement Service Level Indicators (SLIs) and Service Level Objectives (SLOs) with error budgets and alertin… |
+| `using-git-worktrees` | Use when starting feature work that needs isolation from current workspace or before executing implementation plans - e… |
 
 ## 本域的硬要求
 

@@ -3,13 +3,13 @@
   "schema_version": 1,
   "generated_at": "2026-09-13",
   "counts": {
-    "total": 273,
+    "total": 276,
     "by_provenance": {
-      "upstream-port": 268,
+      "upstream-port": 271,
       "framework-derived": 5
     },
     "by_license": {
-      "MIT": 265,
+      "MIT": 268,
       "Apache-2.0": 3
     }
   },
@@ -2944,6 +2944,44 @@
       "local_path": "skills/ops/references/docker-patterns/guide.md"
     },
     {
+      "skill": "ops-finishing-a-development-branch",
+      "domain": "ops",
+      "provenance": "upstream-port",
+      "source": {
+        "repo": "obra/superpowers",
+        "path": "skills/finishing-a-development-branch",
+        "ref": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+        "ref_kind": "commit",
+        "ref_is_default_branch_head_at_capture": true,
+        "license": "MIT",
+        "license_holder": "Jesse Vincent",
+        "stars": 286381,
+        "checked_at": "2026-09-14"
+      },
+      "local_changes": "目录按域归集：上游 skills/<名称>/SKILL.md → 本地 skills/ops/references/<名称>/guide.md（本仓库结构要求域技能只发现一层 SKILL.md）。frontmatter 与正文逐字一致，未改任何技术内容。 2026-09-14 清理 2 处上游产品自指：开场宣告由「I'm using the finishing-a-development-branch skill to complete this work.」改为「Wrapping up this development branch.」；Step 6 中「Superpowers created this worktree — we own cleanup」改为「This worktree is project-local — we own cleanup」（原句把清理归属绑定到上游产品名，与本插件的归属判据无关）。",
+      "container": "ops",
+      "local_path": "skills/ops/references/finishing-a-development-branch/guide.md"
+    },
+    {
+      "skill": "ops-git-workflow",
+      "domain": "ops",
+      "provenance": "upstream-port",
+      "source": {
+        "repo": "affaan-m/ECC",
+        "path": "skills/git-workflow",
+        "ref": "8321021c54d670126ce3b2969d5deb880b4b0c2a",
+        "ref_kind": "commit",
+        "ref_is_default_branch_head_at_capture": true,
+        "license": "MIT",
+        "license_holder": "Affaan Mustafa",
+        "stars": 257966,
+        "checked_at": "2026-09-14"
+      },
+      "local_changes": "目录按域归集：上游 skills/<名称>/SKILL.md → 本地 skills/ops/references/<名称>/guide.md（本仓库结构要求域技能只发现一层 SKILL.md）。frontmatter 与正文逐字一致，未改任何技术内容。 正文无产品自指，未作任何删改。",
+      "container": "ops",
+      "local_path": "skills/ops/references/git-workflow/guide.md"
+    },
+    {
       "skill": "ops-github-actions-efficiency",
       "domain": "ops",
       "provenance": "upstream-port",
@@ -3398,6 +3436,25 @@
       "local_changes": "仅目录名由上游叶名改为加技术域前缀；SKILL.md 的 frontmatter、正文以及 references/assets/scripts 内容均与上游逐字一致。 2026-09-13 重构：进入域技能 references 下，入口文件名由 SKILL.md 改为 guide.md（避免深层 SKILL.md 被当成独立技能发现）。",
       "container": "ops",
       "local_path": "skills/ops/references/slo-implementation/guide.md"
+    },
+    {
+      "skill": "ops-using-git-worktrees",
+      "domain": "ops",
+      "provenance": "upstream-port",
+      "source": {
+        "repo": "obra/superpowers",
+        "path": "skills/using-git-worktrees",
+        "ref": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+        "ref_kind": "commit",
+        "ref_is_default_branch_head_at_capture": true,
+        "license": "MIT",
+        "license_holder": "Jesse Vincent",
+        "stars": 286381,
+        "checked_at": "2026-09-14"
+      },
+      "local_changes": "目录按域归集：上游 skills/<名称>/SKILL.md → 本地 skills/ops/references/<名称>/guide.md（本仓库结构要求域技能只发现一层 SKILL.md）。frontmatter 与正文逐字一致，未改任何技术内容。 2026-09-14 清理 1 处上游产品自指：开场宣告由「I'm using the using-git-worktrees skill to set up an isolated workspace.」改为「Setting up an isolated workspace with git worktrees.」（被引用的技能名在本插件内已不再是技能名，保留会造成误导）。",
+      "container": "ops",
+      "local_path": "skills/ops/references/using-git-worktrees/guide.md"
     },
     {
       "skill": "product-analyze-feature-requests",
@@ -5370,6 +5427,7 @@
     "revised_at": "2026-09-13",
     "shape": "9 个域 skill（skills/<domain>/SKILL.md，路由型）+ 9 个域 agent（agents/<domain>.md）；原 273 条主题文档降为各域 references/<topic>/guide.md，仅在域技能触发后按需读取。",
     "rationale": "把 273 条 description 的常驻上下文成本（70,279 字符 ≈ 17.6k tokens）降到 9 条域入口（约 4.4k 字符 ≈ 1.1k tokens），同时保留主动触发与渐进披露。",
-    "local_changes_note": "所有参考文档内容逐字未改；改动仅为：目录按域归集、入口文件重命名、跨文档相对链接重写。"
+    "local_changes_note": "所有参考文档内容逐字未改；改动仅为：目录按域归集、入口文件重命名、跨文档相对链接重写。",
+    "addition_2026_09_14": "新增 3 篇 git 工作流文档（均入 ops 域，全部 upstream-port、MIT）：obra/superpowers 的 using-git-worktrees 与 finishing-a-development-branch（前者 1 处、后者 2 处产品自指已清理），affaan-m/ECC 的 git-workflow（逐字未改）。共写入 273 → 276。"
   }
 }

@@ -607,3 +607,51 @@ WS   plugins/conductor/skills/workflow-patterns                 未映射到 8 �
 
 - ~~**域路由是否真的能把对的那篇推出来**~~ —— **2026-09-14 已补测。** 在一条六阶段的真实交付链路上跑了两轮不同派法：两轮合计 43 篇次命中（去重 32 篇）全部回查到正确的域，**0 篇误路由**；`data`/`ops`/`analytics` 三个域 0 命中（该任务里确实没有对应工作，属正确行为）。详见 `teams-chain-eval.md`。
 - Claude Code 运行期对 `agents/<domain>.md` 的发现与派发未实测（本地只验证了本仓库校验器）。
+
+---
+
+## 12. git 工作流补充（2026-09-14）
+
+按"找比较多人用的 git / gitflow 相关 skills（提交、submodule、worktree）"的检索结果，**只采纳 3 篇**，全部入 `ops` 域。273 → 276 篇。
+
+### 采纳了什么
+
+| 篇目 | 来源 | star | 体积 | 处置 |
+| --- | --- | --: | --: | --- |
+| `using-git-worktrees` | `obra/superpowers` @ `b36e082` | 286,381 | 6.8 KB | 采纳，清理 1 处自指 |
+| `finishing-a-development-branch` | `obra/superpowers` @ `b36e082` | 286,381 | 7.7 KB | 采纳，清理 2 处自指 |
+| `git-workflow` | `affaan-m/ECC` @ `8321021` | 257,966 | 15.1 KB | 采纳，逐字未改 |
+
+三者均 MIT（Jesse Vincent / Affaan Mustafa）。
+
+**清掉的自指**（逐条记入 `provenance/sources.json` 的 `local_changes`）：
+
+1. `using-git-worktrees` 开场宣告：`I'm using the using-git-worktrees skill to set up an isolated workspace.` → `Setting up an isolated workspace with git worktrees.`（该名字在本插件内已不是技能名，保留会误导）
+2. `finishing-a-development-branch` 开场宣告：`I'm using the finishing-a-development-branch skill to complete this work.` → `Wrapping up this development branch.`
+3. `finishing-a-development-branch` Step 6：`Superpowers created this worktree — we own cleanup` → `This worktree is project-local — we own cleanup`（原句把清理归属绑在上游产品名上，与本地判据无关）
+
+### 评估后**没有**采纳的
+
+- **纯提交规范/命名规范类 6 篇**（`github/awesome-copilot` 的 `git-commit`、`conventional-commit`、`conventional-branch`、`git-flow-branch-creator`、`gitmoji`、`commit-message-storyteller`）：Conventional Commits / gitmoji / Conventional Branch 都是公开标准，属 `teams-eval-report.md` 结论里"讲通用方法、测不出与 baseline 差别"的那一类。**建议先跑一对对照再决定。**
+- **`wshobson/agents` 的 `git-advanced-workflows`**：命令速查（rebase / cherry-pick / bisect / worktree / reflog）+ 安全实践，可选。未采纳的理由是它的 worktree 部分被 `using-git-worktrees` 在决策层面覆盖；bisect/reflog 属恢复场景，优先级低。
+- **`jeremylongshore/claude-code-plugins-plus-skills` 的 git 系列**：约 2.2 KB 的模板填充文本（"Manage commit message formatter operations. Auto-activating skill for DevOps"），无实质内容。
+- **`awesome-copilot` 的 `git-worktree-explorer`**：是带图形界面的 JS 扩展，不是知识型 skill。
+
+### submodule：确认是空白
+
+- 本地 19 个源仓库全部 `SKILL.md` 过一遍，**没有任何一篇的 submodule 提及数 ≥5**；`gh search repos` / `gh search code` 无结果。
+- 网上搜到的两个"git submodules skill"（hyperpromptai、skillmd.ai）抓原文确认是聚合站 SEO 页，无可核验上游；`agentskills.so` 指向的 `supercent-io/skills-template` 仓库 404。
+- 唯一有实质内容的相邻材料是已知坑：`anthropics/claude-code` #83411（桌面端 session worktree 不初始化 submodule，`CLAUDE.md` import 与 project hook 静默失效，CLI `--worktree` 正常）。
+- **结论：submodule 该自建，不该外采。**
+
+### 本次发现但**未处理**的既有耦合（需决策）
+
+清理新采纳的两篇时，发现**此前采纳的 3 个主题**同样带着上游产品名，性质相同、部分更严重：
+
+| 位置 | 性质 | 影响 |
+| --- | --- | --- |
+| `analytics/references/click-path-audit/guide.md:205-207` | 引用 `/superpowers:systematic-debugging`、`/superpowers:verification-before-completion`、`/superpowers:test-driven-development` | 这 3 个命令**在本插件内不存在**，照做会调不存在的命令 |
+| `product/references/brainstorming/guide.md:100,206`、`spec-document-reviewer-prompt.md:7` | 要求把设计文档写到 `docs/superpowers/specs/` | 会在**用户仓库里**建出 `docs/superpowers/` 目录 |
+| `product/references/brainstorming/scripts/*`（`server.cjs`、`start-server.sh`、`stop-server.sh`、`frame-template.html`、`visual-companion.md`） | 整套可视化协作服务器是上游品牌的：硬编码品牌 logo URL、`SUPERPOWERS_*` 遥测环境变量、版本读取、状态目录 `.superpowers/brainstorm/` | 品牌与遥测行为随插件一起分发；改 env 变量名/目录会影响脚本功能，需改码并验证 |
+
+未处理的原因：这是**既有采纳内容**，且 `brainstorming/scripts/` 属功能性代码（不是纯文本），改动需要单独验证；是否破例偏离"逐字采纳"应由使用者决定。
