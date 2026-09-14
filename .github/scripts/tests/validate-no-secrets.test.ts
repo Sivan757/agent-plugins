@@ -33,7 +33,7 @@ describe("secret scanner", () => {
   });
 
   test("flags markdown-escaped canonical signing strings", () => {
-    // Mirrors the escaped form used in the temu-dev reference mirror.
+    // Mirrors the escaped form used in the temu-openapi reference mirror.
     const line = `${HEX_SECRET}access\\_token${TOKEN_LIKE}app\\_key${HEX_SECRET_ALT}data\\_typeJSON`;
     const findings = scanText("src/demo/references/signing.md", line);
     expect(rules(findings)).toContain("keyed-entropy");
@@ -164,12 +164,12 @@ describe("scan scope selection", () => {
     expect(isExcludedPath("plugins/demo/dist/demoo.mjs")).toBe(true);
     expect(isExcludedPath("plugins/demo/node_modules/lib/index.js")).toBe(true);
     expect(isExcludedPath("plugins/prompt-forge/skills/prompt-forge/data/prompts.jsonl")).toBe(true);
-    expect(isExcludedPath("plugins/mysql/dist/bundle.mjs")).toBe(true);
+    expect(isExcludedPath("plugins/database/dist/bundle.mjs")).toBe(true);
   });
 
   test("keeps human-authored surfaces in scope", () => {
-    expect(isExcludedPath("plugins/ecommerce-expert/skills/temu-dev/SKILL.md")).toBe(false);
-    expect(isExcludedPath("plugins/mysql/plugin.config.ts")).toBe(false);
+    expect(isExcludedPath("plugins/ecommerce-expert/skills/temu-openapi/SKILL.md")).toBe(false);
+    expect(isExcludedPath("plugins/database/plugin.config.ts")).toBe(false);
     expect(isScannedFile("docs/decisions/single-tree-plugin-layout.md")).toBe(true);
     expect(isScannedFile("plugins/config-center/src/config-center.test.ts")).toBe(true);
     expect(isScannedFile("assets/logo.png")).toBe(false);

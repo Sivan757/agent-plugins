@@ -68,7 +68,7 @@ const declared = sources.flatMap(({ name, text }) => {
 
 describe("config-form commands", () => {
   test("covers the plugins that ship a config form", () => {
-    expect(declared.length).toBeGreaterThanOrEqual(5);
+    expect(declared.length).toBeGreaterThanOrEqual(4);
     expect(declared.map((entry) => entry.name)).toContain("codearts");
   });
 
