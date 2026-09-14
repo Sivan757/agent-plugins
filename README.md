@@ -92,23 +92,26 @@ Plugins that only carry skills need nothing beyond Claude Code.
 
 | Plugin | What it does |
 | --- | --- |
-| [mysql](plugins/mysql) | Run MySQL queries across saved connections, with a guard on write statements |
-| [postgresql](plugins/postgresql) | Run PostgreSQL queries with schema discovery and parameterized statements |
+| [database](plugins/database) | Run MySQL and PostgreSQL statements over saved connections — each connection carries its engine — with database and schema discovery, column listing, table profiling, and a guard on write statements |
 
 ### Process media
 
 | Plugin | What it does |
 | --- | --- |
 | [ffmpeg](plugins/ffmpeg) | Build and verify FFmpeg and ffprobe commands for video, audio, and images |
-| [magick](plugins/magick) | Build ImageMagick workflows: conversion, resizing, mockups, compositing |
-| [real-esrgan](plugins/real-esrgan) | Upscale and enhance raster images with Real-ESRGAN, verified through ImageMagick |
-| [withoutbg](plugins/withoutbg) | Remove image backgrounds, locally or through the API |
+| [magick](plugins/magick) | Build ImageMagick workflows — conversion, resizing, mockups, compositing — and run Real-ESRGAN upscaling and withoutbg background removal as verified steps in the same pipeline |
 
 ### Design interfaces
 
 | Plugin | What it does |
 | --- | --- |
 | [hallmark](plugins/hallmark) | Audit, redesign, or build a page against an anti-slop design rule set, and extract the design DNA from a reference |
+
+### Work across engineering domains
+
+| Plugin | What it does |
+| --- | --- |
+| [teams](plugins/teams) | Nine domain agents — product, design, frontend, backend, data, api, test, ops, analytics — backed by a knowledge library where each domain routes to the one topic document that answers the question |
 
 ### Manage prompts
 
@@ -138,13 +141,13 @@ Plugins that only carry skills need nothing beyond Claude Code.
 
 | Plugin | What it does |
 | --- | --- |
-| [apifox](plugins/apifox) | Manage Apifox resources, run interface automation tests, import and export API docs, and handle branch collaboration |
+| [apifox](plugins/apifox) | Deliver a set of APIs end to end — design, environments, mocks, tests, doc export, branch merge — and manage Apifox project resources |
 
 ### Work with commerce APIs
 
 | Plugin | What it does |
 | --- | --- |
-| [ecommerce-expert](plugins/ecommerce-expert) | Navigate SHEIN and Temu integration APIs, with offline mirrors of 209 Temu endpoint docs and 23 developer guides |
+| [ecommerce-expert](plugins/ecommerce-expert) | Navigate SHEIN and Temu integration APIs, with a compiled Temu handbook and an offline mirror of 232 captured Partner Platform documents |
 
 ### Run the development-to-operations chain
 
@@ -152,11 +155,13 @@ Plugins that only carry skills need nothing beyond Claude Code.
 | --- | --- |
 | [codearts](plugins/codearts) | Drive Huawei Cloud CodeArts end to end — pipelines, builds, code checks, merge requests, deploys, artifacts, wiki — through one bundled CLI over 782 documented API operations |
 
-### Keep a DeepSeek Harness codebase healthy
+### Work on DeepSeek Harness
 
 | Plugin | What it does |
 | --- | --- |
 | [dsh-workflow](plugins/dsh-workflow) | Review standards, pre-push checks, CI flake diagnosis, docs lifecycle, Agent Notes hygiene, prose and simplification passes, stacked PRs, and browser GIF demos |
+| [dsh-evolve](plugins/dsh-evolve) | Hooks that count tool activity, spot repeated calls and failure streaks, and nudge the agent to fold repeated work into a reusable skill |
+| [dsh-plugin-creator](plugins/dsh-plugin-creator) | Author, package, install, and debug DeepSeek Harness plugins in a separate repository |
 
 ### Manage credentials
 
@@ -196,7 +201,7 @@ Configuration lives in `~/.cache/agent-plugins/<plugin>/config.json` and never
 inside your project.
 
 **A bundled CLI fails with a module error.** `aliyunlog`, `codearts`,
-`config-center`, `mysql`, `postgresql`, `prompt-forge`, and `ticktick` run as Node
+`config-center`, `database`, `prompt-forge`, and `ticktick` run as Node
 programs and need Node.js 22 or newer. The skills-only plugins do not.
 
 **A plugin is missing from a running session.** Check what is installed and

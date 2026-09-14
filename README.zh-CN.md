@@ -88,23 +88,26 @@
 
 | 插件 | 作用 |
 | --- | --- |
-| [mysql](plugins/mysql) | 跨多个已保存连接执行 MySQL 查询，并拦截写语句 |
-| [postgresql](plugins/postgresql) | 执行 PostgreSQL 查询，支持 schema 发现与参数化语句 |
+| [database](plugins/database) | 跨多个已保存连接执行 MySQL 与 PostgreSQL 语句——每个连接自带引擎类型——支持库/schema 发现、列清单、表画像，并拦截写语句 |
 
 ### 处理媒体
 
 | 插件 | 作用 |
 | --- | --- |
 | [ffmpeg](plugins/ffmpeg) | 构建并校验视频、音频、图像的 FFmpeg 与 ffprobe 命令 |
-| [magick](plugins/magick) | 构建 ImageMagick 工作流：转换、缩放、样图、合成 |
-| [real-esrgan](plugins/real-esrgan) | 用 Real-ESRGAN 放大增强位图，并用 ImageMagick 校验 |
-| [withoutbg](plugins/withoutbg) | 去除图片背景，本地或走 API |
+| [magick](plugins/magick) | 构建 ImageMagick 工作流——转换、缩放、样图、合成，并把 Real-ESRGAN 放大与 withoutbg 抠图作为同一条流水线里可校验的步骤 |
 
 ### 设计界面
 
 | 插件 | 作用 |
 | --- | --- |
 | [hallmark](plugins/hallmark) | 按一套反模板化设计规则审查、重做或新建页面，也能从参考稿里提取设计 DNA |
+
+### 跨工程域查资料
+
+| 插件 | 作用 |
+| --- | --- |
+| [teams](plugins/teams) | 九个领域 agent——产品、设计、前端、后端、数据、API、测试、运维、数据分析——背后是按域组织的知识库，每个域只路由到真正回答该问题的那一篇文档 |
 
 ### 管理提示词
 
@@ -134,13 +137,13 @@
 
 | 插件 | 作用 |
 | --- | --- |
-| [apifox](plugins/apifox) | 管理 Apifox 资源、运行接口自动化测试、导入导出 API 文档、处理分支协作 |
+| [apifox](plugins/apifox) | 端到端交付一组 API——设计、环境、Mock、测试、文档导出、分支合并——也能管理 Apifox 项目资源 |
 
 ### 对接电商 API
 
 | 插件 | 作用 |
 | --- | --- |
-| [ecommerce-expert](plugins/ecommerce-expert) | 查阅 SHEIN 与 Temu 的接口对接细节，内置 209 篇 Temu 接口文档与 23 篇开发者指南的离线镜像 |
+| [ecommerce-expert](plugins/ecommerce-expert) | 查阅 SHEIN 与 Temu 的接口对接细节，内置 Temu 精编手册与 232 篇已抓取的合作方平台文档离线镜像 |
 
 ### 研发到运维全链路
 
@@ -148,11 +151,13 @@
 | --- | --- |
 | [codearts](plugins/codearts) | 用内置 CLI 打通华为云 CodeArts 全链路——流水线、编译构建、代码检查、合并请求、部署、制品、知识库，背后是 782 个接口 |
 
-### 维护 DeepSeek Harness 代码库
+### 在 DeepSeek Harness 上工作
 
 | 插件 | 作用 |
 | --- | --- |
 | [dsh-workflow](plugins/dsh-workflow) | 评审标准、提交前检查、CI flake 诊断、文档生命周期、Agent Notes 治理、文案与简化清理、堆叠 PR、浏览器 GIF 演示 |
+| [dsh-evolve](plugins/dsh-evolve) | 用 hook 统计工具活动，识别重复调用与连续失败，并在重复工作出现时提示把它沉淀成可复用技能 |
+| [dsh-plugin-creator](plugins/dsh-plugin-creator) | 在独立仓库里开发、打包、安装、调试 DeepSeek Harness 插件 |
 
 ### 管理凭据
 
@@ -180,7 +185,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/config-center.mjs" edit mysql # 通用编辑器
 
 **插件说还没有任何配置。** 这时 agent 应该替你打开配置表单。如果它没有，就让 agent 打开该插件自己的表单（`config --ui`）。配置存放在 `~/.cache/agent-plugins/<plugin>/config.json`，绝不会落在你的项目里。
 
-**内置 CLI 报模块错误。** `aliyunlog`、`codearts`、`config-center`、`mysql`、`postgresql`、`prompt-forge`、`ticktick` 都是以 Node 程序运行的，需要 Node.js 22 或更新版本。只带 skill 的插件没有这个要求。
+**内置 CLI 报模块错误。** `aliyunlog`、`codearts`、`config-center`、`database`、`prompt-forge`、`ticktick` 都是以 Node 程序运行的，需要 Node.js 22 或更新版本。只带 skill 的插件没有这个要求。
 
 **会话里看不到某个插件。** 用 `/plugin` 查看已安装与已启用的插件；会话进行中才安装的插件需要重启。
 

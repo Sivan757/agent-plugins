@@ -105,7 +105,7 @@ Codex packaging, manifests, and marketplaces are no longer maintained, and there
 
 - `bash scripts/dev.sh` (launch Claude Code against every plugin directory)
 - `bash scripts/dev.sh --list`
-- `bash scripts/dev.sh --build mysql` (rebuild bundles, then launch)
+- `bash scripts/dev.sh --build database` (rebuild bundles, then launch)
 - `npm run generate:plugins`
 - `npm run build`
 - `npm run validate:plugins`
