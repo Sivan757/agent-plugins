@@ -78,9 +78,9 @@
     },
     {
       "name": "magick",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./plugins/magick",
-      "description": "Generate, execute, and verify ImageMagick magick, mogrify, identify, compare, composite, and montage workflows for image conversion, resizing, compression, normalization, clothing mockup overlays, watermarks, labels, contact sheets, chroma-key transparency and print cutouts, metadata, visual QA, PDF/SVG rasterization, and delegate/format troubleshooting."
+      "description": "Image workflows for conversion, resizing, compression, normalization, clothing mockup overlays, watermarks, labels, contact sheets, chroma-key transparency and print cutouts, metadata, visual QA, and PDF/SVG rasterization with ImageMagick; local super-resolution and clarity enhancement with Real-ESRGAN; and AI background removal with withoutbg for transparent PNG/WebP assets — each verified so alpha, DPI metadata, and canvas placement survive the pipeline."
     },
     {
       "name": "mysql",
@@ -99,12 +99,6 @@
       "version": "0.1.1",
       "source": "./plugins/prompt-forge",
       "description": "Image-generation prompt engineering library with a local SQLite database of 25k+ prompts across 12 sources. Use when the user needs to search, classify, template, evaluate, or manage image generation prompts, or when synthesizing a new prompt from retrieved examples. Ships a `pf` CLI backed by node:sqlite with FTS5 search, dedup, ratings, image links, and a minimal stats server."
-    },
-    {
-      "name": "real-esrgan",
-      "version": "0.1.0",
-      "source": "./plugins/real-esrgan",
-      "description": "Local Real-ESRGAN image super-resolution and clarity workflows using realesrgan-ncnn-vulkan, Upscayl-adjacent outputs, and ImageMagick verification. Use when the user needs to upscale, enhance, or compare raster images, transparent cutouts, print-ready PNG artwork, product/social/ecommerce images, AI-generated images, or batch image folders while preserving alpha, DPI metadata, canvas placement, and reproducible quality checks."
     },
     {
       "name": "shopify-ai-toolkit",
@@ -135,12 +129,6 @@
         "url": "https://github.com/Lum1104/Understand-Anything.git"
       },
       "homepage": "https://github.com/Lum1104/Understand-Anything"
-    },
-    {
-      "name": "withoutbg",
-      "version": "0.1.0",
-      "source": "./plugins/withoutbg",
-      "description": "Run and verify withoutbg AI background-removal workflows for local or API-based image cutouts. Use when the user needs to remove image backgrounds, create transparent PNG or WebP assets, batch-process product photos, people, apparel, stickers, ecommerce images, social images, or compare cutout quality; also use for alpha-channel validation, checkerboard previews, mask-style QA, and complex foreground/background workflow decomposition."
     },
     {
       "name": "zentao",

@@ -1,6 +1,6 @@
 ---
 name: withoutbg
-description: Run and verify withoutbg AI background-removal workflows for local or API-based image cutouts. Use when Codex needs to remove image backgrounds, create transparent PNG or WebP assets, batch-process product photos, people, apparel, stickers, ecommerce images, social images, or compare cutout quality; also use for alpha-channel validation, checkerboard previews, mask-style QA, and complex foreground/background workflow decomposition.
+description: Run and verify withoutbg AI background-removal workflows for local or API-based image cutouts. Use when the user needs to remove image backgrounds, create transparent PNG or WebP assets, batch-process product photos, people, apparel, stickers, ecommerce images, social images, or compare cutout quality; also use for alpha-channel validation, checkerboard previews, mask-style QA, and complex foreground/background workflow decomposition.
 ---
 
 # withoutbg
