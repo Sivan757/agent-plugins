@@ -223,7 +223,7 @@ export function PluginEditor({ csrfToken, initialPlugin }: PluginEditorProps) {
                 value={entry.key}
                 placeholder="KEY"
                 onChange={(e) => handleChange(index, 'key', e.target.value)}
-                className={`${inputClasses} font-mono flex-shrink-0 w-[180px]`}
+                className={`${inputClasses} font-mono flex-shrink-0 w-[140px]`}
               />
               <input
                 type="text"

@@ -1,0 +1,127 @@
+{
+  "plugin": "toolx",
+  "reason": "The toolx CLI needs a server address and credentials before any command can run.",
+  "command": "toolx",
+  "env": {
+    "TOOLX_URL": "url",
+    "TOOLX_ACCOUNT": "account",
+    "TOOLX_PASSWORD": "password",
+    "TOOLX_TOKEN": "token"
+  },
+  "requiredKeys": ["url", "account"],
+  "requiredAny": [["password", "token"]],
+  "form": {
+    "root": "page",
+    "elements": {
+      "page": {
+        "type": "Header",
+        "props": {
+          "title": { "en": "Toolx", "zh": "Toolx" },
+          "description": {
+            "en": "Credentials for the toolx command-line tool. They are injected as environment variables when config-center runs it; they never pass through the conversation.",
+            "zh": "toolx 命令行工具的凭证。config-center 代为执行命令时以环境变量注入，凭证不经过对话。"
+          },
+          "configPath": null
+        },
+        "children": ["section-server", "section-credentials", "section-token", "save"]
+      },
+      "section-server": {
+        "type": "Section",
+        "props": {
+          "title": { "en": "Server", "zh": "服务地址" },
+          "description": null,
+          "collapsible": null,
+          "defaultOpen": true
+        },
+        "children": ["url"]
+      },
+      "url": {
+        "type": "Field",
+        "props": {
+          "label": { "en": "Server URL", "zh": "服务地址" },
+          "type": "text",
+          "required": true,
+          "help": {
+            "en": "Base address with the protocol.",
+            "zh": "带协议的完整地址。"
+          },
+          "placeholder": "https://toolx.example.com",
+          "options": null,
+          "statePath": "url"
+        }
+      },
+      "section-credentials": {
+        "type": "Section",
+        "props": {
+          "title": { "en": "Account", "zh": "账号" },
+          "description": {
+            "en": "The account and its password, used to log in automatically.",
+            "zh": "登录用的账号与密码，由工具自动登录。"
+          },
+          "collapsible": null,
+          "defaultOpen": true
+        },
+        "children": ["account", "password"]
+      },
+      "account": {
+        "type": "Field",
+        "props": {
+          "label": { "en": "Account", "zh": "账号" },
+          "type": "text",
+          "required": true,
+          "help": null,
+          "placeholder": null,
+          "options": null,
+          "statePath": "account"
+        }
+      },
+      "password": {
+        "type": "Field",
+        "props": {
+          "label": { "en": "Password", "zh": "密码" },
+          "type": "password",
+          "required": false,
+          "help": {
+            "en": "Leave empty only when an API token is filled below.",
+            "zh": "只在下方填写了 API Token 时才留空。"
+          },
+          "placeholder": null,
+          "options": null,
+          "statePath": "password"
+        }
+      },
+      "section-token": {
+        "type": "Section",
+        "props": {
+          "title": { "en": "API token (optional)", "zh": "API Token（可选）" },
+          "description": {
+            "en": "A ready-made token replaces the password; the password field can stay empty.",
+            "zh": "已有的 Token 可以代替密码，此时密码留空。"
+          },
+          "collapsible": null,
+          "defaultOpen": false
+        },
+        "children": ["token"]
+      },
+      "token": {
+        "type": "Field",
+        "props": {
+          "label": { "en": "API token", "zh": "API Token" },
+          "type": "password",
+          "required": false,
+          "help": null,
+          "placeholder": null,
+          "options": null,
+          "statePath": "token"
+        }
+      },
+      "save": { "type": "SaveBar", "props": { "saveLabel": null, "resetLabel": null } }
+    },
+    "state": {
+      "url": "",
+      "account": "",
+      "password": "",
+      "token": ""
+    }
+  }
+}

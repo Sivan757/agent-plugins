@@ -4267,8 +4267,141 @@ function describeAge(ms) {
   return `${Math.round(hours / 24)} days ago`;
 }
 
-// src/config-ui.ts
+// ../config-center/src/env-spec.ts
 var L = (en, zh) => ({ en, zh });
+function zentaoFormSpec() {
+  return {
+    root: "page",
+    elements: {
+      page: {
+        type: "Header",
+        props: {
+          title: L("ZenTao (zentao-cli)", "\u7985\u9053\uFF08zentao-cli\uFF09"),
+          description: L(
+            "Credentials for the zentao command-line tool. They are injected as environment variables when config-center runs it; they never pass through the conversation.",
+            "zentao \u547D\u4EE4\u884C\u5DE5\u5177\u7684\u767B\u5F55\u51ED\u8BC1\u3002config-center \u4EE3\u4E3A\u6267\u884C\u547D\u4EE4\u65F6\u4EE5\u73AF\u5883\u53D8\u91CF\u6CE8\u5165\uFF0C\u51ED\u8BC1\u4E0D\u7ECF\u8FC7\u5BF9\u8BDD\u3002"
+          ),
+          configPath: null
+        },
+        children: ["section-server", "section-credentials", "section-token", "save"]
+      },
+      "section-server": {
+        type: "Section",
+        props: {
+          title: L("Server", "\u670D\u52A1\u5730\u5740"),
+          description: null,
+          collapsible: null,
+          defaultOpen: true
+        },
+        children: ["url"]
+      },
+      url: {
+        type: "Field",
+        props: {
+          label: L("ZenTao URL", "\u7985\u9053\u670D\u52A1\u5730\u5740"),
+          type: "text",
+          required: true,
+          help: L(
+            "Base address with the protocol; include the install path when ZenTao does not sit at the domain root.",
+            "\u5E26\u534F\u8BAE\u7684\u5B8C\u6574\u5730\u5740\uFF1B\u7985\u9053\u5B89\u88C5\u5728\u5B50\u76EE\u5F55\u65F6\u5E26\u4E0A\u5B8C\u6574\u8DEF\u5F84\u3002"
+          ),
+          placeholder: "https://zentao.example.com",
+          options: null,
+          statePath: "url"
+        }
+      },
+      "section-credentials": {
+        type: "Section",
+        props: {
+          title: L("Account", "\u8D26\u53F7"),
+          description: L(
+            "The account and its password, used to log in automatically.",
+            "\u767B\u5F55\u7528\u7684\u8D26\u53F7\u4E0E\u5BC6\u7801\uFF0C\u7531\u5DE5\u5177\u81EA\u52A8\u767B\u5F55\u3002"
+          ),
+          collapsible: null,
+          defaultOpen: true
+        },
+        children: ["account", "password"]
+      },
+      account: {
+        type: "Field",
+        props: {
+          label: L("Account", "\u8D26\u53F7"),
+          type: "text",
+          required: true,
+          help: null,
+          placeholder: null,
+          options: null,
+          statePath: "account"
+        }
+      },
+      password: {
+        type: "Field",
+        props: {
+          label: L("Password", "\u5BC6\u7801"),
+          type: "password",
+          required: false,
+          help: L(
+            "Leave empty only when an API token is filled below.",
+            "\u53EA\u5728\u4E0B\u65B9\u586B\u5199\u4E86 API Token \u65F6\u624D\u7559\u7A7A\u3002"
+          ),
+          placeholder: null,
+          options: null,
+          statePath: "password"
+        }
+      },
+      "section-token": {
+        type: "Section",
+        props: {
+          title: L("API token (optional)", "API Token\uFF08\u53EF\u9009\uFF09"),
+          description: L(
+            "A ready-made token replaces the password; the password field can stay empty.",
+            "\u5DF2\u6709\u7684 Token \u53EF\u4EE5\u4EE3\u66FF\u5BC6\u7801\uFF0C\u6B64\u65F6\u5BC6\u7801\u7559\u7A7A\u3002"
+          ),
+          collapsible: null,
+          defaultOpen: false
+        },
+        children: ["token"]
+      },
+      token: {
+        type: "Field",
+        props: {
+          label: L("API token", "API Token"),
+          type: "password",
+          required: false,
+          help: null,
+          placeholder: null,
+          options: null,
+          statePath: "token"
+        }
+      },
+      save: { type: "SaveBar", props: { saveLabel: null, resetLabel: null } }
+    },
+    state: {
+      url: "",
+      account: "",
+      password: "",
+      token: ""
+    }
+  };
+}
+var zentaoEnvSpec = {
+  plugin: "zentao",
+  command: "zentao",
+  env: {
+    ZENTAO_URL: "url",
+    ZENTAO_ACCOUNT: "account",
+    ZENTAO_PASSWORD: "password",
+    ZENTAO_TOKEN: "token"
+  },
+  requiredKeys: ["url", "account"],
+  requiredAny: [["password", "token"]],
+  formSpec: zentaoFormSpec(),
+  reason: "The zentao CLI needs a server address and login credentials before any command can run."
+};
+
+// src/config-ui.ts
+var L2 = (en, zh) => ({ en, zh });
 var REASON_NEEDS_CONFIG = "Requests need somewhere to go (a gateway URL, or a per-service endpoint from `codearts endpoint discover`) and a working credential.";
 var CONFIG_UI = {
   setupCommand: "config --ui",
@@ -4279,8 +4412,8 @@ var CONFIG_UI = {
       page: {
         type: "Header",
         props: {
-          title: L("Huawei Cloud CodeArts", "\u534E\u4E3A\u4E91 CodeArts"),
-          description: L(
+          title: L2("Huawei Cloud CodeArts", "\u534E\u4E3A\u4E91 CodeArts"),
+          description: L2(
             "Credential and endpoint setup for the codearts CLI",
             "codearts CLI \u7684\u51ED\u8BC1\u4E0E\u7AEF\u70B9\u914D\u7F6E"
           ),
@@ -4292,8 +4425,8 @@ var CONFIG_UI = {
       "section-connection": {
         type: "Section",
         props: {
-          title: L("Connection", "\u8FDE\u63A5"),
-          description: L(
+          title: L2("Connection", "\u8FDE\u63A5"),
+          description: L2(
             "Region and domain are what endpoint discovery needs; the gateway is only for deployments that expose one shared address.",
             "\u533A\u57DF\u4E0E\u90E8\u7F72\u57DF\u540D\u662F\u7AEF\u70B9\u63A2\u6D4B\u6240\u9700\u7684\uFF1B\u53EA\u6709\u90E8\u7F72\u63D0\u4F9B\u7EDF\u4E00\u7F51\u5173\u65F6\u624D\u9700\u8981\u586B\u7F51\u5173\u5730\u5740\u3002"
           ),
@@ -4305,10 +4438,10 @@ var CONFIG_UI = {
       region: {
         type: "Field",
         props: {
-          label: L("Region", "\u533A\u57DF"),
+          label: L2("Region", "\u533A\u57DF"),
           type: "text",
           required: true,
-          help: L(
+          help: L2(
             "Region id of the tenant, or the region0_id of a private cloud.",
             "\u79DF\u6237\u6240\u5728\u533A\u57DF\u6807\u8BC6\uFF1B\u79C1\u6709\u4E91\u586B region0_id\u3002"
           ),
@@ -4320,10 +4453,10 @@ var CONFIG_UI = {
       deploymentDomain: {
         type: "Field",
         props: {
-          label: L("Deployment domain", "\u90E8\u7F72\u57DF\u540D"),
+          label: L2("Deployment domain", "\u90E8\u7F72\u57DF\u540D"),
           type: "text",
           required: false,
-          help: L(
+          help: L2(
             "Only for private clouds, and only used by `codearts endpoint discover`. Example: example.com",
             "\u4EC5\u79C1\u6709\u4E91\u9700\u8981\uFF0C\u4E14\u53EA\u88AB `codearts endpoint discover` \u4F7F\u7528\u3002\u4F8B\u5982 example.com"
           ),
@@ -4335,10 +4468,10 @@ var CONFIG_UI = {
       gateway: {
         type: "Field",
         props: {
-          label: L("Gateway URL", "\u7F51\u5173\u5730\u5740"),
+          label: L2("Gateway URL", "\u7F51\u5173\u5730\u5740"),
           type: "text",
           required: false,
-          help: L(
+          help: L2(
             "One base URL shared by every service. Leave empty when each service has its own endpoint \u2014 run `codearts endpoint discover --write` and the override map is used instead.",
             "\u6240\u6709\u670D\u52A1\u5171\u7528\u7684\u4E00\u4E2A\u57FA\u5730\u5740\u3002\u82E5\u6BCF\u4E2A\u670D\u52A1\u5404\u6709\u72EC\u7ACB\u57DF\u540D\u5C31\u7559\u7A7A \u2014\u2014 \u5148\u8DD1 `codearts endpoint discover --write`\uFF0CCLI \u4F1A\u7528\u6309\u670D\u52A1\u7684\u7AEF\u70B9\u8986\u76D6\u3002"
           ),
@@ -4350,10 +4483,10 @@ var CONFIG_UI = {
       insecure: {
         type: "Field",
         props: {
-          label: L("Skip TLS verification", "\u8DF3\u8FC7 TLS \u6821\u9A8C"),
+          label: L2("Skip TLS verification", "\u8DF3\u8FC7 TLS \u6821\u9A8C"),
           type: "checkbox",
           required: false,
-          help: L(
+          help: L2(
             "Only for private clouds whose gateway uses an internal or self-signed certificate.",
             "\u4EC5\u5F53\u79C1\u6709\u4E91\u7F51\u5173\u4F7F\u7528\u5185\u90E8/\u81EA\u7B7E\u8BC1\u4E66\u65F6\u52FE\u9009\u3002"
           ),
@@ -4366,8 +4499,8 @@ var CONFIG_UI = {
       "section-auth": {
         type: "Section",
         props: {
-          title: L("Credentials", "\u51ED\u8BC1"),
-          description: L(
+          title: L2("Credentials", "\u51ED\u8BC1"),
+          description: L2(
             "Pick an authentication mode; only its fields are shown.",
             "\u5148\u9009\u9274\u6743\u65B9\u5F0F\uFF0C\u8868\u5355\u53EA\u5C55\u793A\u8BE5\u65B9\u5F0F\u9700\u8981\u7684\u5B57\u6BB5\u3002"
           ),
@@ -4388,10 +4521,10 @@ var CONFIG_UI = {
       authType: {
         type: "Field",
         props: {
-          label: L("Authentication", "\u9274\u6743\u65B9\u5F0F"),
+          label: L2("Authentication", "\u9274\u6743\u65B9\u5F0F"),
           type: "select",
           required: true,
-          help: L(
+          help: L2(
             "aksk signs every request with an access key. token sends an IAM token instead.",
             "aksk \u7528\u8BBF\u95EE\u5BC6\u94A5\u9010\u8BF7\u6C42\u7B7E\u540D\uFF1Btoken \u6539\u4E3A\u53D1\u9001 IAM \u4EE4\u724C\u3002"
           ),
@@ -4403,10 +4536,10 @@ var CONFIG_UI = {
       accessKeyId: {
         type: "Field",
         props: {
-          label: L("Access Key ID", "Access Key ID"),
+          label: L2("Access Key ID", "Access Key ID"),
           type: "text",
           required: true,
-          help: L(
+          help: L2(
             "From \u6211\u7684\u51ED\u8BC1 \u2192 \u8BBF\u95EE\u5BC6\u94A5.",
             "\u5728\u300C\u6211\u7684\u51ED\u8BC1 \u2192 \u8BBF\u95EE\u5BC6\u94A5\u300D\u83B7\u53D6\u3002"
           ),
@@ -4419,7 +4552,7 @@ var CONFIG_UI = {
       accessKeySecret: {
         type: "Field",
         props: {
-          label: L("Secret Access Key", "Secret Access Key"),
+          label: L2("Secret Access Key", "Secret Access Key"),
           type: "password",
           required: true,
           help: null,
@@ -4432,10 +4565,10 @@ var CONFIG_UI = {
       token: {
         type: "Field",
         props: {
-          label: L("X-Auth-Token", "X-Auth-Token"),
+          label: L2("X-Auth-Token", "X-Auth-Token"),
           type: "password",
           required: false,
-          help: L(
+          help: L2(
             "Use this when the deployment does not expose the IAM token API. Expires in about 24 hours.",
             "\u90E8\u7F72\u6CA1\u6709\u5F00\u653E IAM \u53D6 token \u63A5\u53E3\u65F6\u7528\u5B83\uFF0C\u7EA6 24 \u5C0F\u65F6\u8FC7\u671F\u3002"
           ),
@@ -4448,10 +4581,10 @@ var CONFIG_UI = {
       iamEndpoint: {
         type: "Field",
         props: {
-          label: L("IAM endpoint", "IAM \u7EC8\u7AEF\u8282\u70B9"),
+          label: L2("IAM endpoint", "IAM \u7EC8\u7AEF\u8282\u70B9"),
           type: "text",
           required: false,
-          help: L(
+          help: L2(
             "Needed to exchange account credentials for a token. Example: https://iam-apigateway-proxy.<region>.<domain>",
             "\u7528\u8D26\u53F7\u5BC6\u7801\u81EA\u52A8\u6362\u53D6\u4EE4\u724C\u65F6\u9700\u8981\u3002\u4F8B\u5982 https://iam-apigateway-proxy.<region>.<domain>"
           ),
@@ -4464,10 +4597,10 @@ var CONFIG_UI = {
       domain: {
         type: "Field",
         props: {
-          label: L("Account name", "\u8D26\u53F7\u540D"),
+          label: L2("Account name", "\u8D26\u53F7\u540D"),
           type: "text",
           required: false,
-          help: L("Owner account of the IAM user.", "IAM \u7528\u6237\u6240\u5C5E\u7684\u8D26\u53F7\u540D\u3002"),
+          help: L2("Owner account of the IAM user.", "IAM \u7528\u6237\u6240\u5C5E\u7684\u8D26\u53F7\u540D\u3002"),
           placeholder: null,
           options: null,
           statePath: "domain",
@@ -4477,7 +4610,7 @@ var CONFIG_UI = {
       username: {
         type: "Field",
         props: {
-          label: L("IAM username", "IAM \u7528\u6237\u540D"),
+          label: L2("IAM username", "IAM \u7528\u6237\u540D"),
           type: "text",
           required: false,
           help: null,
@@ -4490,7 +4623,7 @@ var CONFIG_UI = {
       password: {
         type: "Field",
         props: {
-          label: L("IAM password", "IAM \u5BC6\u7801"),
+          label: L2("IAM password", "IAM \u5BC6\u7801"),
           type: "password",
           required: false,
           help: null,
@@ -4504,8 +4637,8 @@ var CONFIG_UI = {
       "section-defaults": {
         type: "Section",
         props: {
-          title: L("Defaults", "\u9ED8\u8BA4\u503C"),
-          description: L(
+          title: L2("Defaults", "\u9ED8\u8BA4\u503C"),
+          description: L2(
             "Optional. The CodeArts project is always chosen per command with --project.",
             "\u53EF\u9009\u3002CodeArts \u9879\u76EE\u59CB\u7EC8\u6309\u547D\u4EE4\u7528 --project \u6307\u5B9A\uFF0C\u4E0D\u8BBE\u9ED8\u8BA4\u503C\u3002"
           ),
@@ -4517,10 +4650,10 @@ var CONFIG_UI = {
       authProjectId: {
         type: "Field",
         props: {
-          label: L("Gateway auth project ID", "\u7F51\u5173\u9274\u6743\u9879\u76EE ID"),
+          label: L2("Gateway auth project ID", "\u7F51\u5173\u9274\u6743\u9879\u76EE ID"),
           type: "text",
           required: false,
-          help: L(
+          help: L2(
             "Sent as X-Project-Id. Only needed when the gateway authenticates against a different project than the one used in request paths (console: \u6211\u7684\u51ED\u8BC1 \u2192 \u9879\u76EEID).",
             "\u4F5C\u4E3A X-Project-Id \u53D1\u9001\u3002\u4EC5\u5F53\u7F51\u5173\u9274\u6743\u7528\u7684\u9879\u76EE\u4E0E\u4E0A\u9762\u7684 CodeArts \u9879\u76EE\u4E0D\u662F\u540C\u4E00\u4E2A\u65F6\u624D\u9700\u8981\u586B\uFF08\u63A7\u5236\u53F0\u300C\u6211\u7684\u51ED\u8BC1 \u2192 \u9879\u76EEID\u300D\uFF09\u3002"
           ),
@@ -4532,10 +4665,10 @@ var CONFIG_UI = {
       tenantId: {
         type: "Field",
         props: {
-          label: L("Account (tenant) ID", "\u8D26\u53F7\uFF08\u79DF\u6237\uFF09ID"),
+          label: L2("Account (tenant) ID", "\u8D26\u53F7\uFF08\u79DF\u6237\uFF09ID"),
           type: "text",
           required: false,
-          help: L(
+          help: L2(
             "A few Artifact paths need it. Console: \u6211\u7684\u51ED\u8BC1 \u2192 \u8D26\u53F7ID.",
             "\u5C11\u6570\u5236\u54C1\u4ED3\u5E93\u63A5\u53E3\u9700\u8981\u3002\u63A7\u5236\u53F0\u300C\u6211\u7684\u51ED\u8BC1 \u2192 \u8D26\u53F7ID\u300D\u3002"
           ),

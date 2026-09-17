@@ -5,7 +5,9 @@
  * Security boundary: NEVER print plaintext config values or the cache path.
  * - `get`/`show` always print redacted output, with each value's length so a
  *   truncated paste is visible without the value ever being printed.
- * - `init`/`edit` launch the HTML UI (local HTTP server + React app).
+ * - `init`/`edit`/`form` launch the HTML UI (local HTTP server + React app).
+ * - `run` executes a CLI with credentials injected as environment variables,
+ *   as declared by a plugin spec file.
  * - No `set` command. No `--plaintext` flag. No `--debug` flag.
  */
 
@@ -15,6 +17,10 @@ import { resolve } from 'node:path';
 import { cacheRoot, loadConfig } from './config-store.js';
 import { redactStructure } from './redact.js';
 import { launchUI } from './launch-ui.js';
+import { openConfigUI } from './config-flow.js';
+import { loadPluginSpec, type PluginSpec } from './plugin-spec.js';
+import { runWithEnv, ChildExitError } from './bridge.js';
+import { PluginError } from './errors.js';
 
 // Re-export CLIOutput so existing importers (and tests) keep compiling.
 export type { CLIOutput } from './launch-ui.js';
@@ -98,8 +104,13 @@ function buildProgram(output: CLIOutput): Command {
   program
     .command('init [plugin]')
     .description('Bootstrap a plugin config directory and open the HTML UI.')
-    .action(async (plugin?: string) => {
+    .option('--spec <file>', 'Plugin spec JSON declaring the structured form to render')
+    .action(async (plugin?: string, options?: { spec?: string }) => {
+      const spec = options?.spec
+        ? loadPluginSpec(resolve(options.spec)).form
+        : undefined;
       const handle = launchUI(plugin, {
+        spec,
         output,
         open: !process.env.CC_UI_NO_OPEN,
         timeoutMs: process.env.CC_UI_TIMEOUT_MS ? Number(process.env.CC_UI_TIMEOUT_MS) : undefined,
@@ -111,14 +122,77 @@ function buildProgram(output: CLIOutput): Command {
   program
     .command('edit [plugin]')
     .description('Open the HTML UI to edit a plugin config. The sole modification path.')
-    .action(async (plugin?: string) => {
+    .option('--spec <file>', 'Plugin spec JSON declaring the structured form to render')
+    .action(async (plugin?: string, options?: { spec?: string }) => {
+      const spec = options?.spec
+        ? loadPluginSpec(resolve(options.spec)).form
+        : undefined;
       const handle = launchUI(plugin, {
+        spec,
         output,
         open: !process.env.CC_UI_NO_OPEN,
         timeoutMs: process.env.CC_UI_TIMEOUT_MS ? Number(process.env.CC_UI_TIMEOUT_MS) : undefined,
       });
       await handle.ready;
       await handle.done;
+    });
+
+  program
+    .command('run <plugin> [args...]')
+    .description(
+      'Run a CLI with the plugin\'s stored credentials injected as the environment ' +
+        'variables its spec declares. The values go to the child process only; nothing ' +
+        'is printed, nothing is written to the user\'s shell. The spec file declares ' +
+        'the command, the variable mapping and the required keys. Example: ' +
+        'config-center run --spec zentao.spec.json zentao bug --product=1'
+    )
+    .requiredOption('--spec <file>', 'Plugin spec JSON declaring form, command and env mapping')
+    // The wrapped tool's own options (--product=1, --pick=id,title, …) belong to
+    // it, so unknown options pass through untouched and are only ever judged by
+    // the tool itself.
+    .allowUnknownOption()
+    .action(async (plugin: string, args: string[], options: { spec: string }) => {
+      const spec = await loadPluginSpec(resolve(options.spec));
+      if (spec.plugin !== plugin) {
+        throw new PluginError(
+          `The spec file "${options.spec}" stores its configuration under "${spec.plugin}", ` +
+            `which does not match the plugin named on the command line ("${plugin}").`,
+          'CONFIG_INVALID',
+        );
+      }
+      const { exitCode } = await runWithEnv(spec, { args, output });
+      if (exitCode !== 0) {
+        throw new ChildExitError(exitCode, spec.command as string);
+      }
+    });
+
+  program
+    .command('form <plugin>')
+    .description(
+      'Open the structured form a spec file declares and wait for the user to save. ' +
+        'Without --spec this is the generic key/value editor, same as edit.'
+    )
+    .option('--spec <file>', 'Plugin spec JSON declaring the structured form to render')
+    .action(async (plugin: string, options: { spec?: string }) => {
+      const spec = options.spec ? loadPluginSpec(resolve(options.spec)) : undefined;
+      if (spec && spec.plugin !== plugin) {
+        throw new PluginError(
+          `The spec file "${options.spec}" stores its configuration under "${spec.plugin}", ` +
+            `which does not match the plugin named on the command line ("${plugin}").`,
+          'CONFIG_INVALID',
+        );
+      }
+      const { saved } = await openConfigUI(plugin, {
+        spec: spec?.form,
+        intent: spec ? 'create' : 'edit',
+        reason: spec?.reason,
+        output,
+      });
+      output.stderr(
+        saved
+          ? `[${plugin}] Configuration saved.\n`
+          : `[${plugin}] Nothing was saved; the form closed without a save.\n`,
+      );
     });
 
   // Apply configureOutput + exitOverride to each subcommand so their errors
@@ -167,6 +241,10 @@ export async function main(argv: string[], output: CLIOutput = defaultOutput): P
     await program.parseAsync(argv, { from: 'user' });
     return 0;
   } catch (err) {
+    if (err instanceof ChildExitError) {
+      // The wrapped CLI already reported its own failure; exit with its code.
+      return err.exitCode;
+    }
     if (err instanceof CommanderError) {
       // commander already printed its own error to stderr via output.stderr;
       // just return the exit code. Help/version are also CommanderErrors but

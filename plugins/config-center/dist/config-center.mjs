@@ -4035,8 +4035,202 @@ Run: cd src/config-center && npx vite build --config ui/vite.config.ts`);
   };
 }
 
-// src/config-center.ts
+// src/config-flow.ts
 var defaultOutput2 = {
+  stdout: (s) => process.stdout.write(s),
+  stderr: (s) => process.stderr.write(s)
+};
+var INTENT_MESSAGE = {
+  create: "No configuration yet \u2014 opening the configuration form.",
+  edit: "Opening the configuration form to change the configuration.",
+  view: "Opening the configuration form."
+};
+async function openConfigUI(pluginName, options = {}) {
+  const intent = options.intent ?? "edit";
+  const output = options.output ?? defaultOutput2;
+  output.stderr(`[${pluginName}] ${INTENT_MESSAGE[intent]}
+`);
+  if (options.reason) output.stderr(`[${pluginName}] ${options.reason}
+`);
+  if (intent === "view") {
+    output.stderr(
+      `[${pluginName}] Saving is optional here; the form also ends on its own after the session timeout.
+`
+    );
+  }
+  const handle = launchUI(pluginName, options);
+  await handle.ready;
+  output.stderr(`[${pluginName}] Waiting for the form to be saved (or for the session to time out)\u2026
+`);
+  const saved = await handle.done;
+  return { opened: Boolean(handle.url), saved, url: handle.url };
+}
+
+// src/plugin-spec.ts
+import { readFileSync as readFileSync2 } from "node:fs";
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function describeProblems(problems) {
+  return problems.join("; ");
+}
+function loadPluginSpec(path) {
+  let raw;
+  try {
+    raw = readFileSync2(path, "utf-8");
+  } catch (e) {
+    throw new PluginError(
+      `Cannot read the plugin spec file "${path}": ${e.code ?? e.message}`,
+      "CONFIG_MISSING"
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    throw new PluginError(
+      `The plugin spec file "${path}" is not valid JSON: ${e.message}`,
+      "CONFIG_INVALID"
+    );
+  }
+  if (!isRecord2(parsed)) {
+    throw new PluginError(
+      `The plugin spec file "${path}" must contain a JSON object.`,
+      "CONFIG_INVALID"
+    );
+  }
+  const problems = [];
+  const plugin = parsed["plugin"];
+  if (typeof plugin !== "string" || plugin.trim() === "") {
+    problems.push('"plugin" must name the storage directory');
+  } else if (!/^[A-Za-z0-9_-]+$/.test(plugin)) {
+    problems.push('"plugin" may only contain letters, digits, "_" and "-"');
+  }
+  if (!isRecord2(parsed["form"])) {
+    problems.push('"form" must be the config form spec ({"root": \u2026, "elements": \u2026})');
+  }
+  if (problems.length > 0) {
+    throw new PluginError(
+      `Invalid plugin spec "${path}": ${describeProblems(problems)}.`,
+      "CONFIG_INVALID"
+    );
+  }
+  const spec = parsed;
+  const pluginName = plugin;
+  return { ...spec, plugin: pluginName, sourcePath: path };
+}
+
+// src/bridge.ts
+import { spawn } from "node:child_process";
+var ChildExitError = class extends Error {
+  constructor(exitCode, command) {
+    super(`"${command}" exited with code ${exitCode}`);
+    this.exitCode = exitCode;
+    this.name = "ChildExitError";
+  }
+  exitCode;
+};
+function checkEnvReadiness(spec, config) {
+  const gaps = [];
+  const valueOf = (key) => {
+    const value = config?.[key];
+    return value == null ? "" : String(value).trim();
+  };
+  for (const key of spec.requiredKeys ?? []) {
+    if (valueOf(key) === "") {
+      gaps.push(key);
+    }
+  }
+  for (const group of spec.requiredAny ?? []) {
+    if (!group.some((key) => valueOf(key) !== "")) {
+      gaps.push(group.join(" / "));
+    }
+  }
+  return gaps;
+}
+function envForConfig(spec, config) {
+  const injected = {};
+  for (const [variable, key] of Object.entries(spec.env ?? {})) {
+    const value = config[key];
+    if (typeof value === "string" && value.trim() !== "") {
+      injected[variable] = value;
+    }
+  }
+  return injected;
+}
+function describeMissing(spec) {
+  if (spec.env == null) {
+    return 'the spec has no "env" mapping, so nothing can be injected';
+  }
+  if (spec.command == null) {
+    return 'the spec has no "command", so there is nothing to run';
+  }
+  return "";
+}
+async function loadReadyConfig(spec, output) {
+  let config = await loadConfig(spec.plugin);
+  let gaps = checkEnvReadiness(spec, config);
+  if (gaps.length === 0 && config) {
+    return config;
+  }
+  const { saved } = await openConfigUI(spec.plugin, {
+    spec: spec.form,
+    intent: "create",
+    reason: gaps.length > 0 ? `Missing: ${gaps.join(", ")}. ${spec.reason ?? ""}`.trim() : spec.reason,
+    output
+  });
+  if (!saved) {
+    throw new PluginError(
+      `No configuration was saved for "${spec.plugin}" (the form closed without a save). Run yourself as a background task: config-center edit --spec <spec-file> ${spec.plugin}`,
+      "CONFIG_MISSING"
+    );
+  }
+  config = await loadConfig(spec.plugin);
+  gaps = checkEnvReadiness(spec, config);
+  if (gaps.length > 0 || !config) {
+    throw new PluginError(
+      `The saved configuration is still missing: ${gaps.join(", ")}. Run yourself as a background task: config-center edit --spec <spec-file> ${spec.plugin}`,
+      "CONFIG_INVALID"
+    );
+  }
+  return config;
+}
+async function runWithEnv(spec, options = {}) {
+  const missingHalf = describeMissing(spec);
+  if (missingHalf !== "") {
+    throw new PluginError(missingHalf, "CONFIG_INVALID");
+  }
+  const config = await loadReadyConfig(spec, options.output);
+  const injected = envForConfig(spec, config);
+  const baseEnv = options.baseEnv ?? process.env;
+  const args = options.args ?? [];
+  return await new Promise((resolve3, reject) => {
+    const child = spawn(spec.command, args, {
+      env: { ...baseEnv, ...injected },
+      stdio: "inherit",
+      shell: process.platform === "win32"
+    });
+    child.on("error", (err) => {
+      reject(
+        new PluginError(
+          `Failed to start "${spec.command}": ${err.message}. Install the tool first (see the plugin skill's installation section), then rerun the same command.`,
+          "CONFIG_MISSING"
+        )
+      );
+    });
+    child.on("close", (code) => {
+      const exitCode = code ?? 1;
+      if (exitCode !== 0) {
+        reject(new ChildExitError(exitCode, spec.command));
+        return;
+      }
+      resolve3({ exitCode });
+    });
+  });
+}
+
+// src/config-center.ts
+var defaultOutput3 = {
   stdout: (s) => process.stdout.write(s),
   stderr: (s) => process.stderr.write(s)
 };
@@ -4088,8 +4282,10 @@ function buildProgram(output) {
       }
     }
   });
-  program2.command("init [plugin]").description("Bootstrap a plugin config directory and open the HTML UI.").action(async (plugin) => {
+  program2.command("init [plugin]").description("Bootstrap a plugin config directory and open the HTML UI.").option("--spec <file>", "Plugin spec JSON declaring the structured form to render").action(async (plugin, options) => {
+    const spec = options?.spec ? loadPluginSpec(resolve2(options.spec)).form : void 0;
     const handle = launchUI(plugin, {
+      spec,
       output,
       open: !process.env.CC_UI_NO_OPEN,
       timeoutMs: process.env.CC_UI_TIMEOUT_MS ? Number(process.env.CC_UI_TIMEOUT_MS) : void 0
@@ -4097,14 +4293,53 @@ function buildProgram(output) {
     await handle.ready;
     await handle.done;
   });
-  program2.command("edit [plugin]").description("Open the HTML UI to edit a plugin config. The sole modification path.").action(async (plugin) => {
+  program2.command("edit [plugin]").description("Open the HTML UI to edit a plugin config. The sole modification path.").option("--spec <file>", "Plugin spec JSON declaring the structured form to render").action(async (plugin, options) => {
+    const spec = options?.spec ? loadPluginSpec(resolve2(options.spec)).form : void 0;
     const handle = launchUI(plugin, {
+      spec,
       output,
       open: !process.env.CC_UI_NO_OPEN,
       timeoutMs: process.env.CC_UI_TIMEOUT_MS ? Number(process.env.CC_UI_TIMEOUT_MS) : void 0
     });
     await handle.ready;
     await handle.done;
+  });
+  program2.command("run <plugin> [args...]").description(
+    "Run a CLI with the plugin's stored credentials injected as the environment variables its spec declares. The values go to the child process only; nothing is printed, nothing is written to the user's shell. The spec file declares the command, the variable mapping and the required keys. Example: config-center run --spec zentao.spec.json zentao bug --product=1"
+  ).requiredOption("--spec <file>", "Plugin spec JSON declaring form, command and env mapping").allowUnknownOption().action(async (plugin, args, options) => {
+    const spec = await loadPluginSpec(resolve2(options.spec));
+    if (spec.plugin !== plugin) {
+      throw new PluginError(
+        `The spec file "${options.spec}" stores its configuration under "${spec.plugin}", which does not match the plugin named on the command line ("${plugin}").`,
+        "CONFIG_INVALID"
+      );
+    }
+    const { exitCode } = await runWithEnv(spec, { args, output });
+    if (exitCode !== 0) {
+      throw new ChildExitError(exitCode, spec.command);
+    }
+  });
+  program2.command("form <plugin>").description(
+    "Open the structured form a spec file declares and wait for the user to save. Without --spec this is the generic key/value editor, same as edit."
+  ).option("--spec <file>", "Plugin spec JSON declaring the structured form to render").action(async (plugin, options) => {
+    const spec = options.spec ? loadPluginSpec(resolve2(options.spec)) : void 0;
+    if (spec && spec.plugin !== plugin) {
+      throw new PluginError(
+        `The spec file "${options.spec}" stores its configuration under "${spec.plugin}", which does not match the plugin named on the command line ("${plugin}").`,
+        "CONFIG_INVALID"
+      );
+    }
+    const { saved } = await openConfigUI(plugin, {
+      spec: spec?.form,
+      intent: spec ? "create" : "edit",
+      reason: spec?.reason,
+      output
+    });
+    output.stderr(
+      saved ? `[${plugin}] Configuration saved.
+` : `[${plugin}] Nothing was saved; the form closed without a save.
+`
+    );
   });
   for (const cmd of program2.commands) {
     configureCmd(cmd);
@@ -4120,12 +4355,15 @@ function redactCachePath(message) {
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-async function main(argv, output = defaultOutput2) {
+async function main(argv, output = defaultOutput3) {
   const program2 = buildProgram(output);
   try {
     await program2.parseAsync(argv, { from: "user" });
     return 0;
   } catch (err) {
+    if (err instanceof ChildExitError) {
+      return err.exitCode;
+    }
     if (err instanceof CommanderError) {
       return typeof err.exitCode === "number" ? err.exitCode : 1;
     }

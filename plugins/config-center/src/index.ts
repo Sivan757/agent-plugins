@@ -26,6 +26,10 @@ export {
 export type { VerificationRecord, CredentialAssessment } from './verification.js';
 export { PluginError } from './errors.js';
 export type { PluginErrorCode } from './errors.js';
+export { runWithEnv, checkEnvReadiness, envForConfig, ChildExitError } from './bridge.js';
+export type { BridgeRunOptions, BridgeRunResult } from './bridge.js';
+export { loadPluginSpec } from './plugin-spec.js';
+export type { PluginSpec } from './plugin-spec.js';
 export {
   DEFAULT_ROW_LIMIT,
   DEFAULT_COL_WIDTH,

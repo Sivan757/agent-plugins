@@ -3,12 +3,16 @@ name: config-center
 description: >-
   Manage plugin credentials and environment configuration. Use when the user
   needs to set up, check, or edit credentials for any agent plugin (TickTick,
-  Database, Aliyun SLS, CodeArts, prompt-forge, etc.), or when
-  a plugin reports missing/unconfigured credentials. Provides redacted
-  credential checks (the Agent never sees plaintext) and a browser-based config
-  UI for human-only editing. Opening that UI is the Agent's job: when the user
-  wants to set up, change, or inspect configuration, run `<plugin> config --ui`
-  or `config-center edit <plugin>` as a background task.
+  Database, Aliyun SLS, CodeArts, prompt-forge, etc.), when
+  a plugin reports missing/unconfigured credentials, or when any task needs a
+  secret or a structured input form from the user (an external CLI's first-time
+  login, an account/password/token, a connection profile). Whenever a task would
+  otherwise stall on "please provide your account/password/token", reach for
+  this skill first: open the config form yourself as a background task and let
+  the user type the values there. Provides redacted credential checks (the Agent
+  never sees plaintext), a browser-based config UI for human-only editing, and a
+  generic mechanism that renders any skill-declared form spec and injects any
+  skill-declared credential mapping into an external CLI.
 ---
 
 # Config Center
@@ -16,7 +20,10 @@ description: >-
 Local configuration center for managing plugin credentials and environment
 state. Every plugin in this collection stores its credentials under
 `~/.cache/agent-plugins/<plugin>/`. Config Center is the single sanctioned way
-to check and edit that store.
+to check and edit that store. It is generic on purpose: it knows nothing about
+any particular plugin's fields. A skill that wants a structured form or
+credential injection ships a plain-JSON spec file beside its SKILL.md, and this
+plugin renders that form and drives that mapping.
 
 ## CRITICAL: Credential Security (iron rule)
 
@@ -38,6 +45,37 @@ not seek it. Config Center is the only sanctioned interface.
   the config file. Run `config-center get <plugin> <key>` to confirm the key is
   unset, then open the form yourself (see "When to open the form").
 
+## Plugins that wrap an external CLI
+
+Some skills are only instructions: the real work is done by an independently
+installed command-line tool (`zentao` is the current example). Such a tool has
+its own first-run login — an interactive prompt you cannot complete, and whose
+credentials must never be collected in chat or passed on a command line. For
+every such skill, the sanctioned path has three steps, and all of them are yours
+to run:
+
+1. **Open the form.** `node "$CC_BIN" edit --spec <spec-file> <plugin>` renders
+   the structured form the skill's own spec file declares (server address,
+   account, password, token — whatever the skill defined). Run it as a
+   background task and keep working.
+2. **Run the tool through the bridge.** `node "$CC_BIN" run --spec <spec-file>
+   <plugin> [args…]` injects the stored values under exactly the environment
+   variable names the spec declares and executes the command the spec names.
+   The values exist only in the child process: nothing is printed, nothing
+   lands in argv, nothing is written to the user's shell profile.
+3. **Answer the tool's own errors.** A first run with nothing stored opens the
+   form by itself and continues after the user saves. An incomplete save is
+   reported key by key; rerun `edit` to repair it.
+
+The spec file is plain JSON that ships next to the skill's SKILL.md; the skill's
+own text tells you its path and lists the variable names it declares. Config
+Center itself is generic — it never hard-codes any plugin's fields, variables or
+command.
+
+Do not route the tool's credentials anywhere else: no `tool login -u -p` on the
+user's behalf, no `export SECRET=…` line for them to paste, no reading of the
+tool's own credential cache.
+
 ## When to open the form
 
 Opening the form is the same operation in four situations that look different to
@@ -58,6 +96,8 @@ How to open it:
 node "$PLUGIN_ROOT/dist/<plugin>.mjs" config --ui
 # The generic equivalent, for a plugin whose own CLI you do not have at hand
 node "$CC_BIN" edit <plugin>
+# With a skill-declared spec file: the structured form the skill defined
+node "$CC_BIN" edit --spec <spec-file> <plugin>
 ```
 
 Run it as a **background task**: the form is served by that process, so it stays
@@ -126,6 +166,40 @@ what is stored. There is no `set` command and no `--plaintext` flag. Run it
 yourself as a background task when the user needs something changed; plugin
 CLIs expose the same thing as `<plugin> config --ui`.
 
+### `form <plugin>` - open a spec-declared structured form
+
+With `--spec <file>`, opens the structured form the spec file declares and
+waits for the user to save, then says so. The deliberate, explicit version of
+what `run --spec …` does automatically when it finds nothing stored. Without
+`--spec` it behaves like `edit`.
+
+### `run <plugin> [args…]` - run a CLI with credentials injected
+
+Requires `--spec <file>`. Executes the command the spec names with the stored
+values exported under the variable names the spec declares. The child's stdout
+and stderr stream through unchanged and its exit code is returned, so the tool
+behaves exactly as it would after a manual login. Exits with the tool's own
+exit code.
+
+```bash
+node "$CC_BIN" run --spec "$SPEC" zentao bug --product=1 --pick=id,title
+```
+
+The spec file (plain JSON, shipped by the skill) declares:
+
+| Field | Meaning |
+| --- | --- |
+| `plugin` | storage directory under the shared cache root; must match `<plugin>` on the command line |
+| `form` | the form spec rendered in the browser (sections, fields, types) |
+| `command` | the executable to run, as typed in a shell |
+| `env` | environment variable name → configuration key |
+| `requiredKeys` / `requiredAny` | keys (or any-of groups) that must be non-empty before a run starts |
+| `reason` | why the form is needed, shown when it opens |
+
+A complete, copy-ready example ships with this plugin at
+`examples/toolx.spec.json` (beside this SKILL.md, inside the plugin directory),
+with a field-by-field guide in `examples/README.md`.
+
 ## Workflow: a plugin reports missing credentials
 
 1. Run `get <plugin> <key>` to confirm the key is `<not set>` (not a typo or a
@@ -136,6 +210,10 @@ CLIs expose the same thing as `<plugin> config --ui`.
 3. When the form closes, re-run `get <plugin> <key>` to confirm it is now set
    (redacted), then retry the original plugin command. If nothing was saved,
    report that and stop rather than retrying the same command.
+
+For a skill wrapped with a spec file the same workflow collapses into one
+command: run `node "$CC_BIN" run --spec <spec-file> <plugin> …` and the missing
+form opens on its own; after the save the command continues by itself.
 
 ## What you must NEVER do
 
@@ -148,3 +226,7 @@ CLIs expose the same thing as `<plugin> config --ui`.
 - Ask the user to paste a credential into the conversation. Open the form
   instead; a secret that passes through a chat is a secret that has to be
   rotated.
+- Put a credential on a command line, in an `export` line for the user to run,
+  or through a tool's interactive login prompt. The form plus
+  `run --spec <file>` covers every skill-declared CLI; anything else waits for
+  that skill to ship its spec file.

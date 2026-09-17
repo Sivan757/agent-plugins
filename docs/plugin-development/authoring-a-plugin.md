@@ -110,6 +110,29 @@ asking the user to edit JSON.
 6. Skill text must stand alone: never tell the reader to consult another
    plugin's skill for a rule, because installing one plugin must be enough.
 
+### Skills without a CLI: spec files for config-center
+
+The steps above need your own bundle. A skill-only plugin — the work is done by
+an independently installed command-line tool — cannot serve a form that way.
+For those, config-center renders the form from a **spec file** your skill ships,
+and drives the tool through its bridge:
+
+1. Write a plain-JSON spec file beside your `SKILL.md` declaring `plugin`
+   (the storage directory name), `form` (the same spec shape as above),
+   `command` (the tool's executable), `env` (environment variable name →
+   configuration key), `requiredKeys` / `requiredAny`, and `reason`. Copy
+   [`plugins/config-center/examples/toolx.spec.json`](../../plugins/config-center/examples/toolx.spec.json)
+   and replace its values; its field-by-field guide is
+   [`plugins/config-center/examples/README.md`](../../plugins/config-center/examples/README.md).
+2. In your skill text, name the spec file's location and give the two commands:
+   `config-center edit --spec <file> <plugin>` (first-time setup, background
+   task) and `config-center run --spec <file> <plugin> <args…>` (every command
+   afterwards, credentials injected as the `env` variables). Config-center opens
+   the form by itself whenever a run finds required values missing.
+3. The spec carries field names, variable names and shapes — never secret
+   values. It ships with the skill (committed in the plugin directory), so the
+   installed plugin is self-contained.
+
 ### What happens when the form opens
 
 `openConfigUI` starts a server on `127.0.0.1` with an OS-assigned port, prints the
