@@ -29,8 +29,7 @@ read — no build step stands between the two.
 - **Design interfaces** — audit or rebuild a page that reads as machine-made, or extract the design DNA from a reference
 - **Find prompts** — search, rate, and synthesize image-generation prompts from a local library
 - **Decide with a framework** — work an ambiguous problem through an authoritative model chosen for the domain
-- **Keep delivery moving** — ZenTao stories and bugs, TickTick tasks and habits, and Apifox API projects without opening another web UI
-- **Integrate** — look up SHEIN and Temu API details offline, and run the Huawei Cloud CodeArts chain from pipeline to deploy
+- **Keep personal execution moving** — TickTick tasks and habits without opening another web UI
 - **Keep a codebase healthy** — review standards, pre-push checks, CI flake diagnosis, docs and notes hygiene, and prose passes
 - **Handle credentials** — read configuration redacted, and edit it through a local browser form instead of pasting secrets into chat
 
@@ -44,10 +43,7 @@ These are the kinds of jobs this collection is built for:
 - "Remove the background from these product photos"
 - "This landing page feels generic — audit it and fix the worst offenders"
 - "Create a TickTick task for today's release checklist"
-- "Which story is blocking the current execution?"
-- "Explain the Temu order and webhook flow"
-- "Run the Apifox test suite for the checkout API and upload the report"
-- "Why did the build on our CodeArts pipeline fail?"
+- "Fold these repeated shell steps into a reusable skill"
 
 ## Requirements
 
@@ -71,7 +67,7 @@ Plugins that only carry skills need nothing beyond Claude Code.
 2. Install the plugin you want:
 
    ```text
-   /plugin install mysql@agent-plugins
+   /plugin install database@agent-plugins
    ```
 
 3. Repeat for any other plugin in [the collection](#the-collection).
@@ -107,12 +103,6 @@ Plugins that only carry skills need nothing beyond Claude Code.
 | --- | --- |
 | [hallmark](plugins/hallmark) | Audit, redesign, or build a page against an anti-slop design rule set, and extract the design DNA from a reference |
 
-### Work across engineering domains
-
-| Plugin | What it does |
-| --- | --- |
-| [teams](plugins/teams) | Nine domain agents — product, design, frontend, backend, data, api, test, ops, analytics — backed by a knowledge library where each domain routes to the one topic document that answers the question |
-
 ### Manage prompts
 
 | Plugin | What it does |
@@ -130,30 +120,6 @@ Plugins that only carry skills need nothing beyond Claude Code.
 | Plugin | What it does |
 | --- | --- |
 | [ticktick](plugins/ticktick) | Manage TickTick tasks, projects, tags, habits, kanban columns, and focus sessions |
-
-### Manage project delivery
-
-| Plugin | What it does |
-| --- | --- |
-| [zentao](plugins/zentao) | Query and operate ZenTao data — stories, bugs, tasks, executions, test runs — through the `zentao` CLI |
-
-### Manage API projects
-
-| Plugin | What it does |
-| --- | --- |
-| [apifox](plugins/apifox) | Deliver a set of APIs end to end — design, environments, mocks, tests, doc export, branch merge — and manage Apifox project resources |
-
-### Work with commerce APIs
-
-| Plugin | What it does |
-| --- | --- |
-| [ecommerce-expert](plugins/ecommerce-expert) | Navigate SHEIN and Temu integration APIs, with a compiled Temu handbook and an offline mirror of 232 captured Partner Platform documents |
-
-### Run the development-to-operations chain
-
-| Plugin | What it does |
-| --- | --- |
-| [codearts](plugins/codearts) | Drive Huawei Cloud CodeArts end to end — pipelines, builds, code checks, merge requests, deploys, artifacts, wiki — through one bundled CLI over 782 documented API operations |
 
 ### Work on DeepSeek Harness
 
@@ -182,7 +148,7 @@ form to edit them — the agent runs it as a background task, in this shape:
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/dist/<plugin>.mjs" config --ui    # the plugin's own form
-node "${CLAUDE_PLUGIN_ROOT}/dist/config-center.mjs" edit mysql # the shared editor
+node "${CLAUDE_PLUGIN_ROOT}/dist/config-center.mjs" edit database # the shared editor
 ```
 
 > [!IMPORTANT]
@@ -200,9 +166,9 @@ for you. If it does not, ask it to open the plugin's own form (`config --ui`).
 Configuration lives in `~/.cache/agent-plugins/<plugin>/config.json` and never
 inside your project.
 
-**A bundled CLI fails with a module error.** `aliyunlog`, `codearts`,
-`config-center`, `database`, `prompt-forge`, and `ticktick` run as Node
-programs and need Node.js 22 or newer. The skills-only plugins do not.
+**A bundled CLI fails with a module error.** `aliyunlog`, `config-center`,
+`database`, `prompt-forge`, and `ticktick` run as Node programs and need
+Node.js 22 or newer. The skills-only plugins do not.
 
 **A plugin is missing from a running session.** Check what is installed and
 enabled with `/plugin`; a plugin installed mid-session needs a restart.
@@ -224,7 +190,7 @@ scripts/   metadata generation, bundling, validation, and development helpers
 
 ```bash
 bash scripts/dev.sh --list        # list plugins
-bash scripts/dev.sh mysql         # load one plugin straight from this checkout
+bash scripts/dev.sh database      # load one plugin straight from this checkout
 npm run generate:plugins          # after changing plugin.config.ts
 npm run build                     # after changing CLI source
 npm run validate:plugins          # every gate

@@ -26,8 +26,7 @@
 - **设计界面** —— 审查或重做一眼看上去就是机器生成的页面，也能从参考稿里提取设计 DNA
 - **找提示词** —— 在本地提示词库里检索、评分与合成生图提示词
 - **用框架做判断** —— 按问题所属领域选用权威模型，把模糊问题拆开
-- **推进交付** —— 禅道的需求与 Bug、TickTick 的任务与习惯、Apifox 的接口项目，都不用再开另一个网页
-- **做集成** —— 离线查阅 SHEIN 与 Temu 的接口细节，并用 CodeArts 打通从流水线到部署的链路
+- **推进个人事务** —— TickTick 的任务与习惯，不用再开另一个网页
 - **保持代码库健康** —— 评审标准、提交前检查、CI flake 诊断、文档与笔记治理、文案清理
 - **处理凭据** —— 读取一律脱敏，修改走本地浏览器表单，不必把密钥粘进对话
 
@@ -41,10 +40,7 @@
 - 「把这些商品图去背景」
 - 「这个落地页看着很模板化——审一遍，把最严重的问题修掉」
 - 「给今天的发布清单建一个 TickTick 任务」
-- 「当前执行被哪个需求卡住了？」
-- 「讲清楚 Temu 的下单与 webhook 流程」
-- 「跑 checkout 接口的 Apifox 测试套件，并把报告传上去」
-- 「我们 CodeArts 流水线上这次构建为什么失败？」
+- 「把这些重复的 shell 步骤沉淀成一个可复用技能」
 
 ## 环境要求
 
@@ -68,7 +64,7 @@
 2. 安装你需要的插件：
 
    ```text
-   /plugin install mysql@agent-plugins
+   /plugin install database@agent-plugins
    ```
 
 3. 其余插件照此逐个安装，清单见[插件清单](#插件清单)。
@@ -103,12 +99,6 @@
 | --- | --- |
 | [hallmark](plugins/hallmark) | 按一套反模板化设计规则审查、重做或新建页面，也能从参考稿里提取设计 DNA |
 
-### 跨工程域查资料
-
-| 插件 | 作用 |
-| --- | --- |
-| [teams](plugins/teams) | 九个领域 agent——产品、设计、前端、后端、数据、API、测试、运维、数据分析——背后是按域组织的知识库，每个域只路由到真正回答该问题的那一篇文档 |
-
 ### 管理提示词
 
 | 插件 | 作用 |
@@ -126,30 +116,6 @@
 | 插件 | 作用 |
 | --- | --- |
 | [ticktick](plugins/ticktick) | 管理 TickTick 的任务、项目、标签、习惯、看板列与专注记录 |
-
-### 管理项目交付
-
-| 插件 | 作用 |
-| --- | --- |
-| [zentao](plugins/zentao) | 通过 `zentao` CLI 查询与操作禅道数据——需求、Bug、任务、执行、测试单 |
-
-### 管理 API 项目
-
-| 插件 | 作用 |
-| --- | --- |
-| [apifox](plugins/apifox) | 端到端交付一组 API——设计、环境、Mock、测试、文档导出、分支合并——也能管理 Apifox 项目资源 |
-
-### 对接电商 API
-
-| 插件 | 作用 |
-| --- | --- |
-| [ecommerce-expert](plugins/ecommerce-expert) | 查阅 SHEIN 与 Temu 的接口对接细节，内置 Temu 精编手册与 232 篇已抓取的合作方平台文档离线镜像 |
-
-### 研发到运维全链路
-
-| 插件 | 作用 |
-| --- | --- |
-| [codearts](plugins/codearts) | 用内置 CLI 打通华为云 CodeArts 全链路——流水线、编译构建、代码检查、合并请求、部署、制品、知识库，背后是 782 个接口 |
 
 ### 在 DeepSeek Harness 上工作
 
@@ -173,7 +139,7 @@
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/dist/<plugin>.mjs" config --ui    # 插件自己的表单
-node "${CLAUDE_PLUGIN_ROOT}/dist/config-center.mjs" edit mysql # 通用编辑器
+node "${CLAUDE_PLUGIN_ROOT}/dist/config-center.mjs" edit database # 通用编辑器
 ```
 
 > [!IMPORTANT]
@@ -185,7 +151,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/config-center.mjs" edit mysql # 通用编辑器
 
 **插件说还没有任何配置。** 这时 agent 应该替你打开配置表单。如果它没有，就让 agent 打开该插件自己的表单（`config --ui`）。配置存放在 `~/.cache/agent-plugins/<plugin>/config.json`，绝不会落在你的项目里。
 
-**内置 CLI 报模块错误。** `aliyunlog`、`codearts`、`config-center`、`database`、`prompt-forge`、`ticktick` 都是以 Node 程序运行的，需要 Node.js 22 或更新版本。只带 skill 的插件没有这个要求。
+**内置 CLI 报模块错误。** `aliyunlog`、`config-center`、`database`、`prompt-forge`、`ticktick` 都是以 Node 程序运行的，需要 Node.js 22 或更新版本。只带 skill 的插件没有这个要求。
 
 **会话里看不到某个插件。** 用 `/plugin` 查看已安装与已启用的插件；会话进行中才安装的插件需要重启。
 
@@ -203,7 +169,7 @@ scripts/   元数据生成、打包、校验与开发辅助脚本
 
 ```bash
 bash scripts/dev.sh --list        # 列出插件
-bash scripts/dev.sh mysql         # 直接从当前工作区加载一个插件
+bash scripts/dev.sh database      # 直接从当前工作区加载一个插件
 npm run generate:plugins          # 改过 plugin.config.ts 之后
 npm run build                     # 改过 CLI 源码之后
 npm run validate:plugins          # 全部门禁
