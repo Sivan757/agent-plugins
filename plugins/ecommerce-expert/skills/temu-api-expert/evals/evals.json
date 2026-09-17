@@ -1,0 +1,23 @@
+{
+  "skill_name": "temu",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to integrate my ERP system with Temu's seller API. Can you show me the Python code to authenticate and fetch my recent orders? I'm a US-based local seller and I already have my app_key and app_secret.",
+      "expected_output": "Working Python code that generates MD5 signature, calls bg.order.list.v2.get with correct US endpoint, handles the response. Should explain the auth flow and common parameters.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I'm getting error code 3000032 when calling the Temu API. What does this mean and how do I fix it?",
+      "expected_output": "Explains that 3000032 means the access_token doesn't have permission for the API being called. The seller needs to re-authorize the app in Seller Center with the required API scopes. Should mention checking apiScopeList.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "What's the complete workflow for listing a new product on Temu via their API? I want to use the V2 endpoints. Walk me through each step and which APIs to call.",
+      "expected_output": "Step-by-step workflow: 1) Get categories, 2) Get attributes for the category, 3) Upload images, 4) Create product with temu.local.goods.v2.add, 5) Check publish status, 6) Set sale status. Should reference V2 endpoints specifically.",
+      "files": []
+    }
+  ]
+}

@@ -53,6 +53,12 @@
       "description": "DeepSeek Harness workflow bundle: Agent Notes hygiene, review standards, pre-push verification, CI flake reliability, docs lifecycle, simplification discovery, stacked PRs, prose standard, CoT-leakage trimming, bilingual docs, performance work, and browser GIF demos."
     },
     {
+      "name": "ecommerce-expert",
+      "version": "1.2.0",
+      "source": "./plugins/ecommerce-expert",
+      "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints), a compiled Temu handbook (124 endpoints) with signing algorithms and integration patterns, and an offline Temu Partner Platform mirror of 232 captured documents (209 API + 23 developer guides)"
+    },
+    {
       "name": "ffmpeg",
       "version": "0.1.0",
       "source": "./plugins/ffmpeg",
