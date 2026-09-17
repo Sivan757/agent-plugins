@@ -33,6 +33,25 @@ DSH 处于 developer preview，API 会破坏性变更。**不要凭记忆写 `ct
 
 除此之外，**已安装包的 `.d.ts` 是第二权威源**：`node_modules/@deepseek-ai/dsh-tools/lib/types/index.d.ts` 之类。类型定义能给出官方文档没展开的参数与返回。
 
+### 要用的能力在哪个包：先搜能力，再读一个已经这么做的插件
+
+`.d.ts` 只说"这个服务有什么方法"，不说"你要的那件事被谁提供"。按能力名跨包搜一遍，比逐个猜服务名快：
+
+```bash
+cd <dsh 安装目录>
+grep -rl "listSessions\|archiveSession" node_modules/@deepseek-ai/*/lib/types/*.d.ts
+```
+
+找到候选服务后，`.d.ts` 常常还不够——它给出 `stream(options)`，但不说 options 怎么拼、路由怎么解析、chunk 怎么拼回文本。这时**读一个已经在做同一件事的官方插件的 `lib/index.js`**，一次就能拿到完整调用形态：
+
+```bash
+grep -n "for await" -B 12 -A 12 node_modules/@deepseek-ai/dsh-session-title-llm/lib/index.js
+```
+
+这个惯例的由来：想做一次性 LLM 调用（不建会话、不进历史）时，`.d.ts` 只暴露 `ctx.llm.stream()`；而 `dsh-session-title-llm` 正是靠这个接口做逐会话标题生成，它的调用点直接给出了 `provider`/`model` 从哪来、`createUserMessage` 怎么造、`text-delta` 怎么累加。
+
+**注意 `.d.ts` 会缺方法**：`SessionStore` 有 `get(id)` 却没有 `list()`，要列全部会话得用 `sessionQuery.listSessions()`。搜不到时是没找对服务，不是没这个能力。
+
 ## 2. 最小插件契约
 
 一个插件就是一个导出 `apply` 的模块：

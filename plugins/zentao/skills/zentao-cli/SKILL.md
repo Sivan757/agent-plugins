@@ -6,7 +6,7 @@ metadata:
   author: Sun Hao <sunhao@chandao.com>
   repository: https://github.com/easysoft/zentao-cli.git
   keywords: [zentao, 禅道, cli, project-management]
-  version: 0.1.7
+  version: 0.1.8
 ---
 
 # 禅道 CLI
@@ -28,27 +28,29 @@ npm install -g zentao-cli
 
 ### 认证
 
-首次执行任意 `zentao` 命令会自动提示登录。也可显式登录：
+凭证由本仓库的 config-center 统一管理：配置表单由 Agent 打开、用户在浏览器里填写；执行命令时凭证以环境变量注入子进程，全程不进入对话、命令行参数或终端历史。本技能目录自带规格文件 `zentao.spec.json`（与本文档同目录），它声明表单字段、注入的环境变量与必填项。
+
+1. 首次使用：Agent 以后台任务运行下面的命令打开禅道配置表单（服务地址、账号、密码 / API Token）。`$CC_BIN` 是 config-center 插件的 `dist/config-center.mjs`，路径约定见 config-center 技能的 Command Path Setup。
 
 ```bash
-zentao login -s https://zentao.example.com -u admin -p 123456
+node "$CC_BIN" edit --spec "<本技能目录>/zentao.spec.json" zentao
 ```
 
-环境变量（优先级低于命令行参数）：
+2. 之后所有命令通过桥接执行，凭证（`ZENTAO_URL` / `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` / `ZENTAO_TOKEN`）只存在于子进程环境里：
 
-| 变量 | 说明 |
-|------|------|
-| `ZENTAO_URL` | 禅道服务地址 |
-| `ZENTAO_ACCOUNT` | 用户账号 |
-| `ZENTAO_PASSWORD` | 密码 |
-| `ZENTAO_TOKEN` | 直接指定 Token（有此变量可省略密码） |
+```bash
+node "$CC_BIN" run --spec "<本技能目录>/zentao.spec.json" zentao task --execution=1
+node "$CC_BIN" run --spec "<本技能目录>/zentao.spec.json" zentao bug --product=1 --pick=id,title
+```
 
-登录成功后凭证缓存在 `~/.config/zentao/zentao.json`，后续无需重复登录。
+桥接按 `zentao` 命令原样执行并返回退出码；必填项缺失时配置表单会自行打开，用户保存后命令继续执行。也可以显式打开表单：`node "$CC_BIN" form --spec "<本技能目录>/zentao.spec.json" zentao`。
+
+也可以不走桥接：用户在终端自行执行 `zentao login` 完成登录（凭证缓存在 `~/.config/zentao/zentao.json`）后，直接运行 `zentao` 命令即可。但用户密码只能由用户本人输入：不要让用户把账号密码粘贴到对话里，也不要替用户执行 `zentao login -p <密码>`——密码会留在进程列表与 shell 历史里。
 
 ### 凭证安全
 
-- 用户尚未登录时，不要在对话里收集账号密码。让用户直接在终端执行 `zentao login`，或执行任意 `zentao` 命令触发首次自动登录提示，由用户自行输入凭证。
-- 严禁读取本地凭证：`ZENTAO_PASSWORD` / `ZENTAO_TOKEN` 环境变量、`~/.config/zentao/zentao.json` 配置文件。所有禅道数据均通过 `zentao` 命令获取，凭证由 CLI 内部处理。
+- 首次配置走 config-center 表单（见上文认证）。需要用户提供机密信息时，第一时间用上面的命令打开配置表单，收集账号密码只发生在浏览器里。
+- 严禁读取本地凭证：`ZENTAO_PASSWORD` / `ZENTAO_TOKEN` 环境变量、`~/.config/zentao/zentao.json`、`~/.cache/agent-plugins/zentao/config.json`。所有禅道数据均通过 `zentao` 命令（或 config-center 桥接）获取，凭证由工具内部处理。
 
 ## 命令格式
 
@@ -252,8 +254,8 @@ zentao help              # 查看所有命令
 
 | 错误码 | 含义 | 处理方式 |
 |--------|------|---------|
-| E1001 | 未登录/凭证缺失 | 执行 `zentao login` |
-| E1004 | Token 失效 | 执行 `zentao login` 重新登录 |
+| E1001 | 未登录/凭证缺失 | 用桥接执行（`node "$CC_BIN" run --spec "<本技能目录>/zentao.spec.json" zentao …`，配置缺失时表单会自动打开），或提示用户在终端执行 `zentao login` |
+| E1004 | Token 失效 | 打开配置表单更新 Token 或密码（`node "$CC_BIN" edit --spec "<本技能目录>/zentao.spec.json" zentao`），或在终端执行 `zentao login` 重新登录 |
 | E2001 | 模块不存在 | 执行 `zentao help` 查看可用模块 |
 | E2002 | 对象不存在 | 检查 ID 是否正确 |
 | E2003 | 缺少必要参数 | 执行 `zentao <module> help` 或 `zentao <module> <action> help` 查看操作参数 |
