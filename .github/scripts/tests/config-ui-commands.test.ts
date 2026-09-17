@@ -68,8 +68,15 @@ const declared = sources.flatMap(({ name, text }) => {
 
 describe("config-form commands", () => {
   test("covers the plugins that ship a config form", () => {
-    expect(declared.length).toBeGreaterThanOrEqual(4);
-    expect(declared.map((entry) => entry.name)).toContain("codearts");
+    // Derived from the tree, so the check survives the plugin set changing:
+    // a plugin that ships src/config-ui.ts must name a reopen command.
+    const shipped = sources
+      .filter(({ name }) => existsSync(join(PLUGINS, name, "src", "config-ui.ts")))
+      .map(({ name }) => name);
+    const declaredNames = declared.map((entry) => entry.name);
+    for (const name of shipped) {
+      expect(declaredNames, `${name} ships a config form but declares no setupCommand`).toContain(name);
+    }
   });
 
   test("every setupCommand names a command the plugin registers", () => {
