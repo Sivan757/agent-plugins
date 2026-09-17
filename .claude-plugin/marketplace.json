@@ -17,18 +17,6 @@
       "description": "Enables AI to query Alibaba Cloud SLS (Log Service) logs via @alicloud/log Node.js SDK with environment and service-based quick lookup."
     },
     {
-      "name": "apifox",
-      "version": "1.1.0",
-      "source": "./plugins/apifox",
-      "description": "Apifox CLI skills for delivering a set of APIs end to end and for managing API projects: design endpoints and schemas, configure environments and mocks, create and run interface test cases/scenarios/suites, export or publish docs, and land the change through branch collaboration. Use when the user asks to manage Apifox project resources (endpoints, environments, schemas, mocks, branches), run test cases/scenarios/suites via the apifox CLI, import or export OpenAPI/Postman/Apifox-native formats, or debug apifox CLI behavior."
-    },
-    {
-      "name": "codearts",
-      "version": "0.1.0",
-      "source": "./plugins/codearts",
-      "description": "Run Huawei Cloud CodeArts pipelines, builds, code checks, deploys, artifact repositories and code repos from the local codearts CLI, covering the development-to-operations chain end to end."
-    },
-    {
       "name": "config-center",
       "version": "0.3.0",
       "source": "./plugins/config-center",
@@ -65,12 +53,6 @@
       "description": "DeepSeek Harness workflow bundle: Agent Notes hygiene, review standards, pre-push verification, CI flake reliability, docs lifecycle, simplification discovery, stacked PRs, prose standard, CoT-leakage trimming, bilingual docs, performance work, and browser GIF demos."
     },
     {
-      "name": "ecommerce-expert",
-      "version": "1.2.0",
-      "source": "./plugins/ecommerce-expert",
-      "description": "E-commerce platform API knowledge base — SHEIN (173 endpoints), a compiled Temu handbook (124 endpoints) with signing algorithms and integration patterns, and an offline Temu Partner Platform mirror of 232 captured documents (209 API + 23 developer guides)"
-    },
-    {
       "name": "ffmpeg",
       "version": "0.1.0",
       "source": "./plugins/ffmpeg",
@@ -104,12 +86,6 @@
       "homepage": "https://github.com/Shopify/Shopify-AI-Toolkit"
     },
     {
-      "name": "teams",
-      "version": "0.3.0",
-      "source": "./plugins/teams",
-      "description": "Nine domain agents (product, design, frontend, backend, data, api, test, ops, analytics) backed by a domain-organised knowledge library: each agent reads its own domain skill, which routes to the one topic document that applies — keeping context small while preserving automatic triggering. Covers Vue 3 + Vite, Java 17 + Spring Boot + Dubbo + Nacos + Sa-Token, MyBatis-Plus + Liquibase, OpenAPI, JUnit 5 / Vitest / Playwright, Docker/Kubernetes, Git workflow, and product/design/analytics practice. Every document is traceable to a pinned upstream commit or to official framework documentation."
-    },
-    {
       "name": "ticktick",
       "version": "0.7.1",
       "source": "./plugins/ticktick",
@@ -123,12 +99,6 @@
         "url": "https://github.com/Lum1104/Understand-Anything.git"
       },
       "homepage": "https://github.com/Lum1104/Understand-Anything"
-    },
-    {
-      "name": "zentao",
-      "version": "0.1.8",
-      "source": "./plugins/zentao",
-      "description": "Zentao (禅道) CLI skill — query and operate Zentao project-management data (programs, products, projects, executions, stories, bugs, tasks, test cases, plans, releases, feedback, users, attachments) via the zentao command-line tool. Use when the user mentions 禅道/zentao, asks for project progress, bug lists, task creation, or story status updates."
     }
   ]
 }

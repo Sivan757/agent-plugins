@@ -3653,142 +3653,12 @@ var init_bridge = __esm({
   }
 });
 
-// ../config-center/src/env-spec.ts
-function zentaoFormSpec() {
-  return {
-    root: "page",
-    elements: {
-      page: {
-        type: "Header",
-        props: {
-          title: L("ZenTao (zentao-cli)", "\u7985\u9053\uFF08zentao-cli\uFF09"),
-          description: L(
-            "Credentials for the zentao command-line tool. They are injected as environment variables when config-center runs it; they never pass through the conversation.",
-            "zentao \u547D\u4EE4\u884C\u5DE5\u5177\u7684\u767B\u5F55\u51ED\u8BC1\u3002config-center \u4EE3\u4E3A\u6267\u884C\u547D\u4EE4\u65F6\u4EE5\u73AF\u5883\u53D8\u91CF\u6CE8\u5165\uFF0C\u51ED\u8BC1\u4E0D\u7ECF\u8FC7\u5BF9\u8BDD\u3002"
-          ),
-          configPath: null
-        },
-        children: ["section-server", "section-credentials", "section-token", "save"]
-      },
-      "section-server": {
-        type: "Section",
-        props: {
-          title: L("Server", "\u670D\u52A1\u5730\u5740"),
-          description: null,
-          collapsible: null,
-          defaultOpen: true
-        },
-        children: ["url"]
-      },
-      url: {
-        type: "Field",
-        props: {
-          label: L("ZenTao URL", "\u7985\u9053\u670D\u52A1\u5730\u5740"),
-          type: "text",
-          required: true,
-          help: L(
-            "Base address with the protocol; include the install path when ZenTao does not sit at the domain root.",
-            "\u5E26\u534F\u8BAE\u7684\u5B8C\u6574\u5730\u5740\uFF1B\u7985\u9053\u5B89\u88C5\u5728\u5B50\u76EE\u5F55\u65F6\u5E26\u4E0A\u5B8C\u6574\u8DEF\u5F84\u3002"
-          ),
-          placeholder: "https://zentao.example.com",
-          options: null,
-          statePath: "url"
-        }
-      },
-      "section-credentials": {
-        type: "Section",
-        props: {
-          title: L("Account", "\u8D26\u53F7"),
-          description: L(
-            "The account and its password, used to log in automatically.",
-            "\u767B\u5F55\u7528\u7684\u8D26\u53F7\u4E0E\u5BC6\u7801\uFF0C\u7531\u5DE5\u5177\u81EA\u52A8\u767B\u5F55\u3002"
-          ),
-          collapsible: null,
-          defaultOpen: true
-        },
-        children: ["account", "password"]
-      },
-      account: {
-        type: "Field",
-        props: {
-          label: L("Account", "\u8D26\u53F7"),
-          type: "text",
-          required: true,
-          help: null,
-          placeholder: null,
-          options: null,
-          statePath: "account"
-        }
-      },
-      password: {
-        type: "Field",
-        props: {
-          label: L("Password", "\u5BC6\u7801"),
-          type: "password",
-          required: false,
-          help: L(
-            "Leave empty only when an API token is filled below.",
-            "\u53EA\u5728\u4E0B\u65B9\u586B\u5199\u4E86 API Token \u65F6\u624D\u7559\u7A7A\u3002"
-          ),
-          placeholder: null,
-          options: null,
-          statePath: "password"
-        }
-      },
-      "section-token": {
-        type: "Section",
-        props: {
-          title: L("API token (optional)", "API Token\uFF08\u53EF\u9009\uFF09"),
-          description: L(
-            "A ready-made token replaces the password; the password field can stay empty.",
-            "\u5DF2\u6709\u7684 Token \u53EF\u4EE5\u4EE3\u66FF\u5BC6\u7801\uFF0C\u6B64\u65F6\u5BC6\u7801\u7559\u7A7A\u3002"
-          ),
-          collapsible: null,
-          defaultOpen: false
-        },
-        children: ["token"]
-      },
-      token: {
-        type: "Field",
-        props: {
-          label: L("API token", "API Token"),
-          type: "password",
-          required: false,
-          help: null,
-          placeholder: null,
-          options: null,
-          statePath: "token"
-        }
-      },
-      save: { type: "SaveBar", props: { saveLabel: null, resetLabel: null } }
-    },
-    state: {
-      url: "",
-      account: "",
-      password: "",
-      token: ""
-    }
-  };
-}
-var L, zentaoEnvSpec;
-var init_env_spec = __esm({
-  "../config-center/src/env-spec.ts"() {
+// ../config-center/src/plugin-spec.ts
+var init_plugin_spec = __esm({
+  "../config-center/src/plugin-spec.ts"() {
     "use strict";
-    L = (en, zh) => ({ en, zh });
-    zentaoEnvSpec = {
-      plugin: "zentao",
-      command: "zentao",
-      env: {
-        ZENTAO_URL: "url",
-        ZENTAO_ACCOUNT: "account",
-        ZENTAO_PASSWORD: "password",
-        ZENTAO_TOKEN: "token"
-      },
-      requiredKeys: ["url", "account"],
-      requiredAny: [["password", "token"]],
-      formSpec: zentaoFormSpec(),
-      reason: "The zentao CLI needs a server address and login credentials before any command can run."
-    };
+    init_launch_ui();
+    init_errors();
   }
 });
 
@@ -3810,7 +3680,7 @@ var init_src = __esm({
     init_verification();
     init_errors();
     init_bridge();
-    init_env_spec();
+    init_plugin_spec();
     init_sql_output();
   }
 });
