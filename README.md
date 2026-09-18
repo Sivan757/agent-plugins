@@ -26,7 +26,6 @@ read — no build step stands between the two.
 - **Investigate production** — chase an error through Alibaba Cloud SLS logs by environment and service
 - **Query data** — run MySQL and PostgreSQL statements over saved connections, with schema discovery and parameterized values
 - **Process media** — compress, convert, resize, upscale, and cut out images, audio, and video
-- **Design interfaces** — audit or rebuild a page that reads as machine-made, or extract the design DNA from a reference
 - **Find prompts** — search, rate, and synthesize image-generation prompts from a local library
 - **Decide with a framework** — work an ambiguous problem through an authoritative model chosen for the domain
 - **Keep personal execution moving** — TickTick tasks and habits without opening another web UI
@@ -41,7 +40,6 @@ These are the kinds of jobs this collection is built for:
 - "Show me the schema for the orders table in Postgres"
 - "Compress this 4K clip to 1080p and verify it plays"
 - "Remove the background from these product photos"
-- "This landing page feels generic — audit it and fix the worst offenders"
 - "Create a TickTick task for today's release checklist"
 - "Fold these repeated shell steps into a reusable skill"
 
@@ -97,12 +95,6 @@ Plugins that only carry skills need nothing beyond Claude Code.
 | [ffmpeg](plugins/ffmpeg) | Build and verify FFmpeg and ffprobe commands for video, audio, and images |
 | [magick](plugins/magick) | Build ImageMagick workflows — conversion, resizing, mockups, compositing — and run Real-ESRGAN upscaling and withoutbg background removal as verified steps in the same pipeline |
 
-### Design interfaces
-
-| Plugin | What it does |
-| --- | --- |
-| [hallmark](plugins/hallmark) | Audit, redesign, or build a page against an anti-slop design rule set, and extract the design DNA from a reference |
-
 ### Manage prompts
 
 | Plugin | What it does |
@@ -126,7 +118,6 @@ Plugins that only carry skills need nothing beyond Claude Code.
 | Plugin | What it does |
 | --- | --- |
 | [dsh-workflow](plugins/dsh-workflow) | Review standards, pre-push checks, CI flake diagnosis, docs lifecycle, Agent Notes hygiene, prose and simplification passes, stacked PRs, and browser GIF demos |
-| [dsh-evolve](plugins/dsh-evolve) | Hooks that count tool activity, spot repeated calls and failure streaks, and nudge the agent to fold repeated work into a reusable skill |
 | [dsh-plugin-creator](plugins/dsh-plugin-creator) | Author, package, install, and debug DeepSeek Harness plugins in a separate repository |
 
 ### Manage credentials
